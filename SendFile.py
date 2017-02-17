@@ -3,7 +3,7 @@ import shutil
 import time
 from datetime import date
 import maya.cmds as cmds
-#os.mkdir(r"F:/TestFolder")
+#path declaration
 fullPath = cmds.file(q=1,sn=1).split("/")
 srcDrive = fullPath[0]
 desDrive = "N:"
@@ -14,11 +14,17 @@ texPath = "/".join([projectPath,u"sourceimages"]+filePath)
 sceneName= fullPath[len(fullPath)-1]
 today = date.today()
 todayFolder = "%s%02d%02d" % (str(today.year)[2:],today.month,today.day)
-cmds.sysFile("/".join([srcDrive,"to",todayFolder,scenePath]),makeDir=True)
+sceneSrc = "/".join([srcDrive,scenePath])
+texSrc= "/".join([srcDrive,texPath])
+sceneDest = "/".join([srcDrive,"to",todayFolder,scenePath])
+texDest = "/".join([srcDrive,"to",todayFolder,texPath]
+
+###Execution
+cmds.sysFile(sceneDest,makeDir=True)
 print "scene folder Created"
-cmds.sysFile("/".join(fullPath),copy="/".join([srcDrive,"to",todayFolder,scenePath,sceneName]))
+os.shutil.copy(sceneSrc+sceneName,sceneDest)
 print "file copied"
-for f in os.listdir("/".join([srcDrive,scenePath])):
+if 
     if f=="rend":
         try:
             shutil.copytree("/".join([srcDrive,scenePath,"rend"]),"/".join([srcDrive,"to",todayFolder,scenePath,"rend"]))
