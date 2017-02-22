@@ -158,7 +158,7 @@ def randU(offset=0.1):
     pm.select(sel)
 
 def checkDir(pa,force=True):
-    if not os.path.isdir(pa):
+    if not os.path.exists(pa):
         os.makedirs(pa)
     else:
         if force:
@@ -169,6 +169,7 @@ def checkDir(pa,force=True):
                 os.remove(pa)
         else:
             print "%s exists" % pa
+    print "checked"
 def sysCop(src,dest):
     checkDir(dest)
     try:
@@ -185,5 +186,7 @@ def sysCop(src,dest):
             print "%s copied" % dest
         else:
             print "%s does not exist" % src
-    except:
-        print "Copy error"
+    except (IOError,OSError) as why:
+        print src
+        print dest
+        print "Copy error\n",why
