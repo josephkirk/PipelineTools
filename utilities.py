@@ -105,6 +105,7 @@ def makeCurveTube(Segments=4,width=1):
             pm.select(HairProfile,r=1)
             pm.nurbsToPolygonsPref(pt=1,un=4,vn=7,f=2)
             HairMesh=pm.loft(n="HairMesh#",po=1,ch=1,u=1,c=0,ar=1,d=3,ss=1,rn=0,rsn=True)
+            pm.rename(hairOncGroup,hairOncGroup.name()+HairMesh.name())
             if str(cm.getAttr('defaultRenderGlobals.ren'))=='vray':
                 HairShape = pm.listRelatives(HairMesh[0],shapes=True)
                 cm.vray('addAttributesFromGroup', HairShape[0], "vray_opensubdiv", 1)
