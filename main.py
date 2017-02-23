@@ -4,7 +4,16 @@ import maya.mel as mm
 import os
 import shutil
 from PipelineTools import utilities as ul
+reload(ul)
 from datetime import date
+###Global Var
+def addValue(v,t=None):
+    if t:
+        t= v
+        print t
+    else:
+        print v
+###Function
 def batchExportCam():
     Filters = "Maya Files (*.ma *.mb);;Maya ASCII (*.ma);;Maya Binary (*.mb);;All Files (*.*)"
     getFiles = pm.fileDialog2(cap="Select Files",fileFilter=Filters,fm=4)
@@ -53,3 +62,19 @@ def SendFile(fPath=False, dPath=False, fromFile=True,sendFile=True,sendTex=True)
         except (IOError,OSError) as why:
             print "texture CopyError\n",why
     print "Finished"
+def Curve2HairUI():
+    if pm.window('Curve2HairUI',ex=True):
+        pm.deleteUI('Curve2HairUI',window=True)
+        pm.windowPref('Curve2HairUI',remove=True)
+    pm.window('Curve2HairUI',t="Curve to Hair UI")
+    #pm.frameLayout(lv=False)
+    pm.columnLayout(adjustableColumn=1)
+    pm.rowColumnLayout(numberOfColumns=2,columnWidth=[(1,90),(1,90)])
+    pm.text(label="Segments: ")
+    segmentValUI=pm.intField(value=4,min=2)
+    pm.text(label="Width: ")
+    segmentWidthUI=pm.floatField(value=1,min=0.01)
+    pm.button(label="Clean",c='ul.cleanHairMesh()')
+    pm.button(label="Create",c=lambda *arg:ul.makeCurveTube(Segments=segmentValUI.getValue(),width=segmentWidthUI.getValue()))
+    pm.setParent('..')
+    pm.showWindow()
