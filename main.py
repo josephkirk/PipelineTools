@@ -74,7 +74,14 @@ def Curve2HairUI():
     segmentValUI=pm.intField(value=4,min=2)
     pm.text(label="Width: ")
     segmentWidthUI=pm.floatField(value=1,min=0.01)
-    pm.button(label="Clean",c='ul.cleanHairMesh()')
-    pm.button(label="Create",c=lambda *arg:ul.makeCurveTube(Segments=segmentValUI.getValue(),width=segmentWidthUI.getValue()))
+    pm.text(label="Delete Curves: ")
+    DelCurveUI=pm.checkBox(label="   ",value=False)
+    pm.button(label="Clean",c=lambda *arg:ul.cleanHairMesh())
+    pm.button(label="Create",c=lambda *arg:ul.makeCurveTube(
+                                                            Segments=segmentValUI.getValue(),
+                                                            width=segmentWidthUI.getValue(),
+                                                            curveDel=DelCurveUI.getValue()
+                                                                )
+                                                                    )
     pm.setParent('..')
     pm.showWindow()
