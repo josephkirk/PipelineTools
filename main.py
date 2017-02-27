@@ -66,22 +66,52 @@ def Curve2HairUI():
     if pm.window('Curve2HairUI',ex=True):
         pm.deleteUI('Curve2HairUI',window=True)
         pm.windowPref('Curve2HairUI',remove=True)
-    pm.window('Curve2HairUI',t="Curve to Hair UI")
+    pm.window('Curve2HairUI',t="MakeHairUI")
     #pm.frameLayout(lv=False)
     pm.columnLayout(adjustableColumn=1)
-    pm.rowColumnLayout(numberOfColumns=2,columnWidth=[(1,90),(1,90)])
-    pm.text(label="Segments: ")
+    pm.rowColumnLayout(numberOfColumns=2,columnWidth=[(1,90),(2,100)])
+    pm.text(label="Name: ",align='right')
+    hairNameUI=pm.textField(text="HairMesh#")
+    pm.text(label="Material: ",align='right')
+    matNameUI=pm.textField(text="SY_mtl_hairSG")
+    pm.text(label="SideCreaseSet: ",align='right')
+    hsSetNameUI=pm.textField(text="hairSideCrease")
+    pm.text(label="PointCreaseSet: ",align='right')
+    hpSetNameUI=pm.textField(text="hairPointCrease")
+    pm.text(label="Length Divs: ",align='right')
+    LDivsValUI=pm.intField(value=7,min=4)
+    pm.text(label="Width Divs: ",align='right')
+    WDivsValUI=pm.intField(value=4,min=4)
+    pm.text(label="Segments: ",align='right')
     segmentValUI=pm.intField(value=4,min=2)
-    pm.text(label="Width: ")
+    pm.text(label="Width: ",align='right')
     segmentWidthUI=pm.floatField(value=1,min=0.01)
-    pm.text(label="Delete Curves: ")
+    pm.text(label="Delete Curves: ",align='right')
     DelCurveUI=pm.checkBox(label="   ",value=False)
     pm.button(label="Clean",c=lambda *arg:ul.cleanHairMesh())
-    pm.button(label="Create",c=lambda *arg:ul.makeCurveTube(
+    pm.button(label="Create",c=lambda *arg:ul.makeHairMesh(
+                                                            name=hairNameUI.getText(),
+                                                            mat=matNameUI.getText(),
+                                                            cSet=[hsSetNameUI.getText(),hpSetNameUI.getText()],
+                                                            lengthDivs=LDivsValUI.getValue(),
+                                                            widthDivs=WDivsValUI.getValue(),
                                                             Segments=segmentValUI.getValue(),
                                                             width=segmentWidthUI.getValue(),
                                                             curveDel=DelCurveUI.getValue()
                                                                 )
                                                                     )
+    pm.setParent('..')
+    pm.showWindow()
+def mirrorUVui():
+    if pm.window('MirrorUVUI',ex=True):
+        pm.deleteUI('MirrorUVUI',window=True)
+        pm.windowPref('MirrorUVUI',remove=True)
+    pm.window('MirrorUVUI',t="Mirror UI")
+    pm.columnLayout(adjustableColumn=1)
+    pm.rowColumnLayout(numberOfColumns=3,columnWidth=[(1,90),(2,90),(3,60)])
+    mirrorDirID = pm.radioCollection()
+    leftid=pm.radioButton(label="Left",select=True)
+    pm.radioButton(label="Right")
+    pm.button(label="Mirror",c=lambda *arg:ul.mirrorUV(dir=pm.radioButton(mirrorDirID.getSelect(),q=1,l=1)))
     pm.setParent('..')
     pm.showWindow()
