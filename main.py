@@ -129,6 +129,8 @@ def makeHairUI():
                                                                 )
                                                                     )
     pm.button(label="Duplicate",c=lambda *arg:ul.dupHairMesh())
+    pm.popupMenu()
+    pm.menuItem(label='Mirror',c=lambda *arg:ul.dupHairMesh(mirror=True))
     pm.button(label="RemoveHair",c=lambda *arg:ul.delHair())
     pm.popupMenu()
     pm.menuItem(label='RemoveControl',c=lambda *arg:ul.delHair(keepHair=True))
