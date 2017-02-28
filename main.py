@@ -24,7 +24,7 @@ def batchExportCam():
             ul.exportCam()
         cm.file(f=True,new=True)
         mm.eval("paneLayout -e -m true $gMainPane")
-def SendFile(fPath=False, dPath=False, fromFile=True,sendFile=True,sendTex=True):
+def SendFile(num="",fPath=False, dPath=False, fromFile=True,sendFile=True,sendTex=True):
     if fromFile:
         fullPath = cm.file(q=1,sn=1).split("/")
         srcDrive = fullPath[0]
@@ -44,8 +44,8 @@ def SendFile(fPath=False, dPath=False, fromFile=True,sendFile=True,sendTex=True)
     todayFolder = "%s%02d%02d" % (str(today.year)[2:],today.month,today.day)
     sceneSrc = "/".join([srcDrive,scenePath])
     texSrc= "/".join([srcDrive,texPath])
-    sceneDest = "/".join([destDrive,"to",todayFolder,scenePath])
-    texDest = "/".join([destDrive,"to",todayFolder,texPath])
+    sceneDest = "/".join([destDrive,"to",todayFolder,num,scenePath])
+    texDest = "/".join([destDrive,"to",todayFolder,num,texPath])
     # function
 
     ###Execution
@@ -62,11 +62,11 @@ def SendFile(fPath=False, dPath=False, fromFile=True,sendFile=True,sendTex=True)
         except (IOError,OSError) as why:
             print "texture CopyError\n",why
     print "Finished"
-def Curve2HairUI():
-    if pm.window('Curve2HairUI',ex=True):
-        pm.deleteUI('Curve2HairUI',window=True)
-        pm.windowPref('Curve2HairUI',remove=True)
-    pm.window('Curve2HairUI',t="MakeHairUI")
+def makeHairUI():
+    if pm.window('MakeHairUI',ex=True):
+        pm.deleteUI('MakeHairUI',window=True)
+        pm.windowPref('MakeHairUI',remove=True)
+    pm.window('MakeHairUI',t="MakeHairUI")
     #pm.frameLayout(lv=False)
     pm.columnLayout(adjustableColumn=1)
     pm.rowColumnLayout(numberOfColumns=2,columnWidth=[(1,90),(2,100)])
@@ -88,7 +88,7 @@ def Curve2HairUI():
     segmentWidthUI=pm.floatField(value=1,min=0.01)
     pm.text(label="Delete Curves: ",align='right')
     DelCurveUI=pm.checkBox(label="   ",value=False)
-    pm.button(label="Clean",c=lambda *arg:ul.cleanHairMesh())
+    pm.button(label="SelectCtr",c=lambda *arg:ul.selHair())
     pm.button(label="Create",c=lambda *arg:ul.makeHairMesh(
                                                             name=hairNameUI.getText(),
                                                             mat=matNameUI.getText(),
@@ -100,6 +100,10 @@ def Curve2HairUI():
                                                             curveDel=DelCurveUI.getValue()
                                                                 )
                                                                     )
+    pm.button(label="Duplicate",c=lambda *arg:ul.dupHairMesh())
+    pm.button(label="RemoveHair",c=lambda *arg:ul.delHair())
+    pm.popupMenu()
+    pm.menuItem(label='RemoveControl',c=lambda *arg:ul.delHair(keepHair=True))
     pm.setParent('..')
     pm.showWindow()
 def mirrorUVui():

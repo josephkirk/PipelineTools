@@ -114,9 +114,6 @@ def makeHairMesh(name="HairMesh#",mat="",cSet=["hairSideCrease","hairPointCrease
             pm.nurbsToPolygonsPref(pt=1,un=4,vn=7,f=2)
             HairMesh=pm.loft(n=name,po=1,ch=1,u=1,c=0,ar=1,d=3,ss=1,rn=0,rsn=True)
             pm.rename(hairOncGroup,hairOncGroup.name()+HairMesh[0].name())
-            if str(cm.getAttr('defaultRenderGlobals.ren'))=='vray':
-                HairShape = pm.listRelatives(HairMesh[0],shapes=True)
-                cm.vray('addAttributesFromGroup', HairShape[0], "vray_opensubdiv", 1)
             HairMesh[0].addAttr('lengthDivisions',min=1,at='long',dv=lengthDivs)
             HairMesh[0].addAttr('widthDivisions',min=4,at='long',dv=widthDivs)
             HairMesh[0].setAttr('lengthDivisions',e=1,k=1)
@@ -146,16 +143,85 @@ def makeHairMesh(name="HairMesh#",mat="",cSet=["hairSideCrease","hairPointCrease
             for e in pointEdges:
                 pm.sets(hpSet,forceElement=e)
             pm.delete(profileCurve,mp=1)
-            pm.select(HairMesh,r=1)
+            pm.select(HairMesh[0],r=1)
             HairUV = HairMeshShape.map
             pm.polyEditUV(HairUV,pu=0.5,pv=0.5,su=0.3,sv=1)
             pm.polyEditUV(HairUV,u=rand.uniform(-0.1,0.1))
+            if str(cm.getAttr('defaultRenderGlobals.ren'))=='vray':
+                addVrayOpenSubdivAttr()
             pm.displaySmoothness(po=3)
             if bool(pm.ls(mat,type=pm.nodetypes.ShadingEngine)):
                 pm.sets(pm.ls(mat)[0],forceElement=HairMesh[0])
         pm.hide(profileCurve)
         if curveDel:
             pm.delete(pathTransform,hi=1)
+
+def dupHairMesh():
+    hairMeshes = pm.selected()
+    if not hairMeshes:
+        return
+    Cgroups=[]
+    for hair in hairMeshes:
+        try:
+            loftMesh=[l for l in hair.listConnections()[0].listConnections() if type(l)==pm.nodetypes.Loft][0]
+            Ctrls=[c for c in loftMesh.listConnections() if type(c)==pm.nodetypes.Transform]
+            rootPivot = pm.xform(Ctrls[0].getParent(),q=1,ws=1,t=1)
+            ControlGroup = Ctrls[1].getParent()
+            pm.xform(ControlGroup,pivots=rootPivot,ws=1)
+        except:
+            continue
+        if ControlGroup:
+            pm.select(hair,ControlGroup)
+            pm.duplicate(ic=1,un=1)
+            Cgroups.append(ControlGroup)
+    if Cgroups:
+        pm.select(Cgroups)
+
+def selHair():
+    hairMeshes = pm.selected()
+    if not hairMeshes:
+        return
+    Cgroups=[]
+    for hair in hairMeshes:
+        try:
+            loftMesh=[l for l in hair.listConnections()[0].listConnections() if type(l)==pm.nodetypes.Loft][0]
+            Ctrls=[c for c in loftMesh.listConnections() if type(c)==pm.nodetypes.Transform]
+            rootPivot = pm.xform(Ctrls[0].getParent(),q=1,ws=1,t=1)
+            ControlGroup = Ctrls[1].getParent()
+            print ControlGroup
+            pm.xform(ControlGroup,pivots=rootPivot,ws=1)
+            Cgroups.append(ControlGroup)
+        except:
+            continue
+        if ControlGroup:
+            Cgroups.append(ControlGroup)
+    if Cgroups:
+        pm.select(Cgroups)
+def delHair(keepHair=False):
+    newAttr =['lengthDivisions','widthDivisions']
+    hairMeshes = pm.selected()
+    if not hairMeshes:
+        return
+    Cgroups=[]
+    for hair in hairMeshes:
+        try:
+            loftMesh=[l for l in hair.listConnections()[0].listConnections() if type(l)==pm.nodetypes.Loft][0]
+            Ctrls=[c for c in loftMesh.listConnections() if type(c)==pm.nodetypes.Transform]
+            ControlGroup = Ctrls[1].getParent()
+            Cgroups.append(ControlGroup)
+        except:
+            continue
+    if not keepHair:
+        pm.delete(hairMeshes)
+        pm.delete(Cgroups)
+    else:
+        for hair in hairMeshes:
+            pm.delete(hair,ch=True)
+            for a in newAttr:
+                if (pm.attributeQuery(a, exists=1, node=hair)):
+                    pm.deleteAttr(hair+"."+a)
+        pm.delete(Cgroups)
+
 def cleanHairMesh():
     newAttr =['width','baseWidth','lengthDivisions','widthDivisions']
     meshes = pm.ls("HairMesh*")
@@ -185,8 +251,8 @@ def randU(offset=0.1):
         pm.polyEditUV(o.map,u=rand.uniform(-offset,offset))
 
 def checkDir(pa,force=True):
-    if not os.path.exists(pa):
-        os.makedirs(pa)
+    if not os.path.exists(os.path.dirname(pa)):
+        os.makedirs(os.path.dirname(pa))
     else:
         if force:
             if os.path.isdir(pa):
