@@ -109,10 +109,10 @@ def makeHairMesh(name="HairMesh#",mat="",cSet=["hairSideCrease","hairPointCrease
                 HairProfile.append(profileInstance)
                 if u==0:
                     pm.scale(profileInstance,[0.01,0.01,0.01],a=1,os=1)
-                    createPointParent(profileInstance,name=crv[0]+"HairRoot_Ctrl_"+str(pathCurve.index(crv)))
+                    #reatePointParent(profileInstance,name=crv[0]+"HairRoot_Ctrl_"+str(pathCurve.index(crv)))
                 if u==Segments:
                     pm.scale(profileInstance,[0.01,0.01,0.01],a=1,os=1)
-                    createPointParent(profileInstance,name=crv[0]+"HairTop_Ctrl_"+str(pathCurve.index(crv)))
+                    #createPointParent(profileInstance,name=crv[0]+"HairTop_Ctrl_"+str(pathCurve.index(crv)))
             pm.select(HairProfile,r=1)
             pm.nurbsToPolygonsPref(pt=1,un=4,vn=7,f=2)
             HairMesh=pm.loft(n=name,po=1,ch=1,u=1,c=0,ar=1,d=3,ss=1,rn=0,rsn=True)
