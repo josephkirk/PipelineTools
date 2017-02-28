@@ -61,7 +61,7 @@ def createPointParent(ob,name="PointParent#"):
     if obOldParent:
         pm.parent(obNewParent,obOldParent)
     pm.parent(ob,obNewParent)
-def makeHairMesh(name="HairMesh#",mat="",cSet=["hairSideCrease","hairPointCrease"],lengthDivs=7,widthDivs=4,Segments=4,width=1,curveDel=False):
+def makeHairMesh(name="HairMesh#",mat="",cSet=["hairSideCrease","hairPointCrease"],reverse=False,lengthDivs=7,widthDivs=4,Segments=4,width=1,curveDel=False):
     sel = pm.selected()
     if not sel:
         print "Select some Curves or Edges or isopram"
@@ -87,6 +87,9 @@ def makeHairMesh(name="HairMesh#",mat="",cSet=["hairSideCrease","hairPointCrease
         pm.select(d=1)
         for crv in pathCurve:
             print crv
+            pm.rebuildCurve(crv[0],kep=1)
+            if reverse:
+                pm.reverseCurve(crv[0])
             #profileInstance = instance(profileCurve,n="pCrv_instance"+string(pathCurve.index(crv)))
             if pm.objExists("HairCtrlGroup"):
                 hairOncsGroup=pm.ls("HairCtrlGroup")[0]

@@ -42,10 +42,12 @@ def SendFile(num="",fPath=False, dPath=False, fromFile=True,sendFile=True,sendTe
     sceneName= fullPath[len(fullPath)-1]
     today = date.today()
     todayFolder = "%s%02d%02d" % (str(today.year)[2:],today.month,today.day)
+    if num:
+        todayFolder += "_"+num
     sceneSrc = "/".join([srcDrive,scenePath])
     texSrc= "/".join([srcDrive,texPath])
-    sceneDest = "/".join([destDrive,"to",todayFolder,num,scenePath])
-    texDest = "/".join([destDrive,"to",todayFolder,num,texPath])
+    sceneDest = "/".join([destDrive,"to",todayFolder,scenePath])
+    texDest = "/".join([destDrive,"to",todayFolder,texPath])
     # function
 
     ###Execution
@@ -62,12 +64,35 @@ def SendFile(num="",fPath=False, dPath=False, fromFile=True,sendFile=True,sendTe
         except (IOError,OSError) as why:
             print "texture CopyError\n",why
     print "Finished"
+
+def SendFileUI():
+    if pm.window('SendFileUI',ex=True):
+        pm.deleteUI('SendFileUI',window=True)
+        pm.windowPref('SendFileUI',remove=True)
+    pm.window('SendFileUI',t="SendFileUI")
+    pm.frameLayout(label="SendFile")
+    pm.columnLayout(adjustableColumn=1)
+    pm.rowColumnLayout(numberOfColumns=2,columnWidth=[(1,90),(2,100)])
+    pm.text(label="Number: ",align='right')
+    numUI=pm.textField(text="")
+    pm.text(label="Send File: ",align='right')
+    sendFilecbUI=pm.checkBox(label="   ",value=True)
+    pm.text(label="Send Textures:: ",align='right')
+    sendTexcbUI=pm.checkBox(label="   ",value=True)
+    pm.text(label="",align='right')
+    pm.button(label="Send",c=lambda *arg:SendFile(
+                                                    num=numUI.getText(),
+                                                    sendFile=sendFilecbUI.getValue(),
+                                                    sendTex=sendTexcbUI.getValue()
+                                                    )
+                                                        )
+    pm.showWindow()
 def makeHairUI():
     if pm.window('MakeHairUI',ex=True):
         pm.deleteUI('MakeHairUI',window=True)
         pm.windowPref('MakeHairUI',remove=True)
     pm.window('MakeHairUI',t="MakeHairUI")
-    #pm.frameLayout(lv=False)
+    pm.frameLayout(label="Create Hair Parameters")
     pm.columnLayout(adjustableColumn=1)
     pm.rowColumnLayout(numberOfColumns=2,columnWidth=[(1,90),(2,100)])
     pm.text(label="Name: ",align='right')
@@ -88,11 +113,14 @@ def makeHairUI():
     segmentWidthUI=pm.floatField(value=1,min=0.01)
     pm.text(label="Delete Curves: ",align='right')
     DelCurveUI=pm.checkBox(label="   ",value=False)
+    pm.text(label="Reverse: ",align='right')
+    RevCurveUI=pm.checkBox(label="   ",value=False)
     pm.button(label="SelectCtr",c=lambda *arg:ul.selHair())
     pm.button(label="Create",c=lambda *arg:ul.makeHairMesh(
                                                             name=hairNameUI.getText(),
                                                             mat=matNameUI.getText(),
                                                             cSet=[hsSetNameUI.getText(),hpSetNameUI.getText()],
+                                                            reverse=RevCurveUI.getValue(),
                                                             lengthDivs=LDivsValUI.getValue(),
                                                             widthDivs=WDivsValUI.getValue(),
                                                             Segments=segmentValUI.getValue(),
