@@ -67,7 +67,7 @@ def createPointParent(ob,name="PointParent#",shapeReplace=False,r=1):
             pm.parent(obNewParent[0],obOldParent)
         pm.parent(ob,obNewParent[0])
     else:
-        pm.parent(ob.listsRelatives(shapes=1)[0],obNewParent,r=1,s=1)
+        pm.parent(obNewParent[0].listsRelatives(shapes=1)[0],ob,r=1,s=1)
         pm.delete(obNewParent)
 def makeHairMesh(name="HairMesh#",mat="",cSet=["hairSideCrease","hairPointCrease"],reverse=False,lengthDivs=7,widthDivs=4,Segments=4,width=1,curveDel=False):
     sel = pm.selected()
@@ -198,7 +198,7 @@ def dupHairMesh(mirror=False):
     if Cgroups:
         pm.select(Cgroups)
 
-def selHair(setPivot=False):
+def selHair(selectInner=False,setPivot=False):
     hairMeshes = pm.selected()
     if not hairMeshes:
         return
@@ -216,7 +216,10 @@ def selHair(setPivot=False):
         if ControlGroup:
             Cgroups.append(ControlGroup)
     if Cgroups:
-        pm.select(Cgroups)
+        if not selectInner:
+            pm.select(Cgroups)
+        else:
+            pm.select([c.getChildren()[-1] for c in Cgroups])
 def delHair(keepHair=False):
     newAttr =['lengthDivisions','widthDivisions']
     hairMeshes = pm.selected()

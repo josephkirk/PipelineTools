@@ -24,7 +24,7 @@ def batchExportCam():
             ul.exportCam()
         cm.file(f=True,new=True)
         mm.eval("paneLayout -e -m true $gMainPane")
-def SendFile(num="",fPath=False, dPath=False, fromFile=True,sendFile=True,sendTex=True):
+def SendFile(num="",fPath=False, dPath=False, fromFile=True,sendFile=True,sendTex=True,CommonOnly=True):
     if fromFile:
         fullPath = cm.file(q=1,sn=1).split("/")
         srcDrive = fullPath[0]
@@ -60,7 +60,10 @@ def SendFile(num="",fPath=False, dPath=False, fromFile=True,sendFile=True,sendTe
             print "scene CopyError\n",why
     if sendTex:
         try:
-            ul.sysCop("/".join([texSrc,'_Common']),"/".join([texDest,'_Common']))
+            if CommonOnly:
+                ul.sysCop("/".join([texSrc,'_Common']),"/".join([texDest,'_Common']))
+            else:
+                ul.sysCop(texSrc,texDest)
         except (IOError,OSError) as why:
             print "texture CopyError\n",why
     print "Finished"
@@ -77,13 +80,16 @@ def SendFileUI():
     numUI=pm.textField(text="")
     pm.text(label="Send File: ",align='right')
     sendFilecbUI=pm.checkBox(label="   ",value=True)
-    pm.text(label="Send Textures:: ",align='right')
+    pm.text(label="Send Textures: ",align='right')
     sendTexcbUI=pm.checkBox(label="   ",value=True)
+    pm.text(label="Send only _Commmon: ",align='right')
+    sendTexCommoncbUI=pm.checkBox(label="   ",value=True)
     pm.text(label="",align='right')
     pm.button(label="Send",c=lambda *arg:SendFile(
                                                     num=numUI.getText(),
                                                     sendFile=sendFilecbUI.getValue(),
-                                                    sendTex=sendTexcbUI.getValue()
+                                                    sendTex=sendTexcbUI.getValue(),
+                                                    CommonOnly=sendTexCommoncbUI.getValue()
                                                     )
                                                         )
     pm.showWindow()
