@@ -5,6 +5,9 @@ import shutil
 import os
 import random as rand
 
+###misc function
+
+###function
 def exportCam():
     FBXSettings = [
         "FBXExportBakeComplexAnimation -v true;"
@@ -50,40 +53,64 @@ def addVrayOpenSubdivAttr():
                     cm.vray('addAttributesFromGroup', obShape, "vray_opensubdiv", 1)
                     pm.setAttr(obShape+".vrayOsdPreserveMapBorders",2)
 
-def createPointParent(ob,name="PointParent#"):
-    obPos= pm.xform(ob,q=1,ws=1,t=1)
+def createPointParent(ob,name="PointParent#",shapeReplace=False,r=1):
     obOldParent = ob.getParent()
-    obNewParent = pm.spaceLocator(n=name)
-    obNewParent.setAttr("translate",obPos)
-    if obOldParent:
-        pm.parent(obNewParent,obOldParent)
-    pm.parent(ob,obNewParent)
-def makeCurveTube(Segments=4):
-    pathTransform = pm.selected()
-    if not pathTransform:
-        print "Select some Curves"
+    obNewParent = pm.polySphere(name=name,subdivisionsAxis=6,subdivisionsHeight=4,radius=r)
+    for a in [('castsShadows',0),('receiveShadows',0),('smoothShading',0),('primaryVisibility',0),('visibleInReflections',0),('visibleInRefractions',0),('overrideEnabled',1),('overrideShading',0),('overrideTexturing',0),('overrideRGBColors',1),('overrideColorRGB',(1,0,0))]:
+        obNewParent[0].listRelatives(shapes=1)[0].attr(a[0]).set(a[1])
+    if not shapeReplace:
+        pm.xform(obNewParent[0],ws=1,t=pm.xform(ob,q=1,ws=1,t=1))
+        pm.xform(obNewParent[0],ws=1,ro=pm.xform(ob,q=1,ws=1,ro=1))
+        #pm.color(obNewParent[0],rgb=(1,0,0))
+        #obNewParent.setAttr("translate",obPos)
+        if obOldParent:
+            pm.parent(obNewParent[0],obOldParent)
+        pm.parent(ob,obNewParent[0])
+    else:
+        pm.parent(ob.listsRelatives(shapes=1)[0],obNewParent,r=1,s=1)
+        pm.delete(obNewParent)
+def makeHairMesh(name="HairMesh#",mat="",cSet=["hairSideCrease","hairPointCrease"],reverse=False,lengthDivs=7,widthDivs=4,Segments=4,width=1,curveDel=False):
+    sel = pm.selected()
+    if not sel:
+        print "Select some Curves or Edges or isopram"
         return
+    if type(sel[0])==pm.general.MeshEdge:
+        pm.runtime.CreateCurveFromPoly()
+        pathTransform=pm.selected()[0]
+    elif type(sel[0])==pm.general.NurbsSurfaceIsoparm:
+        pm.runtime.DuplicateCurve()
+        pathTransform=pm.selected()[0]
+    pathTransform=[t for t in pm.selected() if type(t)==pm.nodetypes.Transform]
+    pm.select(pathTransform,r=1)
     pathShape = pm.listRelatives(shapes=True)
-    if pm.nodeType(pathShape[0])=="nurbsCurve":
+    if type(pathShape[0])==pm.nodetypes.NurbsCurve:
         pathCurve=[(i,pathShape[pathTransform.index(i)]) for i in pathTransform]
         if pm.objExists("HairBaseProfileCurve"):
             profileCurve = pm.ls("HairBaseProfileCurve")[0]
+            print profileCurve.listRelatives()[0].listConnections()[0]
+            profileCurve.listRelatives()[0].listConnections()[0].setRadius(width)
             pm.showHidden(profileCurve,a=1)
         else:
-            profileCurve = pm.circle(c=(0,0,0), nr=(0,1,0), sw=360, r=1, d=3, ut=0, tol=5.77201e-008, s=8, ch=1, name="HairBaseProfileCurve")
+            profileCurve = pm.circle(c=(0,0,0), nr=(0,1,0), sw=360, r=width, d=3, ut=0, tol=5.77201e-008, s=8, ch=1, name="HairBaseProfileCurve")
+            for a in [('overrideEnabled',1),('overrideRGBColors',1),('overrideColorRGB',(.2,1,0))]:
+                profileCurve[0].listRelatives(shapes=1)[0].attr(a[0]).set(a[1])
         pm.select(d=1)
         for crv in pathCurve:
             print crv
+            pm.rebuildCurve(crv[0],kep=1)
+            if reverse:
+                pm.reverseCurve(crv[0])
             #profileInstance = instance(profileCurve,n="pCrv_instance"+string(pathCurve.index(crv)))
             if pm.objExists("HairCtrlGroup"):
-                hairOncGroup=pm.ls("HairCtrlGroup")[0]
+                hairOncsGroup=pm.ls("HairCtrlGroup")[0]
             else:
-                hairOncGroup=pm.group(name="HairCtrlGroup")
+                hairOncsGroup=pm.group(name="HairCtrlGroup")
             #pm.parent(hairOncGroup,crv[0])
             mPath=pm.pathAnimation(profileCurve,crv[0],fa='y',ua='x',stu=1,etu=Segments*10,b=1)
             HairProfile =[]
+            hairOncGroup=pm.group(name="HairCtrls#")
+            pm.parent(hairOncGroup,hairOncsGroup,r=1)
             for u in range(Segments+1):
-                print u
                 pm.currentTime(u*10)
                 #profileInstance=pm.instance("HairBaseProfileCurve",n=(crv[0]+"HairProFileCrv_"+str(u)))[0]
                 profileInstance=pm.duplicate(profileCurve,n=(crv[0]+"HairProFileCrv_"+str(u)),rr=1)[0]
@@ -92,41 +119,128 @@ def makeCurveTube(Segments=4):
                 HairProfile.append(profileInstance)
                 if u==0:
                     pm.scale(profileInstance,[0.01,0.01,0.01],a=1,os=1)
-                    createPointParent(profileInstance,name=crv[0]+"HairRoot_Ctrl_"+str(pathCurve.index(crv)))
+                    createPointParent(profileInstance,name=crv[0]+"HairRoot_Ctrl_"+str(pathCurve.index(crv)),r=width)
                 if u==Segments:
                     pm.scale(profileInstance,[0.01,0.01,0.01],a=1,os=1)
-                    createPointParent(profileInstance,name=crv[0]+"HairTop_Ctrl_"+str(pathCurve.index(crv)))
+                    createPointParent(profileInstance,name=crv[0]+"HairTop_Ctrl_"+str(pathCurve.index(crv)),r=width)
             pm.select(HairProfile,r=1)
             pm.nurbsToPolygonsPref(pt=1,un=4,vn=7,f=2)
-            HairMesh=pm.loft(n="HairMesh#",po=1,ch=1,u=1,c=0,ar=1,d=3,ss=1,rn=0,rsn=True)
-            #print HairMesh
-            if str(cm.getAttr('defaultRenderGlobals.ren'))=='vray':
-                HairShape = pm.listRelatives(HairMesh[0],shapes=True)
-                cm.vray('addAttributesFromGroup', HairShape[0], "vray_opensubdiv", 1)
-            #HairMesh[0].addAttr('width',min=0.1,at='double',dv=1)
-            #HairMesh[0].addAttr('baseWidth',min=0.01,at='double',dv=0.01)
-            # HairMesh[0].addAttr('orientation',min=-360,max=360,at='long',dv=1)
-            HairMesh[0].addAttr('lengthDivisions',min=1,at='long',dv=7)
-            HairMesh[0].addAttr('widthDivisions',min=4,at='long',dv=4)
-            #HairMesh[0].setAttr('width',e=1,k=1)
-            #HairMesh[0].setAttr('baseWidth',e=1,k=1)
-            #HairMesh[0].setAttr('orientation',e=1,k=1)
+            HairMesh=pm.loft(n=name,po=1,ch=1,u=1,c=0,ar=1,d=3,ss=1,rn=0,rsn=True)
+            pm.rename(hairOncGroup,hairOncGroup.name()+HairMesh[0].name())
+            HairMesh[0].addAttr('lengthDivisions',min=1,at='long',dv=lengthDivs)
+            HairMesh[0].addAttr('widthDivisions',min=4,at='long',dv=widthDivs)
             HairMesh[0].setAttr('lengthDivisions',e=1,k=1)
             HairMesh[0].setAttr('widthDivisions',e=1,k=1)
-            HairTess= pm.listConnections(HairMesh)[len(HairProfile)]
-            HairWidth=pm.listConnections(pm.listRelatives(HairProfile[0]))[0]
-            #for hp in HairProfile:
-            #     #print hp
-            #     HairMesh[0].connectAttr('orientation',hp[0]+".rotateY")
-                #HairMesh[0].connectAttr('width',HairWidth+".radius")
-            #HairMesh[0].connectAttr('baseWidth',hp+".scaleX")
-            #HairMesh[0].connectAttr('baseWidth',hp+".scaleY")
-            #HairMesh[0].connectAttr('baseWidth',hp+".scaleZ")
+            HairTess= pm.listConnections(HairMesh)[-1]
             HairMesh[0].connectAttr('widthDivisions',HairTess+".uNumber")
             HairMesh[0].connectAttr('lengthDivisions',HairTess+".vNumber")
+            HairMeshShape= HairMesh[0].listRelatives(shapes=1)[0]
+            pm.select(HairMeshShape.e[0,2])
+            pm.runtime.SelectEdgeLoopSp()
+            sideEdges=pm.selected()
+            pm.select(HairMeshShape.e[0])
+            pm.runtime.SelectEdgeRingSp()
+            pointEdges=pm.selected()
+            if bool(pm.ls(cSet[0],type=pm.nodetypes.CreaseSet)):
+                hsSet=pm.ls(cSet[0],type=pm.nodetypes.CreaseSet)[0]
+            else:
+                hsSet = pm.nodetypes.CreaseSet(name=cSet[0])
+                hsSet.setAttr('creaseLevel',1.6)
+            if bool(pm.ls(cSet[1],type=pm.nodetypes.CreaseSet)):
+                hpSet=pm.ls(cSet[1],type=pm.nodetypes.CreaseSet)[0]
+            else:
+                hpSet = pm.nodetypes.CreaseSet(name=cSet[1])
+                hpSet.setAttr('creaseLevel',2.0)
+            for e in sideEdges:
+                pm.sets(hsSet,forceElement=e)
+            for e in pointEdges:
+                pm.sets(hpSet,forceElement=e)
             pm.delete(profileCurve,mp=1)
-            pm.select(HairMesh,r=1)
-        pm.hide(profileCurve)
+            pm.delete(profileCurve)
+            pm.xform(hairOncsGroup,ws=1,piv=pm.xform(hairOncsGroup.getChildren()[0],q=1,ws=1,piv=1)[:3])
+            pm.select(HairMesh[0],r=1)
+            HairUV = HairMeshShape.map
+            pm.polyEditUV(HairUV,pu=0.5,pv=0.5,su=0.3,sv=1)
+            pm.polyEditUV(HairUV,u=rand.uniform(-0.1,0.1))
+            if str(cm.getAttr('defaultRenderGlobals.ren'))=='vray':
+                addVrayOpenSubdivAttr()
+            pm.displaySmoothness(po=3)
+            if bool(pm.ls(mat,type=pm.nodetypes.ShadingEngine)):
+                pm.sets(pm.ls(mat)[0],forceElement=HairMesh[0])
+        #pm.hide(profileCurve)
+        if curveDel:
+            pm.delete(pathTransform,hi=1)
+
+def dupHairMesh(mirror=False):
+    hairMeshes = pm.selected()
+    if not hairMeshes:
+        return
+    Cgroups=[]
+    for hair in hairMeshes:
+        try:
+            loftMesh=[l for l in hair.listConnections()[0].listConnections() if type(l)==pm.nodetypes.Loft][0]
+            Ctrls=[c for c in loftMesh.listConnections() if type(c)==pm.nodetypes.Transform]
+            ControlGroup = Ctrls[1].getParent()
+        except:
+            continue
+        if ControlGroup:
+            pm.select(hair,ControlGroup)
+            pm.duplicate(ic=1,un=1)
+            if mirror:
+                pm.scale(ControlGroup,-1,smn=1,p=(0,0,0),ws=1)
+                pm.polyNormal(hair,nm=3)
+                for c in Ctrls:
+                    c.centerPivots()
+                    if c.getParent() != ControlGroup:
+                        c.getParent().centerPivots()
+            pm.xform(ControlGroup,ws=1,piv=pm.xform(ControlGroup.getChildren()[0],q=1,ws=1,piv=1)[:3])
+            Cgroups.append(ControlGroup)
+    if Cgroups:
+        pm.select(Cgroups)
+
+def selHair(setPivot=False):
+    hairMeshes = pm.selected()
+    if not hairMeshes:
+        return
+    Cgroups=[]
+    for hair in hairMeshes:
+        try:
+            loftMesh=[l for l in hair.listConnections()[0].listConnections() if type(l)==pm.nodetypes.Loft][0]
+            Ctrls=[c for c in loftMesh.listConnections() if type(c)==pm.nodetypes.Transform]
+            ControlGroup = Ctrls[1].getParent()
+            if setPivot:
+                pm.xform(ControlGroup,ws=1,piv=pm.xform(ControlGroup.getChildren()[0],q=1,ws=1,piv=1)[:3])
+            Cgroups.append(ControlGroup)
+        except:
+            continue
+        if ControlGroup:
+            Cgroups.append(ControlGroup)
+    if Cgroups:
+        pm.select(Cgroups)
+def delHair(keepHair=False):
+    newAttr =['lengthDivisions','widthDivisions']
+    hairMeshes = pm.selected()
+    if not hairMeshes:
+        return
+    Cgroups=[]
+    for hair in hairMeshes:
+        try:
+            loftMesh=[l for l in hair.listConnections()[0].listConnections() if type(l)==pm.nodetypes.Loft][0]
+            Ctrls=[c for c in loftMesh.listConnections() if type(c)==pm.nodetypes.Transform]
+            ControlGroup = Ctrls[1].getParent()
+            Cgroups.append(ControlGroup)
+        except:
+            continue
+    if not keepHair:
+        pm.delete(hairMeshes)
+        pm.delete(Cgroups)
+    else:
+        for hair in hairMeshes:
+            pm.delete(hair,ch=True)
+            for a in newAttr:
+                if (pm.attributeQuery(a, exists=1, node=hair)):
+                    pm.deleteAttr(hair+"."+a)
+        pm.delete(Cgroups)
 
 def cleanHairMesh():
     newAttr =['width','baseWidth','lengthDivisions','widthDivisions']
@@ -151,15 +265,14 @@ def loc42Curve():
         pm.curve(p=posList)
 def randU(offset=0.1):
     sel=pm.selected()
+    if not sel:
+        return
     for o in sel:
-        uvCount=pm.polyEvaluate(o,uv=True)
-        pm.select(o+".map[0:%s]" % uvCount,r=1)
-        pm.polyEditUV(u=rand.uniform(-offset,offset))
-    pm.select(sel)
+        pm.polyEditUV(o.map,u=rand.uniform(-offset,offset))
 
 def checkDir(pa,force=True):
-    if not os.path.exists(pa):
-        os.makedirs(pa)
+    if not os.path.exists(os.path.dirname(pa)):
+        os.makedirs(os.path.dirname(pa))
     else:
         if force:
             if os.path.isdir(pa):
@@ -190,3 +303,23 @@ def sysCop(src,dest):
         print src
         print dest
         print "Copy error\n",why
+def mirrorUV(dir='Left'):
+    if dir=='Left':
+        pm.polyEditUV(u=-0.5)
+    else:
+        pm.polyEditUV(u=0.5)
+    pm.polyFlipUV()
+def getInfo():
+    sel= pm.selected()[0]
+    if not sel:
+        return
+    print type(sel)
+    for a in dir(sel):
+        print str(a)+": "
+        try:
+            print eval('sel.%s.__module__\n' % a)
+            #print eval('sel.%s.__method__\n' % a)
+            print eval('sel.%s.__doc__\n' % a)
+        except:
+            continue
+        print ("-"*100+"\n")*2
