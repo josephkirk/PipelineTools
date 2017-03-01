@@ -55,7 +55,7 @@ def addVrayOpenSubdivAttr():
 
 def createPointParent(ob,name="PointParent#",shapeReplace=False,r=1):
     obOldParent = ob.getParent()
-    obNewParent = pm.polySphere(subdivisionsAxis=6,subdivisionsHeight=4,radius=r)
+    obNewParent = pm.polySphere(name=name,subdivisionsAxis=6,subdivisionsHeight=4,radius=r)
     for a in [('castsShadows',0),('receiveShadows',0),('smoothShading',0),('primaryVisibility',0),('visibleInReflections',0),('visibleInRefractions',0),('overrideEnabled',1),('overrideShading',0),('overrideTexturing',0),('overrideRGBColors',1),('overrideColorRGB',(1,0,0))]:
         obNewParent[0].listRelatives(shapes=1)[0].attr(a[0]).set(a[1])
     if not shapeReplace:
@@ -157,7 +157,7 @@ def makeHairMesh(name="HairMesh#",mat="",cSet=["hairSideCrease","hairPointCrease
                 pm.sets(hpSet,forceElement=e)
             pm.delete(profileCurve,mp=1)
             pm.delete(profileCurve)
-            pm.xform(hairOncsGroup,pivots=HairProfile[0].getTranslation(space='world'),ws=1)
+            pm.xform(hairOncsGroup,ws=1,piv=pm.xform(hairOncsGroup.getChildren()[0],q=1,ws=1,piv=1)[:3])
             pm.select(HairMesh[0],r=1)
             HairUV = HairMeshShape.map
             pm.polyEditUV(HairUV,pu=0.5,pv=0.5,su=0.3,sv=1)
