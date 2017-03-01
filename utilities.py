@@ -67,6 +67,7 @@ def createPointParent(ob,name="PointParent#",shapeReplace=False,r=1):
             pm.parent(obNewParent[0],obOldParent)
         pm.parent(ob,obNewParent[0])
     else:
+        pm.parent(ob.listsRelatives(shapes=1)[0],obNewParent,r=1,s=1)
         pm.delete(obNewParent)
 def makeHairMesh(name="HairMesh#",mat="",cSet=["hairSideCrease","hairPointCrease"],reverse=False,lengthDivs=7,widthDivs=4,Segments=4,width=1,curveDel=False):
     sel = pm.selected()
