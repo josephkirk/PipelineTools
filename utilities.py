@@ -53,18 +53,21 @@ def addVrayOpenSubdivAttr():
                     cm.vray('addAttributesFromGroup', obShape, "vray_opensubdiv", 1)
                     pm.setAttr(obShape+".vrayOsdPreserveMapBorders",2)
 
-def createPointParent(ob,name="PointParent#"):
+def createPointParent(ob,name="PointParent#",shapeReplace=False,r=1):
     obOldParent = ob.getParent()
-    obNewParent = pm.polySphere(subdivisionsAxis=6,subdivisionsHeight=4)
+    obNewParent = pm.polySphere(subdivisionsAxis=6,subdivisionsHeight=4,radius=r)
     for a in [('castsShadows',0),('receiveShadows',0),('smoothShading',0),('primaryVisibility',0),('visibleInReflections',0),('visibleInRefractions',0),('overrideEnabled',1),('overrideShading',0),('overrideTexturing',0),('overrideRGBColors',1),('overrideColorRGB',(1,0,0))]:
         obNewParent[0].listRelatives(shapes=1)[0].attr(a[0]).set(a[1])
-    pm.xform(obNewParent[0],ws=1,t=pm.xform(ob,q=1,ws=1,t=1))
-    pm.xform(obNewParent[0],ws=1,ro=pm.xform(ob,q=1,ws=1,ro=1))
-    #pm.color(obNewParent[0],rgb=(1,0,0))
-    #obNewParent.setAttr("translate",obPos)
-    if obOldParent:
-        pm.parent(obNewParent[0],obOldParent)
-    pm.parent(ob,obNewParent[0])
+    if not shapeReplace:
+        pm.xform(obNewParent[0],ws=1,t=pm.xform(ob,q=1,ws=1,t=1))
+        pm.xform(obNewParent[0],ws=1,ro=pm.xform(ob,q=1,ws=1,ro=1))
+        #pm.color(obNewParent[0],rgb=(1,0,0))
+        #obNewParent.setAttr("translate",obPos)
+        if obOldParent:
+            pm.parent(obNewParent[0],obOldParent)
+        pm.parent(ob,obNewParent[0])
+    else:
+        pm.delete(obNewParent)
 def makeHairMesh(name="HairMesh#",mat="",cSet=["hairSideCrease","hairPointCrease"],reverse=False,lengthDivs=7,widthDivs=4,Segments=4,width=1,curveDel=False):
     sel = pm.selected()
     if not sel:
@@ -115,10 +118,10 @@ def makeHairMesh(name="HairMesh#",mat="",cSet=["hairSideCrease","hairPointCrease
                 HairProfile.append(profileInstance)
                 if u==0:
                     pm.scale(profileInstance,[0.01,0.01,0.01],a=1,os=1)
-                    createPointParent(profileInstance,name=crv[0]+"HairRoot_Ctrl_"+str(pathCurve.index(crv)))
+                    createPointParent(profileInstance,name=crv[0]+"HairRoot_Ctrl_"+str(pathCurve.index(crv)),r=width)
                 if u==Segments:
                     pm.scale(profileInstance,[0.01,0.01,0.01],a=1,os=1)
-                    createPointParent(profileInstance,name=crv[0]+"HairTop_Ctrl_"+str(pathCurve.index(crv)))
+                    createPointParent(profileInstance,name=crv[0]+"HairTop_Ctrl_"+str(pathCurve.index(crv)),r=width)
             pm.select(HairProfile,r=1)
             pm.nurbsToPolygonsPref(pt=1,un=4,vn=7,f=2)
             HairMesh=pm.loft(n=name,po=1,ch=1,u=1,c=0,ar=1,d=3,ss=1,rn=0,rsn=True)
