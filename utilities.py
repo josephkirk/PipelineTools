@@ -182,16 +182,19 @@ def dupHairMesh(mirror=False):
         if ControlGroup:
             pm.select(hair,ControlGroup)
             pm.duplicate(ic=1,un=1)
-            rootPivot = pm.xform(Ctrls[0].getParent(),q=1,ws=1,t=1)
             if mirror:
-                pm.scale(ControlGroup,-1,smn=1,p=(0,0,0))
+                pm.scale(ControlGroup,-1,smn=1,p=(0,0,0),ws=1)
                 pm.polyNormal(hair,nm=3)
-            pm.xform(ControlGroup,pivots=rootPivot,ws=1)
+                for c in Ctrls:
+                    c.centerPivots()
+                    if c.getParent() != ControlGroup:
+                        c.getParent().centerPivots()
+            pm.xform(ControlGroup,ws=1,piv=pm.xform(ControlGroup.getChildren()[0],q=1,ws=1,piv=1)[:3])
             Cgroups.append(ControlGroup)
     if Cgroups:
         pm.select(Cgroups)
 
-def selHair():
+def selHair(setPivot=False):
     hairMeshes = pm.selected()
     if not hairMeshes:
         return
@@ -200,10 +203,9 @@ def selHair():
         try:
             loftMesh=[l for l in hair.listConnections()[0].listConnections() if type(l)==pm.nodetypes.Loft][0]
             Ctrls=[c for c in loftMesh.listConnections() if type(c)==pm.nodetypes.Transform]
-            rootPivot = pm.xform(Ctrls[0].getParent(),q=1,ws=1,t=1)
             ControlGroup = Ctrls[1].getParent()
-            print ControlGroup
-            pm.xform(ControlGroup,pivots=rootPivot,ws=1)
+            if setPivot:
+                pm.xform(ControlGroup,ws=1,piv=pm.xform(ControlGroup.getChildren()[0],q=1,ws=1,piv=1)[:3])
             Cgroups.append(ControlGroup)
         except:
             continue

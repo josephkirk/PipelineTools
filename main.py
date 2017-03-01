@@ -116,6 +116,8 @@ def makeHairUI():
     pm.text(label="Reverse: ",align='right')
     RevCurveUI=pm.checkBox(label="   ",value=False)
     pm.button(label="SelectCtr",c=lambda *arg:ul.selHair())
+    pm.popupMenu()
+    setPivotUI=pm.menuItem(label='SetPivot',c=lambda *arg:ul.selHair(setPivot=True))
     pm.button(label="Create",c=lambda *arg:ul.makeHairMesh(
                                                             name=hairNameUI.getText(),
                                                             mat=matNameUI.getText(),
