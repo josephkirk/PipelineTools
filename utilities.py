@@ -1,4 +1,5 @@
 import pymel.core as pm
+import pymel.util as pu
 import maya.cmds as cm
 import maya.mel as mm
 import shutil
@@ -326,3 +327,68 @@ def getInfo():
         except:
             continue
         print ("-"*100+"\n")*2
+def getSceneRelatedData():
+    CHPath= 'Model/CH'
+    texexts=['jpg','png']
+    psdexts=['psd','psb']
+    sceneNameData=pm.sceneName().split('/')[-1].split('_')
+    CHPathDict={}
+    CHPathDict['Projectname']=sceneNameData[0]
+    CHPathDict['CHname']=sceneNameData[1]
+    CHPathDict['CHversion']=sceneNameData[2]
+    CHPathDict['fileDir'] = os.path.normpath(os.path.join(pm.workspace.path,'scenes'))
+    CHPathDict['texDir'] = os.path.normpath(os.path.join(pm.workspace.path,'sourceimages'))
+    for dirName, subdirList, fileList in os.walk(CHPathDict['fileDir']):
+        #print dirName,subdirList,fileList
+        if dirName.rfind(CHPathDict['CHname'])!=-1 :
+            CHPathDict['scenes'] = dirName
+            for subdir in subdirList:
+                fullPath = os.path.join(dirName,subdir)
+                if subdir.startswith(CHPathDict['CHname']):
+                    sceneFileList=[]
+                    for f in os.listdir(fullPath):
+                        if os.path.isfile(os.path.join(fullPath,f)) and f.endswith('mb'):
+                            sceneFileList.append(os.path.join(fullPath,f))
+                        if os.path.isdir(os.path.join(fullPath,f)):
+                            subdirFullPath=os.path.join(fullPath,f)
+                            for subfile in os.listdir(subdirFullPath):
+                                if os.path.isfile(os.path.join(subdirFullPath,subfile)) and subfile.endswith('mb'):
+                                    sceneFileList.append(os.path.join(subdirFullPath,subfile))
+                    CHPathDict['sceneFiles']=sorted(sceneFileList,key=os.path.getmtime,reverse=True)
+            break
+    for dirName, subdirList, fileList in os.walk(CHPathDict['texDir']):
+        #print dirName,subdirList,fileList
+        if dirName.rfind(CHPathDict['CHname'])!=-1 :
+            CHPathDict['sourceimages'] = dirName
+            for subdir in subdirList:
+                fullPath = os.path.join(dirName,subdir)
+                #if subdir.startswith(CHPathDict['CHname']):
+                texFilesList=[]
+                for f in os.listdir(fullPath):
+                    if os.path.isfile(os.path.join(fullPath,f)) and any([f.endswith(ext) for ext in texexts]):
+                        texFilesList.append(os.path.join(fullPath,f))
+                    if os.path.isdir(os.path.join(fullPath,f)):
+                        subdirFullPath=os.path.join(fullPath,f)
+                        for subfile in os.listdir(subdirFullPath):
+                            if os.path.isfile(os.path.join(subdirFullPath,subfile)) and any([subfile.endswith(ext) for ext in psdexts]):
+                                texFilesList.append(os.path.join(subdirFullPath,subfile))
+                CHPathDict['texFile']=texFilesList
+            break
+    return CHPathDict
+def setTexture():
+    for m in oHairSG:
+        fileList=[file for file in m.listConnections() if type(file)==pm.nodetypes.File]
+    for f in fileList:
+        for d in f.listAttr():
+            try:
+                if d.longName(fullPath=False).lower().endswith('texturename'):
+                    print d,d.get()
+                    d.set(d.get().replace('KG','IB'))
+                    print d.get()
+            except:
+                continue
+    #print fileList[0]
+    #dupM=pm.duplicate(m,ic=1,name='IB_mtl_Hair',renameChildren=1,un=1)[0]
+    #print dupM,type(dupM)
+    #fileList=[file for file in dupM.listConnections() if type(file)==pm.nodetypes.File]
+    #print fileList[0]q

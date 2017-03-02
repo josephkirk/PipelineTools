@@ -56,6 +56,10 @@ def SendFile(num="",fPath=False, dPath=False, fromFile=True,sendFile=True,sendTe
             ul.sysCop("/".join([sceneSrc,fileVar,sceneName]),"/".join([sceneDest,fileVar,sceneName]))
             if os.path.isdir("/".join([sceneSrc,fileVar,"rend"])):
                 ul.sysCop("/".join([sceneSrc,fileVar,"rend"]),"/".join([sceneDest,fileVar,"rend"]))
+            if os.path.isdir("/".join([sceneSrc,fileVar,"uv"])):
+                ul.sysCop("/".join([sceneSrc,fileVar,"uv"]),"/".join([sceneDest,fileVar,"uv"]))
+            if os.path.isdir("/".join([texSrc,"uv"])):
+                ul.sysCop("/".join([texSrc,"uv"]),"/".join([texDest,"uv"]))
         except (IOError,OSError) as why:
             print "scene CopyError\n",why
     if sendTex:
@@ -67,6 +71,7 @@ def SendFile(num="",fPath=False, dPath=False, fromFile=True,sendFile=True,sendTe
         except (IOError,OSError) as why:
             print "texture CopyError\n",why
     print "Finished"
+    print "\\"*2+"Ssjp-010\scc\NS57"+'to'+todayFolder
 
 def SendFileUI():
     if pm.window('SendFileUI',ex=True):
