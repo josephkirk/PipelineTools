@@ -56,7 +56,7 @@ def addVrayOpenSubdivAttr():
 
 def createPointParent(ob,name="PointParent#",shapeReplace=False,r=1):
     obOldParent = ob.getParent()
-    obNewParent = pm.polySphere(name=name,subdivisionsAxis=6,subdivisionsHeight=4,radius=r)
+    obNewParent = pm.polySphere(name=name,subdivisionsAxis=6,subdivisionsHeight=4,radius=r/3)
     for a in [('castsShadows',0),('receiveShadows',0),('smoothShading',0),('primaryVisibility',0),('visibleInReflections',0),('visibleInRefractions',0),('overrideEnabled',1),('overrideShading',0),('overrideTexturing',0),('overrideRGBColors',1),('overrideColorRGB',(1,0,0))]:
         obNewParent[0].listRelatives(shapes=1)[0].attr(a[0]).set(a[1])
     if not shapeReplace:
@@ -119,10 +119,10 @@ def makeHairMesh(name="HairMesh#",mat="",cSet=["hairSideCrease","hairPointCrease
                 #profileTransform=pm.createNode('transform',n=(crv[0]+"HairProFileTF_"+str(u)),p=profileInstance)
                 HairProfile.append(profileInstance)
                 if u==0:
-                    pm.scale(profileInstance,[0.01,0.01,0.01],a=1,os=1)
+                    pm.scale(profileInstance,[0.001,0.001,0.001],a=1,os=1)
                     createPointParent(profileInstance,name=crv[0]+"HairRoot_Ctrl_"+str(pathCurve.index(crv)),r=width)
                 if u==Segments:
-                    pm.scale(profileInstance,[0.01,0.01,0.01],a=1,os=1)
+                    pm.scale(profileInstance,[0.001,0.001,0.001],a=1,os=1)
                     createPointParent(profileInstance,name=crv[0]+"HairTop_Ctrl_"+str(pathCurve.index(crv)),r=width)
             pm.select(HairProfile,r=1)
             pm.nurbsToPolygonsPref(pt=1,un=4,vn=7,f=2)
@@ -313,6 +313,13 @@ def mirrorUV(dir='Left'):
     else:
         pm.polyEditUV(u=0.5)
     pm.polyFlipUV()
+def rotateUV():
+    sel=pm.selected()
+    for o in sel:
+        selShape=o.listRelatives(shapes=1)[0]
+        pm.select(selShape.map,r=1)
+        pm.polyEditUV(rot=1,a=180,pu=0.5,pv=0.5)
+    pm.select(sel,r=1)
 def getInfo():
     sel= pm.selected()[0]
     if not sel:
@@ -327,7 +334,7 @@ def getInfo():
         except:
             continue
         print ("-"*100+"\n")*2
-def getSceneRelatedData():
+def getSceneRelatedData(getPath=True):
     CHPath= 'Model/CH'
     texexts=['jpg','png']
     psdexts=['psd','psb']
@@ -338,42 +345,43 @@ def getSceneRelatedData():
     CHPathDict['CHversion']=sceneNameData[2]
     CHPathDict['fileDir'] = os.path.normpath(os.path.join(pm.workspace.path,'scenes'))
     CHPathDict['texDir'] = os.path.normpath(os.path.join(pm.workspace.path,'sourceimages'))
-    for dirName, subdirList, fileList in os.walk(CHPathDict['fileDir']):
-        #print dirName,subdirList,fileList
-        if dirName.rfind(CHPathDict['CHname'])!=-1 :
-            CHPathDict['scenes'] = dirName
-            for subdir in subdirList:
-                fullPath = os.path.join(dirName,subdir)
-                if subdir.startswith(CHPathDict['CHname']):
-                    sceneFileList=[]
+    if getPath:
+        for dirName, subdirList, fileList in os.walk(CHPathDict['fileDir']):
+            #print dirName,subdirList,fileList
+            if dirName.rfind(CHPathDict['CHname'])!=-1 :
+                CHPathDict['scenes'] = dirName
+                for subdir in subdirList:
+                    fullPath = os.path.join(dirName,subdir)
+                    if subdir.startswith(CHPathDict['CHname']):
+                        sceneFileList=[]
+                        for f in os.listdir(fullPath):
+                            if os.path.isfile(os.path.join(fullPath,f)) and f.endswith('mb'):
+                                sceneFileList.append(os.path.join(fullPath,f))
+                            if os.path.isdir(os.path.join(fullPath,f)):
+                                subdirFullPath=os.path.join(fullPath,f)
+                                for subfile in os.listdir(subdirFullPath):
+                                    if os.path.isfile(os.path.join(subdirFullPath,subfile)) and subfile.endswith('mb'):
+                                        sceneFileList.append(os.path.join(subdirFullPath,subfile))
+                        CHPathDict['sceneFiles']=sorted(sceneFileList,key=os.path.getmtime,reverse=True)
+                break
+        for dirName, subdirList, fileList in os.walk(CHPathDict['texDir']):
+            #print dirName,subdirList,fileList
+            if dirName.rfind(CHPathDict['CHname'])!=-1 :
+                CHPathDict['sourceimages'] = dirName
+                for subdir in subdirList:
+                    fullPath = os.path.join(dirName,subdir)
+                    #if subdir.startswith(CHPathDict['CHname']):
+                    texFilesList=[]
                     for f in os.listdir(fullPath):
-                        if os.path.isfile(os.path.join(fullPath,f)) and f.endswith('mb'):
-                            sceneFileList.append(os.path.join(fullPath,f))
+                        if os.path.isfile(os.path.join(fullPath,f)) and any([f.endswith(ext) for ext in texexts]):
+                            texFilesList.append(os.path.join(fullPath,f))
                         if os.path.isdir(os.path.join(fullPath,f)):
                             subdirFullPath=os.path.join(fullPath,f)
                             for subfile in os.listdir(subdirFullPath):
-                                if os.path.isfile(os.path.join(subdirFullPath,subfile)) and subfile.endswith('mb'):
-                                    sceneFileList.append(os.path.join(subdirFullPath,subfile))
-                    CHPathDict['sceneFiles']=sorted(sceneFileList,key=os.path.getmtime,reverse=True)
-            break
-    for dirName, subdirList, fileList in os.walk(CHPathDict['texDir']):
-        #print dirName,subdirList,fileList
-        if dirName.rfind(CHPathDict['CHname'])!=-1 :
-            CHPathDict['sourceimages'] = dirName
-            for subdir in subdirList:
-                fullPath = os.path.join(dirName,subdir)
-                #if subdir.startswith(CHPathDict['CHname']):
-                texFilesList=[]
-                for f in os.listdir(fullPath):
-                    if os.path.isfile(os.path.join(fullPath,f)) and any([f.endswith(ext) for ext in texexts]):
-                        texFilesList.append(os.path.join(fullPath,f))
-                    if os.path.isdir(os.path.join(fullPath,f)):
-                        subdirFullPath=os.path.join(fullPath,f)
-                        for subfile in os.listdir(subdirFullPath):
-                            if os.path.isfile(os.path.join(subdirFullPath,subfile)) and any([subfile.endswith(ext) for ext in psdexts]):
-                                texFilesList.append(os.path.join(subdirFullPath,subfile))
-                CHPathDict['texFile']=texFilesList
-            break
+                                if os.path.isfile(os.path.join(subdirFullPath,subfile)) and any([subfile.endswith(ext) for ext in psdexts]):
+                                    texFilesList.append(os.path.join(subdirFullPath,subfile))
+                    CHPathDict['texFile']=texFilesList
+                break
     return CHPathDict
 def setTexture():
     for m in oHairSG:

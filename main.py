@@ -129,6 +129,8 @@ def makeHairUI():
     pm.button(label="SelectCtr",c=lambda *arg:ul.selHair())
     pm.popupMenu()
     setPivotUI=pm.menuItem(label='SetPivot',c=lambda *arg:ul.selHair(setPivot=True))
+    pm.menuItem(label='Hide Control',c=lambda *arg:pm.hide('HairCtrlGroup'))
+    pm.menuItem(label='UnHide Control',c=lambda *arg:pm.showHidden('HairCtrlGroup'))
     pm.button(label="Create",c=lambda *arg:ul.makeHairMesh(
                                                             name=hairNameUI.getText(),
                                                             mat=matNameUI.getText(),
