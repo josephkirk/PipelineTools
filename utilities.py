@@ -120,10 +120,10 @@ def makeHairMesh(name="HairMesh#",mat="",cSet=["hairSideCrease","hairPointCrease
                 HairProfile.append(profileInstance)
                 if u==0:
                     pm.scale(profileInstance,[0.001,0.001,0.001],a=1,os=1)
-                    createPointParent(profileInstance,name=crv[0]+"HairRoot_Ctrl_"+str(pathCurve.index(crv)),r=width)
+                    #createPointParent(profileInstance,name=crv[0]+"HairRoot_Ctrl_"+str(pathCurve.index(crv)),r=width)
                 if u==Segments:
                     pm.scale(profileInstance,[0.001,0.001,0.001],a=1,os=1)
-                    createPointParent(profileInstance,name=crv[0]+"HairTop_Ctrl_"+str(pathCurve.index(crv)),r=width)
+                    #createPointParent(profileInstance,name=crv[0]+"HairTop_Ctrl_"+str(pathCurve.index(crv)),r=width)
             pm.select(HairProfile,r=1)
             pm.nurbsToPolygonsPref(pt=1,un=4,vn=7,f=2)
             HairMesh=pm.loft(n=name,po=1,ch=1,u=1,c=0,ar=1,d=3,ss=1,rn=0,rsn=True)
@@ -191,15 +191,21 @@ def dupHairMesh(mirror=False):
                 pm.scale(ControlGroup,-1,smn=1,p=(0,0,0),ws=1)
                 pm.polyNormal(hair,nm=3)
                 for c in Ctrls:
-                    c.centerPivots()
+                    if not c.isVisible():
+                        c.show()
+                    c.centerPivots(val=True)
                     if c.getParent() != ControlGroup:
+                        if not c.getParent().isVisible():
+                            c.getParent().show()
                         c.getParent().centerPivots()
+                        c.getParent().hide()
+                    c.hide()
             pm.xform(ControlGroup,ws=1,piv=pm.xform(ControlGroup.getChildren()[0],q=1,ws=1,piv=1)[:3])
             Cgroups.append(ControlGroup)
     if Cgroups:
         pm.select(Cgroups)
 
-def selHair(selectInner=False,setPivot=False):
+def selHair(selectInner=False,selectRoot=False,selectAll=False,setPivot=False,rebuild=False):
     hairMeshes = pm.selected()
     if not hairMeshes:
         return
@@ -217,10 +223,16 @@ def selHair(selectInner=False,setPivot=False):
         if ControlGroup:
             Cgroups.append(ControlGroup)
     if Cgroups:
-        if not selectInner:
-            pm.select(Cgroups)
-        else:
+        if selectInner:
             pm.select([c.getChildren()[-1] for c in Cgroups])
+        elif selectRoot:
+            pm.select([c.getChildren()[0] for c in Cgroups])
+        elif selectAll:
+            pm.select(d=1)
+            for c in [c.getChildren() for c in Cgroups]:
+                pm.select(c,add=1)
+        else:
+            pm.select(Cgroups)
 def delHair(keepHair=False):
     newAttr =['lengthDivisions','widthDivisions']
     hairMeshes = pm.selected()
@@ -257,11 +269,19 @@ def cleanHairMesh():
     #            print a
                 if (pm.attributeQuery (a, exists=1, node=mesh)):
                     pm.deleteAttr (mesh+"."+a)
-    if pm.objExists("HairCtrlGroup"):
+    if pm.objExists("HairCtrlGroup''("):
         pm.delete("HairCtrlGroup",hi='below')
     if pm.objExists("HairBaseProfileCurve"):
         pm. delete("HairBaseProfileCurve")
-
+def hideHairCtrl(allHide=False):
+    hairCtrlsGroup=pm.ls('HairCtrlGroup')[0]
+    for c in hairCtrlsGroup.getChildren():
+        for subC in c.getChildren():
+            if subC.isVisible() or allHide:
+                pm.hide(subC)
+            else:
+                pm.showHidden(subC)
+            
 def loc42Curve():
     sel = pm.selected()
     if len(sel)>3:
@@ -395,8 +415,3 @@ def setTexture():
                     print d.get()
             except:
                 continue
-    #print fileList[0]
-    #dupM=pm.duplicate(m,ic=1,name='IB_mtl_Hair',renameChildren=1,un=1)[0]
-    #print dupM,type(dupM)
-    #fileList=[file for file in dupM.listConnections() if type(file)==pm.nodetypes.File]
-    #print fileList[0]q
