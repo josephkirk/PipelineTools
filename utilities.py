@@ -70,7 +70,49 @@ def createPointParent(ob,name="PointParent#",shapeReplace=False,r=1):
     else:
         pm.parent(obNewParent[0].listsRelatives(shapes=1)[0],ob,r=1,s=1)
         pm.delete(obNewParent)
-def makeHairMesh(name="HairMesh#",mat="",cSet=["hairSideCrease","hairPointCrease"],reverse=False,lengthDivs=7,widthDivs=4,Segments=4,width=1,curveDel=False):
+def createHairMesh(profilesList,name="hairMesh#",cSet="hairCrease",mat="",lengthDivs=7,widthDivs=4):
+    print profilesList
+    if not profilesList or all([type(o.listRelatives(shapes=1)[0])!=pm.nodetypes.NurbsCurve for o in profilesList]):
+        print "no Profiles"
+        return
+    pm.select(profilesList)
+    pm.nurbsToPolygonsPref(pt=1,un=4,vn=7,f=2)
+    HairMesh=pm.loft(n=name,po=1,ch=1,u=1,c=0,ar=1,d=3,ss=1,rn=0,rsn=True)
+    #custom Attribute add
+    HairMesh[0].addAttr('lengthDivisions',min=1,at='long',dv=lengthDivs)
+    HairMesh[0].addAttr('widthDivisions',min=4,at='long',dv=widthDivs)
+    HairMesh[0].setAttr('lengthDivisions',e=1,k=1)
+    HairMesh[0].setAttr('widthDivisions',e=1,k=1)
+    HairTess= pm.listConnections(HairMesh)[-1]
+    HairMesh[0].connectAttr('widthDivisions',HairTess+".uNumber")
+    HairMesh[0].connectAttr('lengthDivisions',HairTess+".vNumber")
+    HairMeshShape= HairMesh[0].listRelatives(shapes=1)[0]
+    #set Crease
+    pm.select(HairMeshShape.e[0,2],r=1)
+    pm.runtime.SelectEdgeLoopSp()
+    sideEdges=pm.selected()
+    if bool(pm.ls(cSet,type=pm.nodetypes.CreaseSet)):
+        hsSet=pm.ls(cSet,type=pm.nodetypes.CreaseSet)[0]
+    else:
+        hsSet = pm.nodetypes.CreaseSet(name=cSet)
+        hsSet.setAttr('creaseLevel',2.0)
+    for e in sideEdges:
+        pm.sets(hsSet,forceElement=e)
+    #assign Texture
+    HairUV = HairMeshShape.map
+    pm.polyEditUV(HairUV,pu=0.5,pv=0.5,su=0.3,sv=1)
+    pm.polyEditUV(HairUV,u=rand.uniform(-0.1,0.1))
+    #Add Vray OpenSubdiv
+    pm.select(HairMesh[0],r=1)
+    if str(cm.getAttr('defaultRenderGlobals.ren'))=='vray':
+        addVrayOpenSubdivAttr()
+    #set Smoothness
+    pm.displaySmoothness(po=3)
+    #set Material
+    if bool(pm.ls(mat,type=pm.nodetypes.ShadingEngine)):
+        pm.sets(pm.ls(mat)[0],forceElement=HairMesh[0])
+    return HairMesh
+def makeHairMesh(name="HairMesh#",mat="",cSet="hairCrease",reverse=False,lengthDivs=7,widthDivs=4,Segments=4,width=1,curveDel=False):
     sel = pm.selected()
     if not sel:
         print "Select some Curves or Edges or isopram"
@@ -124,50 +166,12 @@ def makeHairMesh(name="HairMesh#",mat="",cSet=["hairSideCrease","hairPointCrease
                 if u==Segments:
                     pm.scale(profileInstance,[0.001,0.001,0.001],a=1,os=1)
                     #createPointParent(profileInstance,name=crv[0]+"HairTop_Ctrl_"+str(pathCurve.index(crv)),r=width)
-            pm.select(HairProfile,r=1)
-            pm.nurbsToPolygonsPref(pt=1,un=4,vn=7,f=2)
-            HairMesh=pm.loft(n=name,po=1,ch=1,u=1,c=0,ar=1,d=3,ss=1,rn=0,rsn=True)
+            HairMesh=createHairMesh(HairProfile,name=name,cSet=cSet,mat=mat,lengthDivs=lengthDivs,widthDivs=widthDivs)
             pm.rename(hairOncGroup,hairOncGroup.name()+HairMesh[0].name())
-            HairMesh[0].addAttr('lengthDivisions',min=1,at='long',dv=lengthDivs)
-            HairMesh[0].addAttr('widthDivisions',min=4,at='long',dv=widthDivs)
-            HairMesh[0].setAttr('lengthDivisions',e=1,k=1)
-            HairMesh[0].setAttr('widthDivisions',e=1,k=1)
-            HairTess= pm.listConnections(HairMesh)[-1]
-            HairMesh[0].connectAttr('widthDivisions',HairTess+".uNumber")
-            HairMesh[0].connectAttr('lengthDivisions',HairTess+".vNumber")
-            HairMeshShape= HairMesh[0].listRelatives(shapes=1)[0]
-            pm.select(HairMeshShape.e[0,2])
-            pm.runtime.SelectEdgeLoopSp()
-            sideEdges=pm.selected()
-            pm.select(HairMeshShape.e[0])
-            pm.runtime.SelectEdgeRingSp()
-            pointEdges=pm.selected()
-            if bool(pm.ls(cSet[0],type=pm.nodetypes.CreaseSet)):
-                hsSet=pm.ls(cSet[0],type=pm.nodetypes.CreaseSet)[0]
-            else:
-                hsSet = pm.nodetypes.CreaseSet(name=cSet[0])
-                hsSet.setAttr('creaseLevel',1.6)
-            if bool(pm.ls(cSet[1],type=pm.nodetypes.CreaseSet)):
-                hpSet=pm.ls(cSet[1],type=pm.nodetypes.CreaseSet)[0]
-            else:
-                hpSet = pm.nodetypes.CreaseSet(name=cSet[1])
-                hpSet.setAttr('creaseLevel',2.0)
-            for e in sideEdges:
-                pm.sets(hsSet,forceElement=e)
-            for e in pointEdges:
-                pm.sets(hpSet,forceElement=e)
             pm.delete(profileCurve,mp=1)
             pm.delete(profileCurve)
             pm.xform(hairOncsGroup,ws=1,piv=pm.xform(hairOncsGroup.getChildren()[0],q=1,ws=1,piv=1)[:3])
-            pm.select(HairMesh[0],r=1)
-            HairUV = HairMeshShape.map
-            pm.polyEditUV(HairUV,pu=0.5,pv=0.5,su=0.3,sv=1)
-            pm.polyEditUV(HairUV,u=rand.uniform(-0.1,0.1))
-            if str(cm.getAttr('defaultRenderGlobals.ren'))=='vray':
-                addVrayOpenSubdivAttr()
-            pm.displaySmoothness(po=3)
-            if bool(pm.ls(mat,type=pm.nodetypes.ShadingEngine)):
-                pm.sets(pm.ls(mat)[0],forceElement=HairMesh[0])
+            
         #pm.hide(profileCurve)
         if curveDel:
             pm.delete(pathTransform,hi=1)
@@ -205,7 +209,7 @@ def dupHairMesh(mirror=False):
     if Cgroups:
         pm.select(Cgroups)
 
-def selHair(selectInner=False,selectRoot=False,selectAll=False,setPivot=False,rebuild=False):
+def selHair(selectInner=False,selectRoot=False,selectAll=False,setPivot=False,rebuild=[False,7,4]):
     hairMeshes = pm.selected()
     if not hairMeshes:
         return
@@ -218,6 +222,8 @@ def selHair(selectInner=False,selectRoot=False,selectAll=False,setPivot=False,re
             if setPivot:
                 pm.xform(ControlGroup,ws=1,piv=pm.xform(ControlGroup.getChildren()[0],q=1,ws=1,piv=1)[:3])
             Cgroups.append(ControlGroup)
+            if rebuild[0]:
+                createHairMesh(Ctrls,name=hair.name(),mat=hair.listConnections(type=pm.nodetypes.ShadingEngine)[0],lengthDivs=rebuild[1],widthDivs=rebuild[2])
         except:
             continue
         if ControlGroup:

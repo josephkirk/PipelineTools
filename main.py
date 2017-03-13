@@ -110,10 +110,10 @@ def makeHairUI():
     hairNameUI=pm.textField(text="HairMesh#")
     pm.text(label="Material: ",align='right')
     matNameUI=pm.textField(text="SY_mtl_hairSG")
-    pm.text(label="SideCreaseSet: ",align='right')
-    hsSetNameUI=pm.textField(text="hairSideCrease")
-    pm.text(label="PointCreaseSet: ",align='right')
-    hpSetNameUI=pm.textField(text="hairPointCrease")
+    pm.text(label="CreaseSet: ",align='right')
+    hsSetNameUI=pm.textField(text="hairCrease")
+    #pm.text(label="PointCreaseSet: ",align='right')
+    #hpSetNameUI=pm.textField(text="hairPointCrease")
     pm.text(label="Length Divs: ",align='right')
     LDivsValUI=pm.intField(value=7,min=4)
     pm.text(label="Width Divs: ",align='right')
@@ -134,7 +134,7 @@ def makeHairUI():
     pm.button(label="Create",c=lambda *arg:ul.makeHairMesh(
                                                             name=hairNameUI.getText(),
                                                             mat=matNameUI.getText(),
-                                                            cSet=[hsSetNameUI.getText(),hpSetNameUI.getText()],
+                                                            cSet=hsSetNameUI.getText(),
                                                             reverse=RevCurveUI.getValue(),
                                                             lengthDivs=LDivsValUI.getValue(),
                                                             widthDivs=WDivsValUI.getValue(),

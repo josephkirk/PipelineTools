@@ -4,7 +4,7 @@
         -divider 0
         -subMenu 0
         -tearOff 0
-        -command "python(\"execfile(r'F:/Script/__init__.py');from PipelineTools import main;reload(main);main.makeHairUI()\");" 
+        -command "MakeHair;" 
         -altModifier 0
         -optionModifier 0
         -commandModifier 0
@@ -24,6 +24,29 @@
         -sourceType "mel" 
         -longDivider 1
         menuEditorMenuItem3;
+
+    menuItem
+        -divider 0
+        -subMenu 0
+        -tearOff 0
+        -command "python(\"execfile(r'F:/Script/__init__.py');from PipelineTools import main;reload(main);main.makeHairUI()\");" 
+        -altModifier 0
+        -optionModifier 0
+        -commandModifier 0
+        -ctrlModifier 0
+        -shiftModifier 0
+        -optionBox 1
+        -enable 1
+        -data 0
+        -allowOptionBoxes 1
+        -postMenuCommandOnce 0
+        -enableCommandRepeat 0
+        -echoCommand 0
+        -italicized 0
+        -boldFont 0
+        -sourceType "mel" 
+        -longDivider 1
+        menuEditorMenuItem6;
 
     menuItem
         -label "Make Live" 
@@ -203,7 +226,7 @@
             -divider 0
             -subMenu 0
             -tearOff 0
-            -command "ResetHairPivot;" 
+            -command "SetHairPivot;" 
             -altModifier 0
             -optionModifier 0
             -commandModifier 0
@@ -253,7 +276,7 @@
             -divider 0
             -subMenu 0
             -tearOff 0
-            -command "hideAllHair;" 
+            -command "HideAllHair;" 
             -altModifier 0
             -optionModifier 0
             -commandModifier 0
@@ -280,7 +303,7 @@
         -divider 0
         -subMenu 0
         -tearOff 0
-        -command "DupHair;" 
+        -command "DuplicateHair;" 
         -altModifier 0
         -optionModifier 0
         -commandModifier 0
@@ -330,7 +353,7 @@
         -divider 0
         -subMenu 0
         -tearOff 0
-        -command "deleteHair;" 
+        -command "DeleteHairAll;" 
         -altModifier 0
         -optionModifier 0
         -commandModifier 0
@@ -355,7 +378,7 @@
         -divider 0
         -subMenu 0
         -tearOff 0
-        -command "delHairControls;" 
+        -command "DeleleHairControl;" 
         -altModifier 0
         -optionModifier 0
         -commandModifier 0
