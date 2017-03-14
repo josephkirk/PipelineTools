@@ -170,7 +170,7 @@ def makeHairMesh(name="HairMesh#",mat="",cSet="hairCrease",reverse=False,lengthD
             pm.rename(hairOncGroup,hairOncGroup.name()+HairMesh[0].name())
             pm.delete(profileCurve,mp=1)
             pm.delete(profileCurve)
-            pm.xform(hairOncsGroup,ws=1,piv=pm.xform(hairOncsGroup.getChildren()[0],q=1,ws=1,piv=1)[:3])
+            pm.xform(hairOncsGroup,ws=1,piv=pm.xform(hairOncsGroup.getChildren()[-1],q=1,ws=1,piv=1)[:3])
             
         #pm.hide(profileCurve)
         if curveDel:
@@ -209,7 +209,7 @@ def dupHairMesh(mirror=False):
     if Cgroups:
         pm.select(Cgroups)
 
-def selHair(selectInner=False,selectRoot=False,selectAll=False,setPivot=False,rebuild=[False,7,4]):
+def selHair(selectTip=False,selectRoot=False,selectAll=False,setPivot=False,rebuild=[False,7,4]):
     hairMeshes = pm.selected()
     if not hairMeshes:
         return
@@ -225,14 +225,16 @@ def selHair(selectInner=False,selectRoot=False,selectAll=False,setPivot=False,re
             if rebuild[0]:
                 NewControls = [i for i in ControlGroup.listRelatives(type=pm.nodetypes.Transform)]
                 print NewControls
-                createHairMesh(NewControls,lengthDivs=rebuild[1],widthDivs=rebuild[2])
+                oldname=hair.name()
+                pm.rename(hair,'_'.join([oldname,'old']))
+                createHairMesh(NewControls,name=oldname,mat=hair.listRelatives(shapes=1)[0].listConnections(type=pm.nodetypes.ShadingEngine)[0].name(),lengthDivs=rebuild[1],widthDivs=rebuild[2])
                 pm.delete(hair)
         except:
             continue
         if ControlGroup:
             Cgroups.append(ControlGroup)
     if Cgroups:
-        if selectInner:
+        if selectTip:
             pm.select([c.getChildren()[-1] for c in Cgroups])
         elif selectRoot:
             pm.select([c.getChildren()[0] for c in Cgroups])
@@ -242,6 +244,73 @@ def selHair(selectInner=False,selectRoot=False,selectAll=False,setPivot=False,re
                 pm.select(c,add=1)
         else:
             pm.select(Cgroups)
+
+def splitHairCtrl(d='up',delete=False):
+    ctrl= pm.selected()
+    if not ctrl:
+        return
+    if d=='up':
+        offset=0
+    elif d=='down':
+        offset=1
+    elif d=='self':
+        offset=0
+    else:
+        print 'wrong KeyWord, must use up or down'
+        return
+    ctrlShape = ctrl[0].listRelatives(shapes=1)[0]
+    try:
+        HairLoft = ctrlShape.listConnections(type=pm.nodetypes.Loft)
+        Hair=HairLoft[0].listConnections(type=pm.nodetypes.NurbsTessellate)[0].listConnections(type=pm.nodetypes.Transform)[0]
+    except:
+        return
+    if type(ctrlShape)==pm.nodetypes.NurbsCurve and HairLoft:
+        Ctrls=[c for c in HairLoft[0].listConnections() if type(c)==pm.nodetypes.Transform]
+        for c in Ctrls:
+            pm.rename(c,'_'.join([c.name(),"old"]))
+        CtrlID=Ctrls.index(ctrl[0])
+        if delete:
+            if CtrlID!=0 or CtrlID!=(len(Ctrls)-1):
+                if offset:
+                    pm.delete(Ctrls[CtrlID+1:])
+                    del Ctrls[CtrlID+1:]
+                    pm.scale(ctrl[0],[0.001,0.001,0.001],a=1)
+                elif d=='self':
+                    pm.delete(Ctrls[CtrlID])
+                    del Ctrls[CtrlID]
+                else:
+                    pm.delete(Ctrls[:CtrlID])
+                    del Ctrls[:CtrlID]
+                    pm.scale(ctrl[0],[0.001,0.001,0.001],a=1)
+                for c in Ctrls:
+                    oldname=c.name().split('_')[0]
+                    pm.rename(c,'_'.join([c.name(),"old"]))
+                    pm.rename(c,'_'.join([oldname,str(Ctrls.index(c)+1)]))
+        else:
+            if CtrlID==0:
+                offset=1
+            elif CtrlID==(len(Ctrls)-1):
+                offset=0
+            if offset:
+                preCtrlPos=Ctrls[CtrlID+1]
+            else:
+                preCtrlPos=Ctrls[CtrlID-1]
+            newCtrl=pm.duplicate(ctrl[0])[0]
+            pm.move(newCtrl,(ctrl[0].getTranslation(space='world')+preCtrlPos.getTranslation(space='world'))/2,a=1,ws=1)
+            pm.scale(newCtrl,preCtrlPos.getScale(),a=1)
+            Ctrls.insert(CtrlID+offset,newCtrl)
+            for c in Ctrls:
+                pm.rename(c,'_'.join([c.name().split('_')[0],str(Ctrls.index(c)+1)]))
+                cParent=c.getParent()
+                pm.parent(c,w=1)
+                pm.parent(c,cParent)
+            oldname=Hair.name()
+            pm.rename(Hair,'_'.join([oldname,'old']))
+            createHairMesh(Ctrls,name=oldname,mat=Hair.listRelatives(shapes=1)[0].listConnections(type=pm.nodetypes.ShadingEngine)[0].name(),lengthDivs=Hair.attr('lengthDivisions').get(),widthDivs=Hair.attr('widthDivisions').get())
+            pm.delete(Hair)
+            #selHair(rebuild=[True,Hair.attr('lengthDivisions').get(),Hair.attr('widthDivisions').get()])
+            pm.select(newCtrl)
+            pm.setToolTo( 'moveSuperContext' )
 def delHair(keepHair=False):
     newAttr =['lengthDivisions','widthDivisions']
     hairMeshes = pm.selected()
@@ -265,6 +334,7 @@ def delHair(keepHair=False):
             for a in newAttr:
                 if (pm.attributeQuery(a, exists=1, node=hair)):
                     pm.deleteAttr(hair+"."+a)
+            pm.xform(hair,ws=1,piv=pm.xform(Cgroups[hairMeshes.index(hair)],q=1,ws=1,piv=1)[:3])
         pm.delete(Cgroups)
 
 def cleanHairMesh():
