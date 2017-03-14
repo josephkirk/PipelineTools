@@ -223,7 +223,10 @@ def selHair(selectInner=False,selectRoot=False,selectAll=False,setPivot=False,re
                 pm.xform(ControlGroup,ws=1,piv=pm.xform(ControlGroup.getChildren()[0],q=1,ws=1,piv=1)[:3])
             Cgroups.append(ControlGroup)
             if rebuild[0]:
-                createHairMesh(Ctrls,name=hair.name(),mat=hair.listConnections(type=pm.nodetypes.ShadingEngine)[0],lengthDivs=rebuild[1],widthDivs=rebuild[2])
+                NewControls = [i for i in ControlGroup.listRelatives(type=pm.nodetypes.Transform)]
+                print NewControls
+                createHairMesh(NewControls,lengthDivs=rebuild[1],widthDivs=rebuild[2])
+                pm.delete(hair)
         except:
             continue
         if ControlGroup:

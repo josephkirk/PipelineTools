@@ -143,6 +143,8 @@ def makeHairUI():
                                                             curveDel=DelCurveUI.getValue()
                                                                 )
                                                                     )
+    pm.popupMenu()
+    pm.menuItem(label='Rebuild',c=lambda *arg:ul.selHair(rebuild=[True,LDivsValUI.getValue(),WDivsValUI.getValue()]))
     pm.button(label="Duplicate",c=lambda *arg:ul.dupHairMesh())
     pm.popupMenu()
     pm.menuItem(label='Mirror',c=lambda *arg:ul.dupHairMesh(mirror=True))
