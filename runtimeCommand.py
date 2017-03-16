@@ -24,7 +24,7 @@ def setCommand():
     hairCommandsDict['PickWalkAddRight']="\n".join([importCommand,"ul.pickWalkHairCtrl(d='right',add=True)"])
     hairCommandsDict['PickWalkHideLeft']="\n".join([importCommand,"ul.pickWalkHairCtrl(d='left')"])
     hairCommandsDict['PickWalkAddLeft']="\n".join([importCommand,"ul.pickWalkHairCtrl(d='left',add=True)"])
-    hairCommandsDict['ToggleHairCtrlVisibility']="\n".join([importCommand,"ul.ToggleHairCtrlVis()"])
+    hairCommandsDict['ToggleHairCtrlVisibility']="\n".join([importCommand,"ul.ToggleHairCtrlVis(state='hide')"])
     commandsDict['HairOps']=hairCommandsDict
     for category in commandsDict:
         for command in commandsDict[category]:

@@ -383,7 +383,7 @@ def pickWalkHairCtrl(d='right',r=False,add=False):
     sel=pm.selected()
     if not sel:
         return
-    ToggleHairCtrlVis(state='hide')
+    #ToggleHairCtrlVis(state='hide')
     pm.select(d=1)
     newSel=[]
     for o in sel:
@@ -404,7 +404,7 @@ def pickWalkHairCtrl(d='right',r=False,add=False):
                         ob.show()
                 else:
                     if not add:
-                        ToggleHairCtrlVis(state='hide')
+                        #ToggleHairCtrlVis(state='hide')
                         nextOb[0].show()
                         pm.select(nextOb[0])
                     else:
@@ -419,7 +419,7 @@ def pickWalkHairCtrl(d='right',r=False,add=False):
                 nextOb=pm.pickWalk(o,d='down')
                 nextOb=pm.selected()[0]
                 nextOb.show()
-                o.hide()
+                #o.hide()
                 #pm.showHidden(nextOb)
             else:
                 continue
