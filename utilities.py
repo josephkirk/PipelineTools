@@ -191,6 +191,7 @@ def dupHairMesh(mirror=False):
         if ControlGroup:
             pm.select(hair,ControlGroup)
             pm.duplicate(ic=1,un=1)
+            #pm.parent(duphair,hair.getParent())
             if mirror:
                 pm.scale(ControlGroup,-1,smn=1,p=(0,0,0),ws=1)
                 pm.polyNormal(hair,nm=3)
@@ -235,15 +236,16 @@ def selHair(selectTip=False,selectRoot=False,selectAll=False,setPivot=False,rebu
             Cgroups.append(ControlGroup)
     if Cgroups:
         if selectTip:
-            pm.select([c.getChildren()[-1] for c in Cgroups])
+            pm.select([c.getChildren()[-1] for c in Cgroups],r=1)
         elif selectRoot:
-            pm.select([c.getChildren()[0] for c in Cgroups])
+            pm.select([c.getChildren()[0] for c in Cgroups],r=1)
         elif selectAll:
             pm.select(d=1)
             for c in [c.getChildren() for c in Cgroups]:
                 pm.select(c,add=1)
         else:
-            pm.select(Cgroups)
+            pm.select(Cgroups,r=1)
+        return pm.selected()
 
 def splitHairCtrl(d='up',delete=False):
     ctrl= pm.selected()
@@ -352,15 +354,80 @@ def cleanHairMesh():
         pm.delete("HairCtrlGroup",hi='below')
     if pm.objExists("HairBaseProfileCurve"):
         pm. delete("HairBaseProfileCurve")
-def hideHairCtrl(allHide=False):
+
+def ToggleHairCtrlVis(state='switch'):
     hairCtrlsGroup=pm.ls('HairCtrlGroup')[0]
+    if not hairCtrlsGroup:
+        return
+    else:
+        if not hairCtrlsGroup.isVisible():
+            hairCtrlsGroup.show()
     for c in hairCtrlsGroup.getChildren():
-        for subC in c.getChildren():
-            if subC.isVisible() or allHide:
-                pm.hide(subC)
+        if not c.isVisible():
+            c.show()
+        if state=='switch':
+            if any([ct.isVisible() for ct in c.getChildren()]):
+                for ctrl in c.getChildren():
+                    ctrl.hide()
             else:
-                pm.showHidden(subC)
-            
+                for ctrl in c.getChildren():
+                    ctrl.show()
+        elif state=='show':
+            for ctrl in c.getChildren():
+                    ctrl.show()
+        elif state=='hide':
+            for ctrl in c.getChildren():
+                    ctrl.hide()
+
+def pickWalkHairCtrl(d='right',r=False,add=False):
+    sel=pm.selected()
+    if not sel:
+        return
+    ToggleHairCtrlVis(state='hide')
+    pm.select(d=1)
+    newSel=[]
+    for o in sel:
+        if o.listRelatives(shapes=1):
+            if type(o.listRelatives(shapes=1)[0])==pm.nodetypes.Mesh:
+                pm.select(o,r=1)
+                if d=='up':
+                    nextOb=selHair()[0]
+                else:
+                    nextOb=selHair(selectTip=True)[0]
+                nextOb.show()
+                #pm.showHidden(nextOb)
+            elif type(o.listRelatives(shapes=1)[0])==pm.nodetypes.NurbsCurve and o.listRelatives(shapes=1)[0].listConnections(type=pm.nodetypes.Loft):
+                pm.pickWalk(o,d=d,r=r)
+                nextOb=pm.selected()
+                if r:
+                    for ob in nextOb:
+                        ob.show()
+                else:
+                    if not add:
+                        ToggleHairCtrlVis(state='hide')
+                        nextOb[0].show()
+                        pm.select(nextOb[0])
+                    else:
+                        newSel.append(o)
+                        newSel.extend(nextOb)
+                o.hide()
+                #pm.showHidden(nextOb)
+            else:
+                continue
+        else:
+            if o.getParent()==pm.ls('HairCtrlGroup')[0]:
+                nextOb=pm.pickWalk(o,d='down')
+                nextOb=pm.selected()[0]
+                nextOb.show()
+                o.hide()
+                #pm.showHidden(nextOb)
+            else:
+                continue
+    if newSel:
+        ToggleHairCtrlVis(state='hide')
+        for ob in newSel:
+            ob.show()
+        pm.select(newSel)
 def loc42Curve():
     sel = pm.selected()
     if len(sel)>3:
