@@ -7,43 +7,51 @@
 //
 runTimeCommand
 	-annotation ""
-	-category "Custom Scripts.Misc"
+	-category "HairOps"
 	-hotkeyCtx ""
 	-commandLanguage "python"
-	-command ("import PipelineTools.utilities as ul\nul.dupHairMesh()")
-	DuplicateHair;
+	-command ("import PipelineTools.utilities as ul\nreload(ul)\nul.pickWalkHairCtrl(d='left',add=True)")
+	PickWalkAddLeft;
 
 runTimeCommand
 	-annotation ""
-	-category "Custom Scripts.Misc"
+	-category "HairOps"
 	-hotkeyCtx ""
 	-commandLanguage "python"
-	-command ("import PipelineTools.utilities as ul\nimport pymel.core as pm\nreload(ul)\nul.selHair(selectInner=True)\npm.showHidden()")
-	SelectHairInner;
+	-command ("import PipelineTools.utilities as ul\nreload(ul)\nul.ToggleHairCtrlVis()")
+	ToggleHairCtrlVisibility;
 
 runTimeCommand
 	-annotation ""
-	-category "Custom Scripts.Misc"
+	-category "HairOps"
 	-hotkeyCtx ""
 	-commandLanguage "python"
-	-command ("import PipelineTools.utilities as ul\nul.hideHairCtrl(allHide=True)")
-	hideAllHair;
-
-runTimeCommand
-	-annotation "HairOpsMarkingMenu (Press)"
-	-category "Other items.User Marking Menus"
-	-hotkeyCtx ""
-	-commandLanguage "mel"
-	-command ("if (`popupMenu -exists tempMM`) { deleteUI tempMM; }\npopupMenu -button 1 -ctl false -alt true -sh false -allowOptionBoxes true -parent `findPanelPopupParent` -mm 1 tempMM; \nsource \"menu_HairOpsMarkingMenu\";\n")
-	HairOpsMarkingMenu_Press;
+	-command ("import PipelineTools.utilities as ul\nreload(ul)\nul.splitHairCtrl(d='down')")
+	SplitHairControlDown;
 
 runTimeCommand
 	-annotation ""
-	-category "Custom Scripts.Misc"
+	-category "HairOps"
 	-hotkeyCtx ""
 	-commandLanguage "python"
-	-command ("import pymel.core as pm\nsel=pm.selected()\npm.pickWalk(d='left')\npm.hide(sel)\npm.showHidden()")
-	PickWalkUnhideLeft;
+	-command ("import PipelineTools.utilities as ul\nreload(ul)\nul.splitHairCtrl(d='self',delete=True)")
+	DeleteSelectControl;
+
+runTimeCommand
+	-annotation ""
+	-category "HairOps"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("import PipelineTools.utilities as ul\nreload(ul)\nul.delHair()")
+	DeleteHairAll;
+
+runTimeCommand
+	-annotation ""
+	-category "HairOps"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("import PipelineTools.utilities as ul\nreload(ul)\nul.selHair(setPivot=True)")
+	SetHairPivot;
 
 runTimeCommand
 	-annotation "HairOpsMarkingMenu (Release)"
@@ -55,43 +63,67 @@ runTimeCommand
 
 runTimeCommand
 	-annotation ""
-	-category "Custom Scripts.HairOps"
+	-category "HairOps"
 	-hotkeyCtx ""
 	-commandLanguage "python"
-	-command ("import pymel.core as pm\npre=pm.selected()\npm.pickWalk(d='left')\npm.select(pre,add=1)\npm.showHidden()")
-	PickWalkAddLeft;
+	-command ("import PipelineTools.utilities as ul\nreload(ul)\nul.dupHairMesh()")
+	DuplicateHair;
 
 runTimeCommand
 	-annotation ""
-	-category "Custom Scripts.Misc"
+	-category "HairOps"
 	-hotkeyCtx ""
 	-commandLanguage "python"
-	-command ("import PipelineTools.utilities as ul\nul.delHair()")
-	DeleteHairAll;
+	-command ("import PipelineTools.utilities as ul\nreload(ul)\nul.pickWalkHairCtrl(d='left')")
+	PickWalkHideLeft;
 
 runTimeCommand
 	-annotation ""
-	-category "Custom Scripts.Misc"
+	-category "HairOps"
 	-hotkeyCtx ""
 	-commandLanguage "python"
-	-command ("import pymel.core as pm\npre=pm.selected()\npm.pickWalk(d='right')\npm.select(pre,add=1)\npm.showHidden()")
-	PickWalkAddRigh;
-
-runTimeCommand
-	-annotation ""
-	-category "Custom Scripts.Misc"
-	-hotkeyCtx ""
-	-commandLanguage "python"
-	-command ("import pymel.core as pm\nsel=pm.selected()\npm.pickWalk(d='right')\npm.hide(sel)\npm.showHidden()")
-	PickWalkUnhideRight;
-
-runTimeCommand
-	-annotation ""
-	-category "Custom Scripts.Misc"
-	-hotkeyCtx ""
-	-commandLanguage "python"
-	-command ("import PipelineTools.utilities as ul\nul.selHair()")
+	-command ("import PipelineTools.utilities as ul\nreload(ul)\nul.pickWalkHairCtrl(d='up')")
 	SelectHair;
+
+runTimeCommand
+	-annotation ""
+	-category "HairOps"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("import PipelineTools.utilities as ul\nreload(ul)\nul.pickWalkHairCtrl(d='right')")
+	PickWalkHideRight;
+
+runTimeCommand
+	-annotation "HairOpsMarkingMenu (Press)"
+	-category "Other items.User Marking Menus"
+	-hotkeyCtx ""
+	-commandLanguage "mel"
+	-command ("if (`popupMenu -exists tempMM`) { deleteUI tempMM; }\npopupMenu -button 1 -ctl false -alt true -sh false -allowOptionBoxes true -parent `findPanelPopupParent` -mm 1 tempMM; \nsource \"menu_HairOpsMarkingMenu\";\n")
+	HairOpsMarkingMenu_Press;
+
+runTimeCommand
+	-annotation ""
+	-category "HairOps"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("import PipelineTools.utilities as ul\nreload(ul)\nul.pickWalkHairCtrl(d='right',r=1)")
+	SelectAllControls;
+
+runTimeCommand
+	-annotation ""
+	-category "HairOps"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("import PipelineTools.utilities as ul\nreload(ul)\nul.pickWalkHairCtrl(d='right',add=True)")
+	PickWalkAddRight;
+
+runTimeCommand
+	-annotation ""
+	-category "HairOps"
+	-hotkeyCtx ""
+	-commandLanguage "python"
+	-command ("import PipelineTools.utilities as ul\nreload(ul)\nul.splitHairCtrl(d='up')")
+	SplitHairControlUp;
 
 //
 // The name commands referenced by the hotkeys
@@ -121,12 +153,6 @@ nameCommand
 	PickWalkUpNameCommand;
 
 nameCommand
-	-annotation "PickWalkDownNameCommand"
-	-sourceType "mel"
-	-command ("PickWalkDown")
-	PickWalkDownNameCommand;
-
-nameCommand
 	-annotation "PickWalkUpSelectNameCommand"
 	-sourceType "mel"
 	-command ("PickWalkUpSelect")
@@ -145,40 +171,10 @@ nameCommand
 	PickWalkAddLeftNameCommand;
 
 nameCommand
-	-annotation "PickWalkAddRighNameCommand"
-	-sourceType "mel"
-	-command ("PickWalkAddRigh")
-	PickWalkAddRighNameCommand;
-
-nameCommand
 	-annotation "SelectHairNameCommand"
 	-sourceType "mel"
 	-command ("SelectHair")
 	SelectHairNameCommand;
-
-nameCommand
-	-annotation "SelectHairInnerNameCommand"
-	-sourceType "mel"
-	-command ("SelectHairInner")
-	SelectHairInnerNameCommand;
-
-nameCommand
-	-annotation "PickWalkUnhideLeftNameCommand"
-	-sourceType "mel"
-	-command ("PickWalkUnhideLeft")
-	PickWalkUnhideLeftNameCommand;
-
-nameCommand
-	-annotation "PickWalkUnhideRightNameCommand"
-	-sourceType "mel"
-	-command ("PickWalkUnhideRight")
-	PickWalkUnhideRightNameCommand;
-
-nameCommand
-	-annotation "hideAllHairNameCommand"
-	-sourceType "mel"
-	-command ("hideAllHair")
-	hideAllHairNameCommand;
 
 nameCommand
 	-annotation "DeleteHairAllNameCommand"
@@ -204,6 +200,60 @@ nameCommand
 	-command ("HairOpsMarkingMenu_Release")
 	HairOpsMarkingMenu_ReleaseNameCommand;
 
+nameCommand
+	-annotation "PickWalkAddRightNameCommand"
+	-sourceType "mel"
+	-command ("PickWalkAddRight")
+	PickWalkAddRightNameCommand;
+
+nameCommand
+	-annotation "PickWalkHideLeftNameCommand"
+	-sourceType "mel"
+	-command ("PickWalkHideLeft")
+	PickWalkHideLeftNameCommand;
+
+nameCommand
+	-annotation "PickWalkHideRightNameCommand"
+	-sourceType "mel"
+	-command ("PickWalkHideRight")
+	PickWalkHideRightNameCommand;
+
+nameCommand
+	-annotation "ToggleHairCtrlVisibilityNameCommand"
+	-sourceType "mel"
+	-command ("ToggleHairCtrlVisibility")
+	ToggleHairCtrlVisibilityNameCommand;
+
+nameCommand
+	-annotation "SetHairPivotNameCommand"
+	-sourceType "mel"
+	-command ("SetHairPivot")
+	SetHairPivotNameCommand;
+
+nameCommand
+	-annotation "SplitHairControlUpNameCommand"
+	-sourceType "mel"
+	-command ("SplitHairControlUp")
+	SplitHairControlUpNameCommand;
+
+nameCommand
+	-annotation "SplitHairControlDownNameCommand"
+	-sourceType "mel"
+	-command ("SplitHairControlDown")
+	SplitHairControlDownNameCommand;
+
+nameCommand
+	-annotation "SelectAllControlsNameCommand"
+	-sourceType "mel"
+	-command ("SelectAllControls")
+	SelectAllControlsNameCommand;
+
+nameCommand
+	-annotation "DeleteSelectControlNameCommand"
+	-sourceType "mel"
+	-command ("DeleteSelectControl")
+	DeleteSelectControlNameCommand;
+
 //
 // The user hotkeys
 //
@@ -214,47 +264,49 @@ hotkeySet -source "Maya_Default" -current myKey;
 //
 // The hotkey contexts and hotkeys
 //
-hotkey -keyShortcut "1" -alt -name ("PickWalkUnhideRightNameCommand");
-hotkey -keyShortcut "2" -alt -name ("PickWalkUnhideLeftNameCommand");
-hotkey -keyShortcut "t" -alt -name ("hideAllHairNameCommand");
-hotkey -keyShortcut "4" -alt -name ("PickWalkDownNameCommand");
-hotkey -keyShortcut "3" -alt -name ("SelectHairInnerNameCommand");
-hotkey -keyShortcut "`" -alt -releaseName ("HairOpsMarkingMenu_ReleaseNameCommand");
-hotkey -keyShortcut "`" -alt -name ("HairOpsMarkingMenu_PressNameCommand");
-hotkey -keyShortcut "@" -alt -name ("PickWalkAddLeftNameCommand");
-hotkey -keyShortcut "5" -alt -name ("SelectHairNameCommand");
-hotkey -keyShortcut "@" -name ("MergeToCenterNameCommand");
-hotkey -keyShortcut "7" -alt -name ("");
 hotkey -keyShortcut "Up" -name ("PickWalkUpNameCommand");
 hotkey -keyShortcut "#" -alt -name ("PickWalkUpSelectNameCommand");
-hotkey -keyShortcut "$" -name ("DeleteHairAllNameCommand");
-hotkey -keyShortcut "#" -name ("");
-hotkey -keyShortcut "2" -ctl -name ("MovePolygonComponentNameCommand");
-hotkey -keyShortcut "4" -ctl -name ("");
-hotkey -keyShortcut "3" -ctl -name ("");
-hotkey -keyShortcut "%" -name ("DuplicateHairNameCommand");
-hotkey -keyShortcut "F2" -alt -name ("");
-hotkey -keyShortcut "!" -alt -name ("PickWalkAddRighNameCommand");
 hotkey -keyShortcut "w" -ctl -name ("");
-hotkey -keyShortcut "!" -name ("DetachComponentNameCommand");
-hotkey -keyShortcut "`" -releaseName ("");
-hotkey -keyShortcut "`" -name ("STRSTweakModeToggleNameCommand");
-hotkey -keyShortcut "h" -alt -sht -name ("");
-hotkey -keyShortcut "$" -alt -name ("PickWalkDownSelectNameCommand");
+hotkey -keyShortcut "5" -alt -name ("SetHairPivotNameCommand");
+hotkey -keyShortcut "2" -ctl -name ("MovePolygonComponentNameCommand");
+hotkey -keyShortcut "3" -ctl -name ("");
+hotkey -keyShortcut "@" -name ("MergeToCenterNameCommand");
+hotkey -keyShortcut "`" -alt -name ("HairOpsMarkingMenu_PressNameCommand");
 hotkey -keyShortcut "6" -alt -name ("");
-hotkeyCtx -type "Editor" -addClient "timeEditorPanel";
-hotkeyCtx -type "Editor" -addClient "outlinerPanel";
-hotkeyCtx -type "Editor" -addClient "nodeEditorPanel";
-hotkeyCtx -type "Editor" -addClient "hyperShadePanel";
-hotkeyCtx -type "Editor" -addClient "hyperGraphPanel";
+hotkey -keyShortcut "`" -alt -releaseName ("HairOpsMarkingMenu_ReleaseNameCommand");
+hotkey -keyShortcut "2" -ctl -alt -name ("SplitHairControlUpNameCommand");
+hotkey -keyShortcut "4" -alt -name ("SelectAllControlsNameCommand");
+hotkey -keyShortcut "$" -name ("DeleteHairAllNameCommand");
+hotkey -keyShortcut "@" -alt -name ("PickWalkAddLeftNameCommand");
+hotkey -keyShortcut "1" -alt -name ("PickWalkHideRightNameCommand");
+hotkey -keyShortcut "$" -alt -name ("PickWalkDownSelectNameCommand");
+hotkey -keyShortcut "3" -alt -name ("SelectHairNameCommand");
+hotkey -keyShortcut "F2" -alt -name ("");
+hotkey -keyShortcut "1" -ctl -alt -name ("SplitHairControlDownNameCommand");
+hotkey -keyShortcut "!" -name ("DetachComponentNameCommand");
+hotkey -keyShortcut "%" -name ("DuplicateHairNameCommand");
+hotkey -keyShortcut "2" -alt -name ("PickWalkHideLeftNameCommand");
+hotkey -keyShortcut "!" -alt -name ("PickWalkAddRightNameCommand");
+hotkey -keyShortcut "h" -alt -sht -name ("");
+hotkey -keyShortcut "7" -alt -name ("");
+hotkey -keyShortcut "4" -ctl -name ("");
+hotkey -keyShortcut "t" -alt -name ("ToggleHairCtrlVisibilityNameCommand");
+hotkey -keyShortcut "`" -name ("STRSTweakModeToggleNameCommand");
+hotkey -keyShortcut "#" -name ("DeleteSelectControlNameCommand");
+hotkey -keyShortcut "`" -releaseName ("");
 hotkeyCtx -type "Editor" -addClient "posePanel";
-hotkeyCtx -type "Editor" -addClient "shapePanel";
-hotkeyCtx -type "Editor" -addClient "polyTexturePlacementPanel";
+hotkeyCtx -type "Editor" -addClient "hyperShadePanel";
+hotkeyCtx -type "Editor" -addClient "nodeEditorPanel";
+hotkeyCtx -type "Editor" -addClient "hyperGraphPanel";
 hotkeyCtx -type "Editor" -addClient "profilerPanel";
+hotkeyCtx -type "Editor" -addClient "outlinerPanel";
+hotkeyCtx -type "Editor" -addClient "timeEditorPanel";
 hotkeyCtx -type "Editor" -addClient "graphEditor";
+hotkeyCtx -type "Editor" -addClient "polyTexturePlacementPanel";
+hotkeyCtx -type "Editor" -addClient "shapePanel";
+hotkeyCtx -type "Tool" -addClient "SymmetrizeUVBrush";
+hotkeyCtx -type "Tool" -addClient "polyCutUV";
 hotkeyCtx -type "Tool" -addClient "sculptMeshCache";
 hotkeyCtx -type "Tool" -addClient "Unfold3DBrush";
 hotkeyCtx -type "Tool" -addClient "texSculptCacheContext";
-hotkeyCtx -type "Tool" -addClient "polyCutUV";
-hotkeyCtx -type "Tool" -addClient "SymmetrizeUVBrush";
 hotkeyCtx -type "Tool" -addClient "texCutContext";

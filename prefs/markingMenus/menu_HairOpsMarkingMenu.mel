@@ -30,7 +30,7 @@
         -divider 0
         -subMenu 0
         -tearOff 0
-        -command "python(\"execfile(r'F:/Script/__init__.py');from PipelineTools import main;reload(main);main.makeHairUI()\");" 
+        -command "MakeHairUI;" 
         -altModifier 0
         -optionModifier 0
         -commandModifier 0
@@ -693,7 +693,7 @@
             -enableCommandRepeat 1
             -echoCommand 0
             -italicized 0
-            -boldFont 0
+            -boldFont 1
             -sourceType "mel" 
             -longDivider 1
             menuEditorMenuItem5;
@@ -824,6 +824,52 @@
         -sourceType "mel" 
         -longDivider 1
         menuEditorMenuItem4;
+
+    menuItem
+        -label "Outliner" 
+        -divider 0
+        -subMenu 0
+        -tearOff 0
+        -command "OutlinerWindow" 
+        -altModifier 0
+        -optionModifier 0
+        -commandModifier 0
+        -ctrlModifier 0
+        -shiftModifier 0
+        -optionBox 0
+        -enable 1
+        -data 0
+        -allowOptionBoxes 1
+        -postMenuCommandOnce 0
+        -enableCommandRepeat 1
+        -image "menuIconWindow.png" 
+        -echoCommand 0
+        -italicized 0
+        -boldFont 0
+        -sourceType "mel" 
+        -longDivider 1
+        menuEditorMenuItem8;
+
+    menuItem
+        -divider 0
+        -subMenu 0
+        -tearOff 0
+        -altModifier 0
+        -optionModifier 0
+        -commandModifier 0
+        -ctrlModifier 0
+        -shiftModifier 0
+        -optionBox 1
+        -enable 1
+        -data 0
+        -allowOptionBoxes 1
+        -postMenuCommandOnce 0
+        -enableCommandRepeat 0
+        -italicized 0
+        -boldFont 0
+        -sourceType "mel" 
+        -longDivider 1
+        menuEditorMenuItem10;
 
 setParent -m ..;
 
