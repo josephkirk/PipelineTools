@@ -359,31 +359,18 @@ def ToggleHairCtrlVis(state='switch'):
     hairCtrlsGroup=pm.ls('HairCtrlGroup')[0]
     if not hairCtrlsGroup:
         return
-    else:
-        if not hairCtrlsGroup.isVisible():
-            hairCtrlsGroup.show()
-    for c in hairCtrlsGroup.getChildren():
-        if not c.isVisible():
-            c.show()
-        if state=='switch':
-            if any([ct.isVisible() for ct in c.getChildren()]):
-                for ctrl in c.getChildren():
-                    ctrl.hide()
-            else:
-                for ctrl in c.getChildren():
-                    ctrl.show()
-        elif state=='show':
-            for ctrl in c.getChildren():
-                    ctrl.show()
-        elif state=='hide':
-            for ctrl in c.getChildren():
-                    ctrl.hide()
+    if state=='switch':
+        pass
+    elif state=='show':
+        pm.showHidden(hairCtrlsGroup,below=True)
+    elif state=='hide':
+        pm.hide([ctrl.getChildren() for ctrl in hairCtrlsGroup.getChildren()])
 
 def pickWalkHairCtrl(d='right',r=False,add=False):
     sel=pm.selected()
     if not sel:
         return
-    #ToggleHairCtrlVis(state='hide')
+    ToggleHairCtrlVis(state='hide')
     pm.select(d=1)
     newSel=[]
     for o in sel:
