@@ -336,7 +336,7 @@ def delHair(keepHair=False):
             for a in newAttr:
                 if (pm.attributeQuery(a, exists=1, node=hair)):
                     pm.deleteAttr(hair+"."+a)
-            pm.xform(hair,ws=1,piv=pm.xform(Cgroups[hairMeshes.index(hair)],q=1,ws=1,piv=1)[:3])
+            #pm.xform(hair,ws=1,piv=pm.xform(Cgroups[hairMeshes.index(hair)],q=1,ws=1,piv=1)[:3])
         pm.delete(Cgroups)
 
 def cleanHairMesh():

@@ -24,7 +24,15 @@ def batchExportCam():
             ul.exportCam()
         cm.file(f=True,new=True)
         mm.eval("paneLayout -e -m true $gMainPane")
-def SendFile(num="",fPath=False, dPath=False, fromFile=True,sendFile=True,sendTex=True,CommonOnly=True):
+def SendFile(num="",
+             fPath=False,
+             dPath=False,
+             fromFile=True,
+             sendFile=True,
+             sendUV=True,
+             sendZbr=True,
+             sendTex=False,
+             sendCommon=False):
     if fromFile:
         fullPath = cm.file(q=1,sn=1).split("/")
         srcDrive = fullPath[0]
@@ -37,6 +45,7 @@ def SendFile(num="",fPath=False, dPath=False, fromFile=True,sendFile=True,sendTe
     projectPath = "/".join(fullPath[1:fullPath.index("scenes")])
     fileVar= fullPath[len(fullPath)-2]
     filePath= fullPath[fullPath.index("Model"):len(fullPath)-2]
+    #filePath.append(fileVar)
     scenePath = "/".join([projectPath,u"scenes"]+filePath)
     texPath = "/".join([projectPath,u"sourceimages"]+filePath)
     sceneName= fullPath[len(fullPath)-1]
@@ -53,25 +62,48 @@ def SendFile(num="",fPath=False, dPath=False, fromFile=True,sendFile=True,sendTe
     ###Execution
     if sendFile:
         try:
-            ul.sysCop("/".join([sceneSrc,fileVar,sceneName]),"/".join([sceneDest,fileVar,sceneName]))
-            if os.path.isdir("/".join([sceneSrc,fileVar,"rend"])):
-                ul.sysCop("/".join([sceneSrc,fileVar,"rend"]),"/".join([sceneDest,fileVar,"rend"]))
-            if os.path.isdir("/".join([sceneSrc,fileVar,"uv"])):
-                ul.sysCop("/".join([sceneSrc,fileVar,"uv"]),"/".join([sceneDest,fileVar,"uv"]))
-            if os.path.isdir("/".join([texSrc,"uv"])):
-                ul.sysCop("/".join([texSrc,"uv"]),"/".join([texDest,"uv"]))
+            ul.sysCop("/".join([sceneSrc,sceneName]),"/".join([sceneDest,sceneName]))
+            if os.path.isdir("/".join([sceneSrc,"rend"])):
+                ul.sysCop("/".join([sceneSrc,"rend"]),"/".join([sceneDest,"rend"]))
+            else:
+                return
         except (IOError,OSError) as why:
             print "scene CopyError\n",why
-    if sendTex:
+    elif sendUV:
         try:
-            if CommonOnly:
-                ul.sysCop("/".join([texSrc,'_Common']),"/".join([texDest,'_Common']))
+            if os.path.isdir("/".join([texSrc,"uv"])):
+                ul.sysCop("/".join([texSrc,"uv"]),"/".join([texDest,"uv"]))
             else:
-                ul.sysCop(texSrc,texDest)
+                return
+        except (IOError,OSError) as why:
+            print "uv CopyError\n",why
+    elif sendZbr:
+        try:
+            if os.path.isdir("/".join([texSrc,"zbr"])):
+                ul.sysCop("/".join([texSrc,"zbr"]),"/".join([texDest,"zbr"]))
+            else:
+                return
+        except (IOError,OSError) as why:
+            print "zbr CopyError\n",why
+    elif sendTex:
+        try:
+            ul.sysCop(texSrc,texDest)
+            print "Finished send Texture"
         except (IOError,OSError) as why:
             print "texture CopyError\n",why
-    print "Finished"
-    print "\\"*2+"Ssjp-010\scc\NS57"+'to'+todayFolder
+    elif sendCommon:
+        try:
+            ul.sysCop("/".join([texSrc,'_Common']),"/".join([texDest,'_Common']))
+            print "Finished send Common"
+        except (IOError,OSError) as why:
+            print "texture CopyError\n",why
+    else:
+        print fileVar
+        print fullPath
+        print sceneSrc
+        print texSrc
+        print "nothing to do"
+    print "/"*2+"Ssjp-010/scc/NS57"+'/to/'+todayFolder
 
 def SendFileUI():
     if pm.window('SendFileUI',ex=True):
@@ -85,18 +117,22 @@ def SendFileUI():
     numUI=pm.textField(text="")
     pm.text(label="Send File: ",align='right')
     sendFilecbUI=pm.checkBox(label="   ",value=True)
+    pm.text(label="Send UV: ",align='right')
+    sendUVcbUI=pm.checkBox(label="   ",value=False)
+    pm.text(label="Send Zbr: ",align='right')
+    sendZbrcbUI=pm.checkBox(label="   ",value=False)
     pm.text(label="Send Textures: ",align='right')
-    sendTexcbUI=pm.checkBox(label="   ",value=True)
-    pm.text(label="Send only _Commmon: ",align='right')
-    sendTexCommoncbUI=pm.checkBox(label="   ",value=True)
+    sendTexcbUI=pm.checkBox(label="   ",value=False)
+    pm.text(label="Send _Commmon: ",align='right')
+    sendTexCommoncbUI=pm.checkBox(label="   ",value=False)
     pm.text(label="",align='right')
     pm.button(label="Send",c=lambda *arg:SendFile(
-                                                    num=numUI.getText(),
-                                                    sendFile=sendFilecbUI.getValue(),
-                                                    sendTex=sendTexcbUI.getValue(),
-                                                    CommonOnly=sendTexCommoncbUI.getValue()
-                                                    )
-                                                        )
+                                                  num=numUI.getText(),
+                                                  sendFile=sendFilecbUI.getValue(),
+                                                  sendTex=sendTexcbUI.getValue(),
+                                                  sendUV=sendUVcbUI.getValue(),
+                                                  sendZbr=sendZbrcbUI.getValue(),
+                                                  sendCommon=sendTexCommoncbUI.getValue()))
     pm.showWindow()
 def makeHairUI():
     if pm.window('MakeHairUI',ex=True):
