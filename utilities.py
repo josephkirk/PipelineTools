@@ -54,6 +54,18 @@ def addVrayOpenSubdivAttr():
                     cm.vray('addAttributesFromGroup', obShape, "vray_opensubdiv", 1)
                     pm.setAttr(obShape+".vrayOsdPreserveMapBorders",2)
 
+def rebuildControl(ob,obshape='circle',ra=1):
+    if not type(ob)==pm.nodetypes.Transform:
+        return
+    obOldShape=ob.listRelatives(shapes=1)[0]
+    shapeType={'circle':(3,8),'triangle':(1,3)}
+    obNewShape = pm.circle(c=(0,0,0), nr=(0,1,0), sw=360, r=ra, d=shapeType[obshape][0], ut=0, tol=5.77201e-008, s=shapeType[obshape][1], ch=1, name="HairProfileCurve#")
+    for a in [('overrideEnabled',1),('overrideRGBColors',1),('overrideColorRGB',(.2,1,0))]:
+        obNewShape[0].listRelatives(shapes=1)[0].attr(a[0]).set(a[1])
+    pm.parent(obNewShape[0].listRelatives(shapes=1)[0],ob,r=1,s=1)
+    pm.delete(obOldShape)
+    pm.delete(obNewShape)
+
 def createPointParent(ob,name="PointParent#",shapeReplace=False,r=1):
     obOldParent = ob.getParent()
     obNewParent = pm.polySphere(name=name,subdivisionsAxis=6,subdivisionsHeight=4,radius=r/3)
@@ -76,7 +88,7 @@ def createHairMesh(profilesList,name="hairMesh#",cSet="hairCrease",mat="",length
         print "no Profiles"
         return
     pm.select(profilesList)
-    pm.nurbsToPolygonsPref(pt=1,un=4,vn=7,f=2)
+    pm.nurbsToPolygonsPref(pt=1,un=4,vn=7,f=2,ut=2,vt=2)
     HairMesh=pm.loft(n=name,po=1,ch=1,u=1,c=0,ar=1,d=3,ss=1,rn=0,rsn=True)
     #custom Attribute add
     HairMesh[0].addAttr('lengthDivisions',min=1,at='long',dv=lengthDivs)
@@ -112,7 +124,7 @@ def createHairMesh(profilesList,name="hairMesh#",cSet="hairCrease",mat="",length
     if bool(pm.ls(mat,type=pm.nodetypes.ShadingEngine)):
         pm.sets(pm.ls(mat)[0],forceElement=HairMesh[0])
     return HairMesh
-def makeHairMesh(name="HairMesh#",mat="",cSet="hairCrease",reverse=False,lengthDivs=7,widthDivs=4,Segments=4,width=1,curveDel=False):
+def makeHairMesh(name="HairMesh#",mat="",cSet="hairCrease",reverse=False,lengthDivs=7,widthDivs=4,Segments=4,width=1,curveDel=False,cShape='circle'):
     sel = pm.selected()
     if not sel:
         print "Select some Curves or Edges or isopram"
@@ -134,7 +146,8 @@ def makeHairMesh(name="HairMesh#",mat="",cSet="hairCrease",reverse=False,lengthD
             profileCurve.listRelatives()[0].listConnections()[0].setRadius(width)
             pm.showHidden(profileCurve,a=1)
         else:
-            profileCurve = pm.circle(c=(0,0,0), nr=(0,1,0), sw=360, r=width, d=3, ut=0, tol=5.77201e-008, s=8, ch=1, name="HairBaseProfileCurve")
+            shapeType={'circle':(3,8),'triangle':(1,3)}
+            profileCurve = pm.circle(c=(0,0,0), nr=(0,1,0), sw=360, r=width, d=shapeType[cShape][0], ut=0, tol=5.77201e-008, s=shapeType[cShape][0], ch=1, name="HairBaseProfileCurve")
             for a in [('overrideEnabled',1),('overrideRGBColors',1),('overrideColorRGB',(.2,1,0))]:
                 profileCurve[0].listRelatives(shapes=1)[0].attr(a[0]).set(a[1])
         pm.select(d=1)
@@ -210,7 +223,7 @@ def dupHairMesh(mirror=False):
     if Cgroups:
         pm.select(Cgroups)
 
-def selHair(selectTip=False,selectRoot=False,selectAll=False,setPivot=False,rebuild=[False,7,4]):
+def selHair(selectTip=False,selectRoot=False,selectAll=False,setPivot=False,rebuild=[False,7,4],cShape=(False,'circle',1)):
     hairMeshes = pm.selected()
     if not hairMeshes:
         return
@@ -224,11 +237,16 @@ def selHair(selectTip=False,selectRoot=False,selectAll=False,setPivot=False,rebu
                 pm.xform(ControlGroup,ws=1,piv=pm.xform(ControlGroup.getChildren()[0],q=1,ws=1,piv=1)[:3])
             Cgroups.append(ControlGroup)
             if rebuild[0]:
-                NewControls = [i for i in ControlGroup.listRelatives(type=pm.nodetypes.Transform)]
+                NewControls = ControlGroup.listRelatives(type=pm.nodetypes.Transform)
+                if cShape[0]:
+                    for c in NewControls:
+                        rebuildControl(c,obshape=cShape[1],ra=cShape[2])
                 print NewControls
                 oldname=hair.name()
+                oldParent=hair.getParent()
                 pm.rename(hair,'_'.join([oldname,'old']))
-                createHairMesh(NewControls,name=oldname,mat=hair.listRelatives(shapes=1)[0].listConnections(type=pm.nodetypes.ShadingEngine)[0].name(),lengthDivs=rebuild[1],widthDivs=rebuild[2])
+                newHair=createHairMesh(NewControls,name=oldname,mat=hair.listRelatives(shapes=1)[0].listConnections(type=pm.nodetypes.ShadingEngine)[0].name(),lengthDivs=rebuild[1],widthDivs=rebuild[2])
+                pm.parent(newHair[0],oldParent)
                 pm.delete(hair)
         except:
             continue
@@ -247,7 +265,7 @@ def selHair(selectTip=False,selectRoot=False,selectAll=False,setPivot=False,rebu
             pm.select(Cgroups,r=1)
         return pm.selected()
 
-def splitHairCtrl(d='up',delete=False):
+def splitHairCtrl(d='up',delete=False,rebuild=False):
     ctrl= pm.selected()
     if not ctrl:
         return
@@ -271,19 +289,36 @@ def splitHairCtrl(d='up',delete=False):
         for c in Ctrls:
             pm.rename(c,'_'.join([c.name(),"old"]))
         CtrlID=Ctrls.index(ctrl[0])
-        if delete:
+        if delete or rebuild:
             if CtrlID!=0 or CtrlID!=(len(Ctrls)-1):
                 if offset:
-                    pm.delete(Ctrls[CtrlID+1:])
-                    del Ctrls[CtrlID+1:]
-                    pm.scale(ctrl[0],[0.001,0.001,0.001],a=1)
+                    if delete:
+                        pm.delete(Ctrls[CtrlID+1:])
+                        del Ctrls[CtrlID+1:]
+                        pm.scale(ctrl[0],[0.001,0.001,0.001],a=1)
+                    elif rebuild:
+                        for c in Ctrls[CtrlID+1:]:
+                            rebuildControl(c)
+                        pm.select(Hair,r=1)
+                        selHair(rebuild=[True,Hair.attr('lengthDivisions').get(),Hair.attr('widthDivisions').get()])
                 elif d=='self':
-                    pm.delete(Ctrls[CtrlID])
-                    del Ctrls[CtrlID]
+                    if delete:
+                        pm.delete(Ctrls[CtrlID])
+                        del Ctrls[CtrlID]
+                    elif rebuild:
+                        rebuildControl(Ctrls[CtrlID],obshape='triangle')
+                        pm.select(Hair,r=1)
+                        selHair(rebuild=[True,Hair.attr('lengthDivisions').get(),Hair.attr('widthDivisions').get()])
                 else:
-                    pm.delete(Ctrls[:CtrlID])
-                    del Ctrls[:CtrlID]
-                    pm.scale(ctrl[0],[0.001,0.001,0.001],a=1)
+                    if delete:
+                        pm.delete(Ctrls[:CtrlID])
+                        del Ctrls[:CtrlID]
+                        pm.scale(ctrl[0],[0.001,0.001,0.001],a=1)
+                    elif rebuild:
+                        for c in Ctrls[:CtrlID]:
+                            rebuildControl(c)
+                        pm.select(Hair,r=1)
+                        selHair(rebuild=[True,Hair.attr('lengthDivisions').get(),Hair.attr('widthDivisions').get()])
                 for c in Ctrls:
                     oldname=c.name().split('_')[0]
                     pm.rename(c,'_'.join([c.name(),"old"]))

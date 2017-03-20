@@ -552,7 +552,7 @@
     setParent -m ..;
 
     menuItem
-        -label "Delete" 
+        -label "Edit" 
         -divider 0
         -subMenu 1
         -tearOff 0
@@ -612,7 +612,7 @@
             -optionBox 0
             -enable 1
             -data 0
-            -radialPosition "SW" 
+            -radialPosition "S" 
             -allowOptionBoxes 1
             -postMenuCommandOnce 0
             -enableCommandRepeat 1
@@ -637,7 +637,7 @@
             -optionBox 0
             -enable 1
             -data 0
-            -radialPosition "W" 
+            -radialPosition "NE" 
             -allowOptionBoxes 1
             -postMenuCommandOnce 0
             -enableCommandRepeat 1
@@ -662,7 +662,7 @@
             -optionBox 0
             -enable 1
             -data 0
-            -radialPosition "E" 
+            -radialPosition "SE" 
             -allowOptionBoxes 1
             -postMenuCommandOnce 0
             -enableCommandRepeat 1
@@ -672,6 +672,56 @@
             -sourceType "mel" 
             -longDivider 1
             menuEditorMenuItem4;
+
+        menuItem
+            -label "RebuildUp" 
+            -divider 0
+            -subMenu 0
+            -tearOff 0
+            -command "RebuildControlsUp;" 
+            -altModifier 0
+            -optionModifier 0
+            -commandModifier 0
+            -ctrlModifier 0
+            -shiftModifier 0
+            -optionBox 0
+            -enable 1
+            -data 0
+            -radialPosition "NW" 
+            -allowOptionBoxes 1
+            -postMenuCommandOnce 0
+            -enableCommandRepeat 1
+            -echoCommand 0
+            -italicized 0
+            -boldFont 0
+            -sourceType "mel" 
+            -longDivider 1
+            menuEditorMenuItem6;
+
+        menuItem
+            -label "RebuildDown" 
+            -divider 0
+            -subMenu 0
+            -tearOff 0
+            -command "RebuildControlsDown;" 
+            -altModifier 0
+            -optionModifier 0
+            -commandModifier 0
+            -ctrlModifier 0
+            -shiftModifier 0
+            -optionBox 0
+            -enable 1
+            -data 0
+            -radialPosition "SW" 
+            -allowOptionBoxes 1
+            -postMenuCommandOnce 0
+            -enableCommandRepeat 1
+            -echoCommand 0
+            -italicized 0
+            -boldFont 0
+            -sourceType "mel" 
+            -longDivider 1
+            menuEditorMenuItem7;
 
         menuItem
             -label "DeleteSelected" 
@@ -687,7 +737,7 @@
             -optionBox 0
             -enable 1
             -data 0
-            -radialPosition "S" 
+            -radialPosition "E" 
             -allowOptionBoxes 1
             -postMenuCommandOnce 0
             -enableCommandRepeat 1
@@ -697,6 +747,31 @@
             -sourceType "mel" 
             -longDivider 1
             menuEditorMenuItem5;
+
+        menuItem
+            -label "RebuildSelected" 
+            -divider 0
+            -subMenu 0
+            -tearOff 0
+            -command "RebuildSelectControl;" 
+            -altModifier 0
+            -optionModifier 0
+            -commandModifier 0
+            -ctrlModifier 0
+            -shiftModifier 0
+            -optionBox 0
+            -enable 1
+            -data 0
+            -radialPosition "W" 
+            -allowOptionBoxes 1
+            -postMenuCommandOnce 0
+            -enableCommandRepeat 1
+            -echoCommand 0
+            -italicized 0
+            -boldFont 0
+            -sourceType "mel" 
+            -longDivider 1
+            menuEditorMenuItem8;
 
     setParent -m ..;
 
@@ -845,12 +920,13 @@
         -image "menuIconWindow.png" 
         -echoCommand 0
         -italicized 0
-        -boldFont 0
+        -boldFont 1
         -sourceType "mel" 
         -longDivider 1
         menuEditorMenuItem8;
 
     menuItem
+        -label "menuEditorMenuItem10" 
         -divider 0
         -subMenu 0
         -tearOff 0
@@ -866,10 +942,10 @@
         -postMenuCommandOnce 0
         -enableCommandRepeat 0
         -italicized 0
-        -boldFont 0
+        -boldFont 1
         -sourceType "mel" 
         -longDivider 1
-        menuEditorMenuItem10;
+        menuEditorMenuItem12;
 
 setParent -m ..;
 

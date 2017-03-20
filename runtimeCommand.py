@@ -20,7 +20,7 @@ def setCommand():
         "Make Hair",
         ["",False,False,False])
     hairCommands_dict['MakeHairUI'] = (
-        "\n".join(["from PipelineTools import main", "main.makeHairUI()"]),
+        "\n".join(["from PipelineTools import main", "reload(main)", "main.makeHairUI()"]),
         "Make Hair UI",
         ["",False,False,False])
     hairCommands_dict['DuplicateHair'] = (
@@ -60,17 +60,29 @@ def setCommand():
         "Delete Hair controls but keep Hair Mesh",
         ["",False,False,False])
     hairCommands_dict['DeleteControlsUp'] = (
-        "\n".join([importCommand, "ul.splitHairCtrl(d = 'up',delete= True)"]),
+        "\n".join([importCommand, "ul.splitHairCtrl(d = 'up', delete= True)"]),
         "Delete All Controls From Select to Tip",
         ["4",True,True,False])
     hairCommands_dict['DeleteSelectControl'] = (
-        "\n".join([importCommand, "ul.splitHairCtrl(d = 'self',delete= True)"]),
+        "\n".join([importCommand, "ul.splitHairCtrl(d = 'self', delete= True)"]),
         "Delete Select Control",
         ["3",True,True,False])
     hairCommands_dict['DeleteControlsDown'] = (
-        "\n".join([importCommand, "ul.splitHairCtrl(d = 'down',delete= True)"]),
+        "\n".join([importCommand, "ul.splitHairCtrl(d = 'down', delete= True)"]),
         "Delete All Controls From Select to Root",
         ["5",True,True,False])
+    hairCommands_dict['RebuildControlsUp'] = (
+        "\n".join([importCommand, "ul.splitHairCtrl(d = 'up', rebuild= True)"]),
+        "rebuild All Controls From Select to Tip",
+        ["",False,False,False])
+    hairCommands_dict['RebuildSelectControl'] = (
+        "\n".join([importCommand, "ul.splitHairCtrl(d = 'self', rebuild= True)"]),
+        "rebuild Select Control",
+        ["",False,False,False])
+    hairCommands_dict['RebuildControlsDown'] = (
+        "\n".join([importCommand, "ul.splitHairCtrl(d = 'down', rebuild= True)"]),
+        "rebuild All Controls From Select to Root",
+        ["",False,False,False])
     hairCommands_dict['PickWalkHideRight'] = (
         "\n".join([importCommand, "ul.pickWalkHairCtrl(d = 'right')"]),
         "Pick Walk Right and hide last Select Control",

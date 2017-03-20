@@ -62,7 +62,7 @@ def SendFile(num="",
     ###Execution
     if sendFile:
         try:
-            ul.sysCop("/".join([sceneSrc,sceneName]),"/".join([sceneDest,sceneName]))
+            ul.sysCop("/".join([sceneSrc,fileVar,sceneName]),"/".join([sceneDest,fileVar,sceneName]))
             if os.path.isdir("/".join([sceneSrc,"rend"])):
                 ul.sysCop("/".join([sceneSrc,"rend"]),"/".join([sceneDest,"rend"]))
             else:
@@ -162,25 +162,30 @@ def makeHairUI():
     DelCurveUI=pm.checkBox(label="   ",value=False)
     pm.text(label="Reverse: ",align='right')
     RevCurveUI=pm.checkBox(label="   ",value=False)
+    pm.text(label="Control Type: ",align='right')
+    cShapeOpUI=pm.optionMenu()
+    # Result: ui.OptionMenu('window1|columnLayout64|optionMenu1') #
+    pm.menuItem( label='circle' )
+    pm.menuItem( label='triangle' )
     pm.button(label="SelectCtr",c=lambda *arg:ul.selHair())
     pm.popupMenu()
     setPivotUI=pm.menuItem(label='SetPivot',c=lambda *arg:ul.selHair(setPivot=True))
     pm.menuItem(label='Show/Hide Control',c=lambda *arg:ul.hideHairCtrl())
     pm.menuItem(label='show/Hide AllControl',c=lambda *arg:ul.hideHairCtrl(allHide=True))
-    pm.button(label="Create",c=lambda *arg:ul.makeHairMesh(
-                                                            name=hairNameUI.getText(),
-                                                            mat=matNameUI.getText(),
-                                                            cSet=hsSetNameUI.getText(),
-                                                            reverse=RevCurveUI.getValue(),
-                                                            lengthDivs=LDivsValUI.getValue(),
-                                                            widthDivs=WDivsValUI.getValue(),
-                                                            Segments=segmentValUI.getValue(),
-                                                            width=segmentWidthUI.getValue(),
-                                                            curveDel=DelCurveUI.getValue()
-                                                                )
-                                                                    )
+    pm.button(label="Create",c=lambda *arg:ul.makeHairMesh(name=hairNameUI.getText(),
+                                                           mat=matNameUI.getText(),
+                                                           cSet=hsSetNameUI.getText(),
+                                                           reverse=RevCurveUI.getValue(),
+                                                           lengthDivs=LDivsValUI.getValue(),
+                                                           widthDivs=WDivsValUI.getValue(),
+                                                           Segments=segmentValUI.getValue(),
+                                                           width=segmentWidthUI.getValue(),
+                                                           curveDel=DelCurveUI.getValue(),
+                                                           cShape=cShapeOpUI.getValue()))
     pm.popupMenu()
     pm.menuItem(label='Rebuild',c=lambda *arg:ul.selHair(rebuild=[True,LDivsValUI.getValue(),WDivsValUI.getValue()]))
+    pm.menuItem(label='RebuildalsoControls',c=lambda *arg:ul.selHair(rebuild=[True,LDivsValUI.getValue(),WDivsValUI.getValue()],
+                                                                     cShape=(True,cShapeOpUI.getValue(),segmentWidthUI.getValue())))
     pm.button(label="Duplicate",c=lambda *arg:ul.dupHairMesh())
     pm.popupMenu()
     pm.menuItem(label='Mirror',c=lambda *arg:ul.dupHairMesh(mirror=True))
