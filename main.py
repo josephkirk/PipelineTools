@@ -192,6 +192,7 @@ def makeHairUI():
     pm.button(label="RemoveHair",c=lambda *arg:ul.delHair())
     pm.popupMenu()
     pm.menuItem(label='RemoveControl',c=lambda *arg:ul.delHair(keepHair=True))
+    pm.menuItem(label='RemoveAllControl',c=lambda *arg:ul.cleanHairMesh())
     pm.setParent('..')
     pm.showWindow()
 def mirrorUVui():

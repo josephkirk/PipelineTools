@@ -270,32 +270,40 @@ def selHair(
     ### check for right Selection
     hairMeshes = []
     for o in sel:
-        if type(o.getShape()) == pm.nodetypes.NurbsCurve:
+        #print o.getParent() == pm.ls('HairCtrlGroup')[0]
+        if type(o.getShape()) == pm.nodetypes.NurbsCurve or o.getParent() == pm.ls('HairCtrlGroup')[0]:
             try:
-                hairLoft = o.listConnections(type=pm.nodetypes.Loft)
-                hairTes = HairLoft[0].listConnections(type=pm.nodetypes.NurbsTessellate)[0]
-                hair = HairTes.listConnections(type=pm.nodetypes.Transform)[0]
+                if o.getParent() == pm.ls('HairCtrlGroup')[0]:
+                    o = o.listRelatives(type=pm.nodetypes.Transform)[0]
+                hairLoft = o.getShape().listConnections(type=pm.nodetypes.Loft)[0]
+                hairTes = hairLoft.listConnections(type=pm.nodetypes.NurbsTessellate)[0]
+                hair = hairTes.listConnections(type=pm.nodetypes.Transform)[0]
             except:
-                pass
-        elif (type(o.getShape()) == pm.nodetypes.Meshes and
-              o.getShape().listConnections(type=pm.nodetypes.NurbsTessellate)):
+                continue
+        elif (type(o.getShape()) == pm.nodetypes.Mesh and
+              o.listConnections(type=pm.nodetypes.NurbsTessellate)):
             hair = o
-            hairTes = o.getShape().listConnections(type=pm.nodetypes.NurbsTessellate)[0]
+            hairTes = o.listConnections(type=pm.nodetypes.NurbsTessellate)[0]
             hairLoft = hairTes.listConnections(type=pm.nodetypes.Loft)[0]
+            print hair, hairTes, hairLoft
         else:
             continue
-        if all(hair, hairTes, hairLoft):
+        if all([hair, hairTes, hairLoft]):
             hairMeshes.append((hair, hairTes, hairLoft))
         else:
             print "Something wrong with getting hair Tesselate and Loft"
             return
     if hairMeshes:
+        #print hairMeshes
         ### getting all Controls
         Cgroups = []
         for hair in hairMeshes:
             try:
+                #print hair
                 hairLoft = hair[2]
-                ControlGroup = loftMesh.listConnections(type=pm.nodetypes.Transform)[0].getParent()
+                ctrls = [c for c in hairLoft.listConnections() if type(c) == pm.nt.Transform]
+                ControlGroup = ctrls[0].getParent()
+                #print ControlGroup
                 if setPivot:
                     pm.xform(
                         ControlGroup,
@@ -305,6 +313,7 @@ def selHair(
                             q=1, ws=1, piv=1)[:3])
                 if rebuild[0]:
                     NewControls = ControlGroup.listRelatives(type=pm.nodetypes.Transform)
+                    print NewControls
                     if cShape[0]:
                         for c in NewControls:
                             rebuildControl(c, obshape=cShape[1], ra=cShape[2])
@@ -318,25 +327,32 @@ def selHair(
                         name=oldname,
                         mat=curMaterial,
                         lengthDivs=rebuild[1], widthDivs=rebuild[2])
-                    pm.parent(newHair, oldParent)
-                    pm.delete(hair)
+                    pm.parent(newHair[0], oldParent)
+                    #pm.delete(hair[0])
+                    #del hair
+                    hair = newHair[0]
             except:
                 continue
             if ControlGroup:
-                Cgroups.append(hair,ControlGroup)
+                #print ControlGroup
+                Cgroups.append((hair,ControlGroup))
         ### select as Requested
         if Cgroups:
+            #print Cgroups
             if not returnInfo:
-                if selectTip:
-                    hairTipsList = [c.getChildren()[-1] for c in Cgroups[1]]
-                    pm.select(hairTipList, r=1)
-                elif selectRoot:
-                    hairRootsList = [c.getChildren()[0] for c in Cgroups[1]]
-                    pm.select(hairRootsList, r=1)
-                elif selectAll:
-                    pm.select([ctrl for c in Cgroups[1] for ctrl in c.getChildren()], r=1)
-                else:
-                    pm.select(Cgroups[1], r=1)
+                pm.select(d=1)
+                for cGroup in Cgroups:
+                    #print cGroup[1]
+                    if selectTip:
+                        hairTipsList = cGroup[1].listRelatives(type=pm.nt.Transform)[-1]
+                        pm.select(hairTipsList, add=1)
+                    elif selectRoot:
+                        hairRootsList = cGroup[1].listRelatives(type=pm.nt.Transform)[0]
+                        pm.select(hairRootsList, add=1)
+                    elif selectAll:
+                        pm.select(cGroup[1].listRelatives(type=pm.nt.Transform), add=1)
+                    else:
+                        pm.select(cGroup[1], add=1)
             else:
                 return Cgroups
 
@@ -350,116 +366,133 @@ def splitHairCtrl(d='up'):
         'down':-1}
     if not directionDict.has_key(d):
         return
-    hairInfo = selHair(returnInfo=True)
-    if not hairInfo:
+    hairInfoAll = selHair(returnInfo=True)
+    if not hairInfoAll:
         return
+    #print hairInfo[0][0]
+    #print hairInfo
     for selOb in sel:
         pm.select(selOb, r=1)
-        ctrls = hairInfo[1]
-        hair = hairInfor[0][0]
-        for ctrl in ctrls.listRelatives(type=pm.nt.Transform):
-            pm.rename(ctrl, '_'.join([c.name(), "old"]))
+        hairInfo = hairInfoAll[sel.index(selOb)]
+        ctrls = hairInfo[1].listRelatives(type=pm.nt.Transform)
+        hair = hairInfo[0][0]
+        for ctrl in ctrls:
+            pm.rename(ctrl, '_'.join([ctrl.name(), "old"]))
         ctrlID = ctrls.index(selOb)
-        newCtrl = pm.duplicate(ctrl[0])[0]
+        if ctrlID == 0:
+            directionDict[d] = 1
+        elif ctrlID == (len(ctrls)-1):
+            directionDict[d] = -1
+        newCtrl = pm.duplicate(ctrls[ctrlID])[0]
         pm.move(
             newCtrl,
-            (ctrl[ctrlID].getTranslation(space='world') +
-             ctrl[ctrlID+directionDict[d]].getTranslation(space='world'))/2,
+            (ctrls[ctrlID].getTranslation(space='world') +
+             ctrls[ctrlID+directionDict[d]].getTranslation(space='world'))/2,
             a=1, ws=1)
         pm.scale(
             newCtrl,
-            ((ctrls[ctrlID+1].attr('scale')+ctrls[ctrlID-1].attr('scale'))/2),
+            (ctrls[ctrlID].attr('scale').get() + 
+             ctrls[ctrlID+directionDict[d]].attr('scale').get())/2,
             a=1)
-        ctrls.insert(ctrlID+directionDict[d], newCtrl)
-        for ctrl in ctrltrls:
-            pm.rename(ctrl, '_'.join([ctrl.name().split('_')[0], str(ctrls.index(c)+1)]))
-            cParent = ctrl.getParent()
-            pm.parent(ctr, w=1)
-            pm.parent(ctr, cParent)
+        ctrls.insert(ctrlID+(directionDict[d]+1)/2, newCtrl)
+        for ctrl in ctrls:
+            pm.rename(
+                ctrl,
+                '_'.join([ctrl.name().split('_')[0],
+                str(ctrls.index(ctrl)+1)]))
+            pm.parent(ctrl, w=1)
+            pm.parent(ctrl, hairInfo[1])
         oldname = hair.name()
+        oldParent = hair.getParent()
+        curMaterial = hair.getShape().listConnections(
+            type=pm.nodetypes.ShadingEngine)[0].name()
         pm.rename(hair, '_'.join([oldname, 'old']))
-        selHair(rebuild=[True,ctrls)
-        createHairMesh(ctrls,
-                       name=oldname,
-                       mat=Hair.listRelatives(shapes=1)[0].listConnections(type=pm.nodetypes.ShadingEngine)[0].name(),lengthDivs=Hair.attr('lengthDivisions').get(),widthDivs=Hair.attr('widthDivisions').get())
-        pm.delete(Hair)
-        #selHair(rebuild=[True,Hair.attr('lengthDivisions').get(),Hair.attr('widthDivisions').get()])
+        newHair = createHairMesh(
+            ctrls,
+            name=oldname,
+            mat=curMaterial,
+            lengthDivs=hair.attr('lengthDivisions').get(),
+            widthDivs=hair.attr('widthDivisions').get())
+        pm.parent(newHair[0], oldParent)
+        pm.delete(hair)
         pm.select(newCtrl)
-        pm.setToolTo( 'moveSuperContext' )
+        pm.setToolTo('moveSuperContext')
 
 def dupHairMesh(mirror=False):
     '''duplicate a HairTube'''
-    hairMeshes = pm.selected()
-    if not hairMeshes:
+    hairInfoAll = selHair(returnInfo=True)
+    if not hairInfoAll:
         return
-    Cgroups=[]
-    for hair in hairMeshes:
-        try:
-            loftMesh=[l for l in hair.listConnections()[0].listConnections() if type(l)==pm.nodetypes.Loft][0]
-            Ctrls=[c for c in loftMesh.listConnections() if type(c)==pm.nodetypes.Transform]
-            ControlGroup = Ctrls[1].getParent()
-        except:
-            continue
-        if ControlGroup:
-            pm.select(hair,ControlGroup)
-            pm.duplicate(ic=1,un=1)
-            #pm.parent(duphair,hair.getParent())
-            if mirror:
-                pm.scale(ControlGroup,-1,smn=1,p=(0,0,0),ws=1)
-                pm.polyNormal(hair,nm=3)
-                for c in Ctrls:
-                    if not c.isVisible():
-                        c.show()
-                    c.centerPivots(val=True)
-                    if c.getParent() != ControlGroup:
-                        if not c.getParent().isVisible():
-                            c.getParent().show()
-                        c.getParent().centerPivots()
-                        c.getParent().hide()
-                    c.hide()
-            pm.xform(ControlGroup,ws=1,piv=pm.xform(ControlGroup.getChildren()[0],q=1,ws=1,piv=1)[:3])
-            Cgroups.append(ControlGroup)
-    if Cgroups:
-        pm.select(Cgroups)
+    Cgroups = []
+    for hair in hairInfoAll:
+        pm.select(hair[0][0],hair[1])
+        ctrls=hair[1].listRelatives(type=pm.nt.Transform)
+        pm.duplicate(ic=1, un=1)
+        if mirror:
+            pm.scale(hair[1], -1, smn=1, p=(0,0,0), ws=1)
+            pm.polyNormal(hair[0][0], nm=3)
+            if not hair[1].isVisible():
+                    c.show()
+            for c in ctrls:
+                if not c.isVisible():
+                    c.show()
+                c.centerPivots(val=True)
+                c.hide()
+            hair[1].hide()
+        pm.select(hair[0][0], r=1)
+        selHair(setPivot=True)
+        Cgroups.append(hair[1])
+    pm.select(Cgroups, r=1)
 
-def delHair(keepHair=False):
+def delHair(dType='self', keepHair=False):
+    ''' delete Hair with Controls or Control only'''
+    sel = pm.selected()
     newAttr =['lengthDivisions','widthDivisions']
-    hairMeshes = pm.selected()
-    if not hairMeshes:
+    hairInfoAll = selHair(returnInfo=True)
+    if not hairInfoAll:
         return
-    Cgroups=[]
-    for hair in hairMeshes:
-        try:
-            loftMesh=[l for l in hair.listConnections()[0].listConnections() if type(l)==pm.nodetypes.Loft][0]
-            Ctrls=[c for c in loftMesh.listConnections() if type(c)==pm.nodetypes.Transform]
-            ControlGroup = Ctrls[1].getParent()
-            Cgroups.append(ControlGroup)
-        except:
-            continue
+    Cgroups = [h[1] for h in hairInfoAll]
+    hairMeshes = [h[0][0] for h in hairInfoAll]
     if not keepHair:
         pm.delete(hairMeshes)
         pm.delete(Cgroups)
     else:
-        for hair in hairMeshes:
-            pm.delete(hair,ch=True)
-            for a in newAttr:
-                if (pm.attributeQuery(a, exists=1, node=hair)):
-                    pm.deleteAttr(hair+"."+a)
-            #pm.xform(hair,ws=1,piv=pm.xform(Cgroups[hairMeshes.index(hair)],q=1,ws=1,piv=1)[:3])
-        pm.delete(Cgroups)
+        if dType == 'all':
+            for hair in hairMeshes:
+                pm.select(hair, r=1)
+                selHair(setPivot=True)
+                pm.xform(hair,ws=1,piv=pm.xform(Cgroups[hairMeshes.index(hair)],q=1,ws=1,piv=1)[:3])
+                pm.delete(hair,ch=True)
+                for a in newAttr:
+                    if (pm.attributeQuery(a, exists=1, node=hair)):
+                        pm.deleteAttr(hair+"."+a)
+            pm.delete(Cgroups)
+        elif (dType == 'self' or dType == 'above' or dType == 'below'):
+            for ob in sel:
+                ctrls = Cgroups[sel.index(ob)].listRelatives(type=pm.nt.Transform)
+                if ctrls.count(ob):
+                    if dType == 'self' or ctrls.index(ob) == 0 or ctrls.index(ob) == (len(ctrls)-1):
+                        pm.delete(ob)
+                    elif dType == 'above':
+                        pm.delete(ctrls[ctrls.index(ob)+1:])
+                        pm.scale(ctrls[ctrls.index(ob)], [0.001,0.001,0.001], a=1)
+                    elif dType == 'below':
+                        pm.delete(ctrls[:ctrls.index(ob)])
+                        pm.scale(ctrls[ctrls.index(ob)], [0.001,0.001,0.001], a=1)
+            for hair in hairMeshes:
+                pm.select(hair)
+                selHair(rebuild=[True,
+                                 hair.attr('lengthDivisions').get(),
+                                 hair.attr('widthDivisions').get()])
 
 def cleanHairMesh():
-    newAttr =['width','baseWidth','lengthDivisions','widthDivisions']
-    meshes = pm.ls("HairMesh*")
-    if meshes:
-        for mesh in meshes:
-            print mesh
-            pm.delete(mesh,ch=True)
-            for a in newAttr:
-    #            print a
-                if (pm.attributeQuery (a, exists=1, node=mesh)):
-                    pm.deleteAttr (mesh+"."+a)
-    if pm.objExists("HairCtrlGroup''("):
+    ''' remove All Hair Control in scene'''
+    allMesh = pm.ls(g=1)
+    allMeshTransform = [m.getParent() for m in allMesh]
+    pm.select(allMeshTransform, r=1)
+    delHair(keepHair=True)
+    pm.select(d=1)
+    if pm.objExists("HairCtrlGroup"):
         pm.delete("HairCtrlGroup",hi='below')
     if pm.objExists("HairBaseProfileCurve"):
         pm. delete("HairBaseProfileCurve")
@@ -475,55 +508,37 @@ def ToggleHairCtrlVis(state='switch'):
     elif state=='hide':
         pm.hide([ctrl.getChildren() for ctrl in hairCtrlsGroup.getChildren()])
 
-def pickWalkHairCtrl(d='right',r=False,add=False):
+def pickWalkHairCtrl(d='right', add=False):
+    '''Pick Walk and hide Controls'''
     sel=pm.selected()
-    if not sel:
+    hairInfoAll = selHair(returnInfo=True)
+    if not hairInfoAll:
         return
     ToggleHairCtrlVis(state='hide')
-    pm.select(d=1)
-    newSel=[]
-    for o in sel:
-        if o.listRelatives(shapes=1):
-            if type(o.listRelatives(shapes=1)[0])==pm.nodetypes.Mesh:
-                pm.select(o,r=1)
-                if d=='up':
-                    nextOb=selHair()[0]
-                else:
-                    nextOb=selHair(selectTip=True)[0]
-                nextOb.show()
-                #pm.showHidden(nextOb)
-            elif type(o.listRelatives(shapes=1)[0])==pm.nodetypes.NurbsCurve and o.listRelatives(shapes=1)[0].listConnections(type=pm.nodetypes.Loft):
-                pm.pickWalk(o,d=d,r=r)
-                nextOb=pm.selected()
-                if r:
-                    for ob in nextOb:
-                        ob.show()
-                else:
-                    if not add:
-                        #ToggleHairCtrlVis(state='hide')
-                        nextOb[0].show()
-                        pm.select(nextOb[0])
-                    else:
-                        newSel.append(o)
-                        newSel.extend(nextOb)
-                o.hide()
-                #pm.showHidden(nextOb)
+    if d == 'up':
+        pm.select([h[0][0] for h in hairInfoAll])
+        selHair()
+        for o in pm.selected():
+            o.show()
+    elif d == 'down':
+        pm.select([h[0][0] for h in hairInfoAll])
+        selHair(selectTip=True)
+        for o in pm.selected():
+            o.show()
+    else:
+        ctrlGroups= [h[1] for h in hairInfoAll]
+        for ob in sel:
+            ctrls = ctrlGroups[sel.index(ob)].listRelatives(type=pm.nt.Transform)
+            if ctrls.count(ob):
+                for c in ctrls:
+                    c.show()
+                pm.select(ob, add=1)
             else:
-                continue
-        else:
-            if o.getParent()==pm.ls('HairCtrlGroup')[0]:
-                nextOb=pm.pickWalk(o,d='down')
-                nextOb=pm.selected()[0]
-                nextOb.show()
-                #o.hide()
-                #pm.showHidden(nextOb)
-            else:
-                continue
-    if newSel:
-        ToggleHairCtrlVis(state='hide')
-        for ob in newSel:
-            ob.show()
-        pm.select(newSel)
+                selHair(selectTip=True)
+                for c in ctrls:
+                    c.show()
+        pm.pickWalk(d=d)
+
 def loc42Curve():
     sel = pm.selected()
     if len(sel)>3:
