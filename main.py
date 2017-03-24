@@ -151,7 +151,9 @@ def SendFileUI():
                   sendCommon=sendTexCommoncbUI.getValue()))
     pm.showWindow()
 def makeHairUI():
-    shapeType=['circle','triangle','square']
+    shapeType = ['circle','triangle','square']
+    axisType = ['x', 'y', 'z']
+    mirrorType = ['world', 'local']
     if pm.window('MakeHairUI', ex=True):
         pm.deleteUI('MakeHairUI', window=True)
         pm.windowPref('MakeHairUI', remove=True)
@@ -181,9 +183,16 @@ def makeHairUI():
     RevCurveUI = pm.checkBox(label="   ", value=False)
     pm.text(label="Control Type: ", align='right')
     cShapeOpUI = pm.optionMenu()
-    # Result: ui.OptionMenu('window1|columnLayout64|optionMenu1') #
     for st in shapeType:
         pm.menuItem(label=st)
+    pm.text(label="Mirror Type: ", align='right')
+    mirrorOpUI = pm.optionMenu()
+    for mt in mirrorType:
+        pm.menuItem(label=mt)
+    pm.text(label="Mirror Axis: ", align='right')
+    axisOpUI = pm.optionMenu()
+    for ax in axisType:
+        pm.menuItem(label=ax)
     pm.button(label="SelectCtr", c=lambda *arg: ul.selHair())
     pm.popupMenu()
     setPivotUI = pm.menuItem(label='SetPivot',
@@ -225,7 +234,9 @@ def makeHairUI():
               c=lambda *arg: ul.dupHairMesh())
     pm.popupMenu()
     pm.menuItem(label='Mirror',
-                c=lambda *arg: ul.dupHairMesh(mirror=True))
+                c=lambda *arg: ul.dupHairMesh(mirror=True,
+                                              axis=axisOpUI.getValue(),
+                                              space=mirrorOpUI.getValue()))
     pm.button(label="RemoveHair",
               c=lambda *arg: ul.delHair())
     pm.popupMenu()

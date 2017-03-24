@@ -47,6 +47,32 @@ def exportCam():
         cc = 'FBXExport -f "%s" -s' % filePath
         mm.eval(cc)
 
+def mirrorTransform(obs, axis="x",xform=[0,4]):
+    if not obs:
+        print "no object to mirror"
+        return
+    axisDict = {
+        "x":('tx', 'ry', 'rz', 'sx'),
+        "y":('ty', 'rx', 'rz', 'sy'),
+        "z":('tz', 'rx', 'ry', 'sz')}
+    #print obs
+    if type(obs) != list:
+        obs = [obs]
+    for ob in obs:
+        if type(ob) == pm.nt.Transform:
+            for at in axisDict[axis][xform[0]:xform[1]]:
+                ob.attr(at).set(ob.attr(at).get()*-1)
+
+def lockTransform(obs,lock=True):
+    if not obs:
+        print "no object to mirror"
+        return
+    if type(obs) != list:
+        obs = [obs]
+    for ob in obs:
+        for at in ['translate','rotate','scale']:
+            ob.attr(at).set(lock=lock)
+
 def addVrayOpenSubdivAttr():
     '''add Vray OpenSubdiv attr to enable smooth mesh render'''
     sel = pm.selected()
@@ -125,6 +151,8 @@ def createHairMesh(profilesList,
     pm.nurbsToPolygonsPref(pt=1, un=4, vn=7, f=2, ut=2, vt=2)
     HairMesh = pm.loft(n=name, po=1, ch=1, u=1, c=0, ar=1, d=3, ss=1, rn=0, rsn=True)
     ###
+    #lock all Transform
+    lockTransform(HairMesh[0])
     #custom Attribute add
     HairMesh[0].addAttr('lengthDivisions', min=1, at='long', dv=lengthDivs)
     HairMesh[0].addAttr('widthDivisions', min=4, at='long', dv=widthDivs)
@@ -267,6 +295,7 @@ def selHair(
         selectTip=False,
         selectRoot=False,
         selectAll=False,
+        pivot=0,
         setPivot=True,
         returnInfo=False,
         rebuild=[False, 7, 4], cShape=(False, 'circle', 1)):
@@ -317,7 +346,7 @@ def selHair(
                         ControlGroup,
                         ws=1,
                         piv=pm.xform(
-                            ControlGroup.listRelatives(type=pm.nodetypes.Transform)[0],
+                            ControlGroup.listRelatives(type=pm.nodetypes.Transform)[pivot],
                             q=1, ws=1, piv=1)[:3])
                 if rebuild[0]:
                     NewControls = ControlGroup.listRelatives(type=pm.nodetypes.Transform)
@@ -351,6 +380,8 @@ def selHair(
                 pm.select(d=1)
                 for cGroup in Cgroups:
                     #print cGroup[1]
+                    for c in cGroup[1].listRelatives(type=pm.nt.Transform):
+                        c.show()
                     if selectTip:
                         hairTipsList = cGroup[1].listRelatives(type=pm.nt.Transform)[-1]
                         pm.select(hairTipsList, add=1)
@@ -426,7 +457,7 @@ def splitHairCtrl(d='up'):
         pm.select(newCtrl)
         pm.setToolTo('moveSuperContext')
 
-def dupHairMesh(mirror=False):
+def dupHairMesh(mirror=False,axis='x',space='world'):
     '''duplicate a HairTube'''
     hairInfoAll = selHair(returnInfo=True)
     if not hairInfoAll:
@@ -437,18 +468,28 @@ def dupHairMesh(mirror=False):
         ctrls = hair[1].listRelatives(type=pm.nt.Transform)
         pm.duplicate(ic=1, un=1)
         if mirror:
-            pm.scale(hair[1], -1, smn=1, p=(0, 0, 0), ws=1)
+            #mirrorTransform(hair[1])
             pm.polyNormal(hair[0][0], nm=3)
+            oldPos = hair[1].getTranslation(space='world')
+            print oldPos
             if not hair[1].isVisible():
                 c.show()
             for c in ctrls:
                 if not c.isVisible():
                     c.show()
-                c.centerPivots(val=True)
-                c.hide()
+                if space == 'world': 
+                    pm.parent(c,w=1)
+                    mirrorTransform(c,axis=axis)
+                    pm.parent(c,hair[1])
+                else:
+                    mirrorTransform(c,axis=axis)
+                #c.hide()
             #hair[1].hide()
         pm.select(hair[0][0], r=1)
+        randU()
         selHair(setPivot=True)
+        if mirror and space != 'world':
+            hair[1].setTranslation(oldPos,space='world')
         Cgroups.append(hair[1])
     pm.select(Cgroups, r=1)
 
@@ -474,6 +515,7 @@ def delHair(dType='all', keepHair=False):
                          piv=pm.xform(Cgroups[hairMeshes.index(hair)],
                                       q=1, ws=1, piv=1)[:3])
                 pm.delete(hair, ch=True)
+                lockTransform(hair,lock=False)
                 for a in newAttr:
                     if pm.attributeQuery(a, exists=1, node=hair):
                         pm.deleteAttr(hair+"."+a)
