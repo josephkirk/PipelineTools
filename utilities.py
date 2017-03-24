@@ -365,6 +365,15 @@ def selHair(
                         mat=curMaterial,
                         lengthDivs=rebuild[1], widthDivs=rebuild[2])
                     pm.parent(newHair[0], oldParent)
+                    #print hair[0]
+                    #print hair[0].getShape().listConnections(type=pm.nt.PolyTweakUV)[0].listConnections(type=pm.nt.PolyNormal)
+                    if hair[0].getShape().listConnections(
+                        type=pm.nt.PolyTweakUV)[0].listConnections(
+                            type=pm.nt.PolyNormal):
+                        try:
+                            pm.polyNormal(newHair[0], nm=3)
+                        except:
+                            print "can't reverse"
                     pm.delete(hair[0])
                     del hair
                     hair = newHair[0]
