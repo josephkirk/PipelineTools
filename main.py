@@ -37,6 +37,7 @@ def SendFile(num="",
              sendUV=True,
              sendZbr=True,
              sendTex=False,
+             sendPattern=False,
              sendCommon=False):
     if fromFile:
         fullPath = cm.file(q=1, sn=1).split("/")
@@ -90,10 +91,10 @@ def SendFile(num="",
             print "uv CopyError\n", why
     elif sendZbr:
         try:
-            if os.path.isdir("/".join([texSrc, "zbr"])):
+            if os.path.isdir("/".join([texSrc, fileVar, "zbr"])):
                 ul.sysCop(
-                    "/".join([texSrc, "zbr"]),
-                    "/".join([texDest, "zbr"]))
+                    "/".join([texSrc, fileVar, "zbr"]),
+                    "/".join([texDest, fileVar, "zbr"]))
             else:
                 return
         except (IOError, OSError) as why:
@@ -104,6 +105,16 @@ def SendFile(num="",
             print "Finished send Texture"
         except (IOError, OSError) as why:
             print "texture CopyError\n", why
+    elif sendPattern:
+        try:
+            if os.path.isdir("/".join([texSrc, fileVar, "pattern"])):
+                ul.sysCop(
+                    "/".join([texSrc, fileVar, "pattern"]),
+                    "/".join([texDest, fileVar, "pattern"]))
+            else:
+                return
+        except (IOError, OSError) as why:
+            print "Pattern CopyError\n", why
     elif sendCommon:
         try:
             ul.sysCop(
@@ -138,6 +149,8 @@ def SendFileUI():
     sendZbrcbUI = pm.checkBox(label="   ", value=False)
     pm.text(label="Send Textures: ", align='right')
     sendTexcbUI = pm.checkBox(label="   ", value=False)
+    pm.text(label="Send Patterns: ", align='right')
+    sendPatterncbUI = pm.checkBox(label="   ", value=False)
     pm.text(label="Send _Commmon: ", align='right')
     sendTexCommoncbUI = pm.checkBox(label="   ", value=False)
     pm.text(label="", align='right')
@@ -146,6 +159,7 @@ def SendFileUI():
                   num=numUI.getText(),
                   sendFile=sendFilecbUI.getValue(),
                   sendTex=sendTexcbUI.getValue(),
+                  sendPattern=sendPatterncbUI.getValue(),
                   sendUV=sendUVcbUI.getValue(),
                   sendZbr=sendZbrcbUI.getValue(),
                   sendCommon=sendTexCommoncbUI.getValue()))
