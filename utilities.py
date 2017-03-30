@@ -692,8 +692,8 @@ def getSceneRelatedData(getPath=True):
     CHPathDict['Projectname']=sceneNameData[0]
     CHPathDict['CHname']=sceneNameData[1]
     CHPathDict['CHversion']=sceneNameData[2]
-    CHPathDict['fileDir'] = os.path.normpath(os.path.join(pm.workspace.path,'scenes'))
-    CHPathDict['texDir'] = os.path.normpath(os.path.join(pm.workspace.path,'sourceimages'))
+    CHPathDict['fileDir'] = os.path.normpath(os.path.join(pm.workspace.path,'scenes',CHPath))
+    CHPathDict['texDir'] = os.path.normpath(os.path.join(pm.workspace.path,'sourceimages',CHPath))
     if getPath:
         for dirName, subdirList, fileList in os.walk(CHPathDict['fileDir']):
             #print dirName,subdirList,fileList
@@ -732,6 +732,156 @@ def getSceneRelatedData(getPath=True):
                     CHPathDict['texFile']=texFilesList
                 break
     return CHPathDict
+
+def getProjectData(getPath=True):
+    CHPath= 'Model/CH'
+    texexts=['jpg','png']
+    psdexts=['psd','psb']
+    #sceneNameData=pm.sceneName().split('/')[-1].split('_')
+    CHPathDict={}
+    #CHPathDict['Projectname']=pm.workspace.path
+    #CHPathDict['CHname']=sceneNameData[1]
+    #CHPathDict['CHversion']=sceneNameData[2]
+    CHPathDict['fileDir'] = os.path.normpath(os.path.join(pm.workspace.path,'scenes',CHPath))
+    CHPathDict['texDir'] = os.path.normpath(os.path.join(pm.workspace.path,'sourceimages',CHPath))
+    if getPath:
+        CHPathDict['CH'] = [CHName for CHName in os.listdir(CHPathDict['fileDir'])
+                                if CHName.split('_')[0].isdigit()]
+        CHPathDict['CHver'] ={}
+        for ch in CHPathDict['CH']:
+            CHPathDict['CHver'][ch]=os.listdir(os.path.join(CHPathDict['fileDir'],ch))
+    return CHPathDict
+
+class character:
+    def __init__(self, name=""):
+        self.name = name
+        self.ID = 0
+        self.scenePath = ""
+        self.render = {}
+        self.render['cloth'] = []
+        self.render['hair'] = []
+        self.files = {}
+        self.files['cloth'] = []
+        self.files['hair'] = []
+        self.pattern = ""
+        self.uv = ""
+        self.zbr = ""
+        self.texPath = ""
+        self.texCommon = ""
+        self.texFiles = {}
+        self.texFiles['hair'] = []
+        self.texFiles['hairPSD'] = []
+        self.texFiles['cloth'] = []
+        self.texFiles['clothPSD'] = []
+        self.psd = {}
+        self.psd['hair'] =""
+        self.psd['cloth'] =""
+        self.version = {}
+        self.getPath()
+        self.getFiles()
+    def getPath(self):
+        CHPath = os.path.normpath(os.path.join(pm.workspace.path,'scenes/Model/CH'))
+        CHTexPath = os.path.normpath(os.path.join(pm.workspace.path,'sourceimages/Model/CH'))
+        if not os.path.isdir(CHPath) and not os.path.isdir(CHTexPath):
+            print "These directories are not exist, please create them:\n\t%s\n\t%s" % (CHPath,CHTexPath)
+            return
+        CHVersion = []
+        for subDir in os.listdir(CHPath):
+            if self.name in subDir:
+                self.ID = int(subDir.split('_')[0])
+                self.scenePath = os.path.join(CHPath,subDir)
+                texPath = os.path.join(CHTexPath,subDir)
+                if os.path.isdir(texPath):
+                    self.texPath = texPath
+                    for d in os.listdir(texPath):
+                        if d.lower() == '_common':
+                            self.texCommon = os.path.join(texPath,d)
+                            for subD in os.listdir(self.texCommon):
+                                if subD.lower() == 'psd':
+                                    self.psd['hair'] = os.path.join(texPath,d,subD)
+                for subdir in os.listdir(self.scenePath):
+                    if self.name in subdir and os.path.isdir(os.path.join(self.scenePath,subdir)):
+                        CHVersion.append(subdir)
+                if CHVersion:
+                    for chv in CHVersion:
+                        chvPath = os.path.join(self.scenePath,chv)
+                        chvtPath = os.path.join(self.texPath,chv)
+                        self.version[chv.split('_')[1]]= {}
+                        self.version[chv.split('_')[1]]['scene']=chvPath
+                        if os.path.isdir(chvtPath):
+                            self.version[chv.split('_')[1]]['tex']=chvtPath
+                            for subD in os.listdir(chvtPath):
+                                if subD.lower() == 'psd':
+                                    self.psd['hair'] = os.path.join(texPath,d,subD)
+                        else:
+                            self.version[chv.split('_')[1]]['tex']=None
+    def getFiles(self):
+        fileSearchPath = []
+        texSearchPath = []
+        texFileType = ['jpg', 'png', 'tif', 'tiff']
+        excludedName = ['face','hand','body','eye','teeth','tongue','head']
+        if self.version:
+            fileSearchPath.extend([self.version[vp]['scene'] for vp in self.version])
+            texSearchPath.extend([self.version[vp]['tex'] for vp in self.version])
+        else:
+            fileSearchPath.append(self.scenePath)
+            texSearchPath.append(self.texPath)
+        if not fileSearchPath and not texSearchPath:
+            print "Something Wrong, can't get Files"
+            return
+        for d in fileSearchPath:
+            for f in os.listdir(d):
+                if (self.name in f
+                        and ".mb" in f
+                        and os.path.isfile(os.path.join(d,f))):
+                    self.files['hair'].append(os.path.join(d,f))
+                elif f.lower() == 'clothes':
+                    for cf in os.listdir(os.path.join(d,f)):
+                        if (self.name in cf
+                                and ".mb" in cf
+                                and os.path.isfile(os.path.join(d,f,cf))):
+                            self.files['cloth'].append(os.path.join(d,f,cf))
+                        elif cf.lower == 'rend':
+                            self.render['cloth'].append(os.path.join(d,f,cf))
+                elif f.lower() == 'rend':
+                    self.render['hair'].append(os.path.join(d,f))
+        for d in texSearchPath:
+            for subdir in os.listdir(d):
+                fullPath = os.path.join(d,subdir)
+                if subdir.lower() == 'uv':
+                    self.uv = fullPath
+                elif subdir.lower() == 'pattern':
+                    self.pattern = fullPath
+                elif subdir.lower() == 'zbr':
+                    self.zbr = fullPath
+                elif subdir.lower() == 'psd':
+                    self.psd['cloth'] = fullPath
+                    for f in os.listdir(self.psd['cloth']):
+                        fullPath = os.path.join(self.psd['cloth'],f)
+                        if (self.name in f
+                                and f.endswith('psd')
+                                and all([c not in f for c in excludedName])
+                                and os.path.isfile(fullPath)):
+                            self.texFiles['clothPSD'].append(fullPath)
+                elif (self.name in subdir
+                        and any([subdir.endswith(c) for c in texFileType])
+                        and all([c not in subdir for c in excludedName])
+                        and os.path.isfile(fullPath)):
+                    self.texFiles['cloth'].append(fullPath)
+        for f in os.listdir(self.texCommon):
+            fullPath = os.path.join(self.texCommon,f)
+            if (self.name in f
+                    and "hair" in f
+                    and any([f.endswith(c) for c in texFileType])
+                    and all([c not in f for c in excludedName])
+                    and os.path.isfile(fullPath)):
+                self.texFiles['hair'].append(fullPath)   
+    def getNewestScene(self,type='cloth',open=False):
+        self.files[type].sort(key=os.path.getmtime)
+        newestScene = self.files[type][-1]
+        if open:
+            pm.openFile(newestScene, f=1)
+        return newestScene
 
 def setTexture():
     for m in oHairSG:

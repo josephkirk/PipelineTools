@@ -71,25 +71,25 @@ def SendFile(num="",
             ul.sysCop(
                 "/".join([sceneSrc, fileVar, sceneName]),
                 "/".join([sceneDest, fileVar, sceneName]))
-            if os.path.isdir("/".join([sceneSrc, "rend"])):
+            if os.path.isdir("/".join([sceneSrc, fileVar, "rend"])):
                 ul.sysCop(
-                    "/".join([sceneSrc, "rend"]),
-                    "/".join([sceneDest, "rend"]))
+                    "/".join([sceneSrc, fileVar, "rend"]),
+                    "/".join([sceneDest, fileVar, "rend"]))
             else:
                 return
         except (IOError, OSError) as why:
             print "scene CopyError\n", why
-    elif sendUV:
+    if sendUV:
         try:
-            if os.path.isdir("/".join([texSrc, "uv"])):
+            if os.path.isdir("/".join([texSrc, fileVar, "uv"])):
                 ul.sysCop(
-                    "/".join([texSrc, "uv"]),
-                    "/".join([texDest, "uv"]))
+                    "/".join([texSrc, fileVar, "uv"]),
+                    "/".join([texDest, fileVar, "uv"]))
             else:
                 return
         except (IOError, OSError) as why:
             print "uv CopyError\n", why
-    elif sendZbr:
+    if sendZbr:
         try:
             if os.path.isdir("/".join([texSrc, fileVar, "zbr"])):
                 ul.sysCop(
@@ -99,13 +99,13 @@ def SendFile(num="",
                 return
         except (IOError, OSError) as why:
             print "zbr CopyError\n", why
-    elif sendTex:
+    if sendTex:
         try:
             ul.sysCop(texSrc, texDest)
             print "Finished send Texture"
         except (IOError, OSError) as why:
             print "texture CopyError\n", why
-    elif sendPattern:
+    if sendPattern:
         try:
             if os.path.isdir("/".join([texSrc, fileVar, "pattern"])):
                 ul.sysCop(
@@ -115,20 +115,14 @@ def SendFile(num="",
                 return
         except (IOError, OSError) as why:
             print "Pattern CopyError\n", why
-    elif sendCommon:
+    if sendCommon:
         try:
             ul.sysCop(
-                "/".join([texSrc, '_Common']),
-                "/".join([texDest, '_Common']))
+                "/".join([texSrc, fileVar, '_Common']),
+                "/".join([texDest, fileVar, '_Common']))
             print "Finished send Common"
         except (IOError, OSError) as why:
             print "texture CopyError\n", why
-    else:
-        print fileVar
-        print fullPath
-        print sceneSrc
-        print texSrc
-        print "nothing to do"
     print "/"*2+"Ssjp-010/scc/NS57"+'/to/'+todayFolder
 
 def SendFileUI():
