@@ -1,4 +1,5 @@
 import pymel.core as pm
+import pymel.util.path as pp
 import maya.cmds as cm
 import maya.mel as mm
 import os
@@ -158,6 +159,40 @@ def SendFileUI():
                   sendZbr=sendZbrcbUI.getValue(),
                   sendCommon=sendTexCommoncbUI.getValue()))
     pm.showWindow()
+
+def sendFileUI():
+    if pm.window('SendFileUI2', ex=True):
+        pm.deleteUI('SendFileUI2', window=True)
+        pm.windowPref('SendFileUI2', remove=True)
+    pm.window('SendFileUI2', t="SendFileUI")
+    pm.frameLayout(label="SendFile")
+    pm.columnLayout(adjustableColumn=1)
+    pm.rowColumnLayout(numberOfColumns=4, columnWidth=[(1, 90), (2, 120), (3, 100), (4, 100)])
+    pm.text(label="Number: ", align='right')
+    numUI = pm.textField(text="")
+    def createOption():
+        pm.rowColumnLayout(numberOfColumns=2, columnWidth=[(1, 100), (2, 120)])    
+        pm.text(label="Send File: ", align='right')
+        sendFilecbUI = pm.checkBox(label="   ", value=True)
+        pm.text(label="Send UV: ", align='right')
+        sendUVcbUI = pm.checkBox(label="   ", value=False)
+        pm.text(label="Send Zbr: ", align='right')
+        sendZbrcbUI = pm.checkBox(label="   ", value=False)
+        pm.text(label="Send Textures: ", align='right')
+        sendTexcbUI = pm.checkBox(label="   ", value=False)
+        pm.text(label="Send Patterns: ", align='right')
+        sendPatterncbUI = pm.checkBox(label="   ", value=False)
+        pm.text(label="Send _Commmon: ", align='right')
+        sendTexCommoncbUI = pm.checkBox(label="   ", value=False)
+        pm.text(label="", align='right')
+        pm.setParent('..')
+    def listCH():
+        for d in pp('/'.join([pm.workspace.path,'scenes/Model/CH'])).normpath().dirs():
+            pm.text(label=d.basename(), align='right')
+            createOption()
+    listCH()
+    pm.showWindow()
+
 def makeHairUI():
     shapeType = ['circle','triangle','square']
     axisType = ['x', 'y', 'z']
