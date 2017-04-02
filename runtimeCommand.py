@@ -6,7 +6,7 @@ def setCommand():
     if pm.hotkeySet('HairOps', q=1, exists=1):
         pm.hotkeySet('HairOps', edit=1, current=1)
     else:
-        pm.hotkeySet('HairOps', source="Maya_Default", current=1)
+        pm.hotkeySet('HairOps', source="Maya_Defahot", current=1)
     for ca in pm.windows.runTimeCommand(uca=1, q=1):
         if ca.find('HairOps') == -1:
             pm.windows.runTimeCommand(ca, edit=1, delete=1, s=1)
@@ -16,11 +16,11 @@ def setCommand():
     #   alt = True,
     #   n = 'HairOpsMarkingMenu_Press',
     #   rn = 'HairOpsMarkingMenu_Release')
-    importCommand = "import PipelineTools.utilities as ul\nreload(ul)"
+    importCommand = "import PipelineTools.hairOps as ho\nreload(ho)"
     commandsDict = {}
     hairCommands_dict = {}
     hairCommands_dict["MakeHair"] = (
-        "\n".join([importCommand, "ul.makeHairMesh()"]),
+        "\n".join([importCommand, "ho.makeHairMesh()"]),
         "Make Hair",
         ["", False, False, False])
     hairCommands_dict['MakeHairUI'] = (
@@ -28,87 +28,87 @@ def setCommand():
         "Make Hair UI",
         ["", False, False, False])
     hairCommands_dict['DuplicateHair'] = (
-        "\n".join([importCommand, "ul.dupHairMesh()"]),
+        "\n".join([importCommand, "ho.dupHairMesh()"]),
         "Duplicate Hair along with Controls",
         ["#", False, False, False])
     hairCommands_dict['MirrorHair'] = (
-        "\n".join([importCommand, "ul.dupHairMesh(mirror=True)"]),
+        "\n".join([importCommand, "ho.dupHairMesh(mirror=True)"]),
         "Mirror Hair along with Controls",
         ["%", False, False, False])
     hairCommands_dict['SelectHair'] = (
-        "\n".join([importCommand, "ul.pickWalkHairCtrl(d='up')"]),
+        "\n".join([importCommand, "ho.pickWalkHairCtrl(d='up')"]),
         "Select Hair Control Root",
         ["3", False, True, False])
     hairCommands_dict['SelectAllControls'] = (
-        "\n".join([importCommand, "ul.selHair(selectAll=True)"]),
+        "\n".join([importCommand, "ho.selHair(selectAll=True)"]),
         "Select All Controls of Hair",
         ["4", False, True, False])
     hairCommands_dict['SetHairPivotTip'] = (
-        "\n".join([importCommand, "ul.selHair(setPivot=True,pivot=-1)"]),
+        "\n".join([importCommand, "ho.selHair(setPivot=True,pivot=-1)"]),
         "set Hair Control Root Pivot to Root",
         ["5", False, True, False])
     hairCommands_dict['SplitHairControlUp'] = (
-        "\n".join([importCommand, "ul.splitHairCtrl(d='up')"]),
+        "\n".join([importCommand, "ho.splitHairCtrl(d='up')"]),
         "Add a Hair Control Toward Tip",
         ["2", True, True, False])
     hairCommands_dict['SplitHairControlDown'] = (
-        "\n".join([importCommand, "ul.splitHairCtrl(d='down')"]),
+        "\n".join([importCommand, "ho.splitHairCtrl(d='down')"]),
         "Add a Hair Control Toward Root",
         ["1", True, True, False])
     hairCommands_dict['DeleteHairAll'] = (
-        "\n".join([importCommand, "ul.delHair()"]),
+        "\n".join([importCommand, "ho.delHair()"]),
         "Delete Hair with its controls",
         ["$", False, False, False])
     hairCommands_dict['DeleteHairControl'] = (
-        "\n".join([importCommand, "ul.delHair(keepHair=True)"]),
+        "\n".join([importCommand, "ho.delHair(keepHair=True)"]),
         "Delete Hair controls but keep Hair Mesh",
         ["", False, False, False])
     hairCommands_dict['DeleteControlsUp'] = (
-        "\n".join([importCommand, "ul.delHair(dType='above', keepHair=True)"]),
+        "\n".join([importCommand, "ho.delHair(dType='above', keepHair=True)"]),
         "Delete All Controls From Select to Tip",
         ["4", True, True, False])
     hairCommands_dict['DeleteSelectControl'] = (
-        "\n".join([importCommand, "ul.delHair(dType='self', keepHair=True)"]),
+        "\n".join([importCommand, "ho.delHair(dType='self', keepHair=True)"]),
         "Delete Select Control",
         ["3", True, True, False])
     hairCommands_dict['DeleteControlsDown'] = (
-        "\n".join([importCommand, "ul.delHair(dType='below', keepHair=True)"]),
+        "\n".join([importCommand, "ho.delHair(dType='below', keepHair=True)"]),
         "Delete All Controls From Select to Root",
         ["5", True, True, False])
     hairCommands_dict['RebuildControlsUp'] = (
-        "\n".join([importCommand, "ul.splitHairCtrl(d='up')"]),
+        "\n".join([importCommand, "ho.splitHairCtrl(d='up')"]),
         "rebuild All Controls From Select to Tip",
         ["", False, False, False])
     hairCommands_dict['RebuildSelectControl'] = (
-        "\n".join([importCommand, "ul.splitHairCtrl(d='self')"]),
+        "\n".join([importCommand, "ho.splitHairCtrl(d='self')"]),
         "rebuild Select Control",
         ["", False, False, False])
     hairCommands_dict['RebuildControlsDown'] = (
-        "\n".join([importCommand, "ul.splitHairCtrl(d='down')"]),
+        "\n".join([importCommand, "ho.splitHairCtrl(d='down')"]),
         "rebuild All Controls From Select to Root",
         ["", False, False, False])
     hairCommands_dict['PickWalkHideRight'] = (
-        "\n".join([importCommand, "ul.pickWalkHairCtrl(d='right')"]),
+        "\n".join([importCommand, "ho.pickWalkHairCtrl(d='right')"]),
         "Pick Walk Right and hide last Select Control",
         ["2", False, True, False])
     hairCommands_dict['PickWalkAddRight'] = (
-        "\n".join([importCommand, "ul.pickWalkHairCtrl(d='right',add= True)"]),
+        "\n".join([importCommand, "ho.pickWalkHairCtrl(d='right',add= True)"]),
         "Pick Walk Right and add to last Select Control",
         ["@", False, True, False])
     hairCommands_dict['PickWalkHideLeft'] = (
-        "\n".join([importCommand, "ul.pickWalkHairCtrl(d='left')"]),
+        "\n".join([importCommand, "ho.pickWalkHairCtrl(d='left')"]),
         "Pick Walk Left and hide last Select Control",
         ["1", False, True, False])
     hairCommands_dict['PickWalkAddLeft'] = (
-        "\n".join([importCommand, "ul.pickWalkHairCtrl(d='left',add= True)"]),
+        "\n".join([importCommand, "ho.pickWalkHairCtrl(d='left',add= True)"]),
         "Pick Walk Left and add to last Select Control",
         ["!", False, True, False])
     hairCommands_dict['HideAllHairCtrls'] = (
-        "\n".join([importCommand, "ul.ToggleHairCtrlVis(state='hide')"]),
+        "\n".join([importCommand, "ho.ToggleHairCtrlVis(state='hide')"]),
         "Hide All Hair Controls",
         ["t", False, False, True])
     hairCommands_dict['ShowAllHairCtrls'] = (
-        "\n".join([importCommand, "ul.ToggleHairCtrlVis(state='show')"]),
+        "\n".join([importCommand, "ho.ToggleHairCtrlVis(state='show')"]),
         "Show All Hair Controls",
         ["t", False, True, True])
     commandsDict['HairOps'] = hairCommands_dict
