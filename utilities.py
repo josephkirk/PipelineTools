@@ -143,29 +143,29 @@ def GetAssetPath(Assetname, versionNum):
     try:
         CHversion = CH[versionNum-1]
         CHHairFiles = pp(CHversion.path['..']).files('*.mb')
-        CHHairFiles.sort(key=os.path.getmtime)
-        CHPath['hair'] = CHHairFiles[-1]
-        try:
+        if CHHairFiles:
+            CHHairFiles.sort(key=os.path.getmtime)
+            CHPath['hair'] = CHHairFiles[-1]
+        if CHversion.path.has_key('clothes'):
             CHClothFiles = pp(CHversion.path['clothes']).files('*.mb')
-            CHClothFiles.sort(key=os.path.getmtime)
-            CHPath['cloth'] = CHClothFiles[-1]
-        except:
-            pass
-            # print "No folder 'clothes' in %s " % CH.path
+            if CHClothFiles:
+                CHClothFiles.sort(key=os.path.getmtime)
+                CHPath['cloth'] = CHClothFiles[-1]
+                # print "No folder 'clothes' in %s " % CH.path
         try:
             CHPath['render'] = CHversion.path['rend']
         except:
             pass
             # print "No folder 'render' in %s " % CHversion.path['..']
-        CHPath['tex'] = pp(CHversion.texPath['..'])
+        CHPath['tex'] = CHversion.texPath['..']
         for k in ['pattern','uv','zbr']:
             try:
                 CHPath[k] = pp(CHversion.texPath[k])
             except:
                 pass
                 # print "no folder '%s' in %s " % (k, CHPath['tex'])
-    except:
-        print "Character %s has no version" % Assetname
+    except (IOError, OSError) as why:
+        print "Character %s has no version or \n\%s" % (Assetname,why)
     return CHPath
 
 def sendFile(CH,
@@ -173,6 +173,7 @@ def sendFile(CH,
              num=0,
              destdrive="",
              sendFile={
+                 'Send':False,
                  'hair':False,
                  'cloth':False,
                  'render':False,
@@ -182,11 +183,6 @@ def sendFile(CH,
                  'pattern':False,
                  '_common':False}):
     '''send NS57 File'''
-    AllPath = GetAssetPath(CH, ver)
-    #print AllPath
-    todayFolder = pm.date(f='YYYYMMDD')
-    if num and num != 1:
-        todayFolder = "_".join([todayFolder, ('%02d' % num)])
     def getDest(pa):
         paSplit = pa.splitall()[1:]
         projectSplit = pm.workspace.path.splitall()[1:-2]
@@ -215,36 +211,54 @@ def sendFile(CH,
             for t in fileList:
                 doCop(t)
         if AllPath.has_key(k):
-            texFiles = [f for f in AllPath[k].files()
+            try:
+                # texFiles = [f for f in os.listdir(AllPath[k])
+                #             if (os.path.isfile(os.path.join(AllPath[k],f))
+                #                 and CH in f)]
+                # texPath = r'%s' % unicode(AllPath[k])
+                # print os.listdir(texPath)
+                texFiles = [f for f in pp(AllPath[k]).files()
                         if (any([f.endswith(c) for c in ['jpg',
                                                          'png',
                                                          'tif',
                                                          'tiff']])
                             and CH in f.basename())]
-            if texFiles:
-                copFiles(texFiles)
-            else:
-                print "no Texture Files"
-            psdDir = [d for d in AllPath[k].dirs()
-                      if 'psd' in d]
-            if psdDir:
-                psdFiles = [f for f in psdDir.files()
-                            if(any([f.endswith(c) for c in ['psd', 'psb']])
-                               and CH in f.basename())]
-                copFiles(psdFiles)
-            else:
-                print "no Psd Files"
+                if texFiles:
+                    copFiles(texFiles)
+                else:
+                    print "no Texture Files"
+                psdDir = [d for d in pp(AllPath[k]).dirs()
+                          if 'psd' in d]
+                if psdDir:
+                    psdDir = psdDir[0]
+                    psdFiles = [f for f in psdDir.files()
+                                if(any([f.endswith(c) for c in ['psd', 'psb']])
+                                and CH in f.basename())]
+                    copFiles(psdFiles)
+                else:
+                    print "no Psd Files"
+            except (IOError, OSError) as why:
+                #print AllPath[k] 
+                print why
         else:
             print "no %s folder" % k
-    for key, value in sendFile.iteritems():
-        if key == 'tex' or key == '_common':
-            if value and key == 'tex':
-                sendTexFile('tex')
-            if value and key == '_common':
-                sendTexFile('_common')
-        else:
-            if value:
-                sendDir(key)
+    if sendFile['cloth']:
+        sendFile['clothRender'] = True
+    if sendFile['Send'] == True:
+        AllPath = GetAssetPath(CH, ver)
+        #print AllPath
+        todayFolder = pm.date(f='YYMMDD')
+        if num and num != 1:
+            todayFolder = "_".join([todayFolder, ('%02d' % num)])
+        for key, value in sendFile.iteritems():
+            if key == 'tex' or key == '_common':
+                if value and key == 'tex':
+                    sendTexFile('tex')
+                if value and key == '_common':
+                    sendTexFile('_common')
+            elif key != 'Send':
+                if value:
+                    sendDir(key)
 
 def checkDir(pa,force=True):
     if not os.path.exists(os.path.dirname(pa)):

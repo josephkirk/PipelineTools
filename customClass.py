@@ -1,6 +1,6 @@
 import os
 from os import listdir
-from os.path import join, isdir, normpath, isfile, getmtime
+from os.path import join, isdir, normpath, isfile, getmtime, abspath, exists
 import pymel.core as pm
 projectRoot = pm.workspace.path
 class Asset(object):
@@ -82,19 +82,28 @@ class subCharacter(Character):
         self.getversion(version)
     def getversion(self, version):
         def collectdir(dirDict):
-            for d in listdir(dirDict['..']):
-                if any([di in d.lower() for di in ['rend','clothes', 'pattern', 'zbr', 'uv']]):
-                    fullPath = join(dirDict['..'], d) 
-                    if isdir(fullPath):
-                        dirDict[d.lower()] = fullPath
+            try:
+                if exists(dirDict['..']):
+                    for d in listdir(dirDict['..']):
+                        if any([di in d.lower() for di in ['rend','clothes', 'pattern', 'zbr', 'uv']]):
+                            fullPath = join(dirDict['..'], d) 
+                            if isdir(fullPath):
+                                dirDict[d.lower()] = fullPath
+                                if 'cloth' in d.lower():
+                                    if isdir(join(fullPath,'rend')):
+                                         dirDict['clothRender'] = join(fullPath,'rend')
+            except (IOError,OSError) as why:
+                print why
         if version in self.version:
             self.version = version
             self.name = '_'.join([self.name, self.version])
-            RootPath = join(self.path, self.name)
             self.path = {}
-            self.path['..'] = RootPath
-            collectdir(self.path)
-            RootTexPath = join(self.texPath, self.name)
+            RootPath = join(self.path, self.name)
+            if exists(RootPath):
+                self.path['..'] = RootPath
+                collectdir(self.path)
             self.texPath = {}
-            self.texPath['..'] = RootTexPath
-            collectdir(self.texPath)
+            RootTexPath = r'%s' % join(self.texPath, self.name)
+            if exists(RootTexPath):
+                self.texPath['..'] = RootTexPath
+                collectdir(self.texPath)

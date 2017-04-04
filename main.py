@@ -52,8 +52,9 @@ def sendFileUI():
                             num=num,
                             destdrive=destdrive,
                             sendFile=sendFileDict)
-    pm.columnLayout()
+    #
     pm.frameLayout(label="Character List:")
+    #pm.columnLayout(adjustableColumn=1)
     #pm.gridLayout( numberOfColumns=4, cellWidthHeight=(120, 100))
     pm.rowColumnLayout(numberOfColumns=4,
                        columnWidth=[(1, 120), (2, 120), (3, 120), (4, 120)],
@@ -69,12 +70,17 @@ def sendFileUI():
                      for subd in subDirectory])):
             chname=d.basename().split('_')[1]
             sendFileUI_dict[chname]={}
-            pm.frameLayout(label=d.basename(),)
+            pm.frameLayout(label=d.basename())
             for subd in subDirectory:
                 if d.basename().split('_')[1] in subd.basename():
                     sendFileUI_dict[chname][subDirectory.index(subd)+1]=[]
                     pm.frameLayout(label=subd.basename(), cll=True, collapse=True)
                     pm.rowColumnLayout(numberOfColumns=2, columnWidth=[(1, 70), (2, 50)])
+                    sendFileUI_dict[chname][subDirectory.index(subd)+1].append(
+                            pm.checkBox(label='Send'))
+                    pm.text(label="")
+                    pm.separator(style='in')
+                    pm.separator(style='in')
                     for l in ['hair',
                               'cloth',
                               'render',
@@ -85,8 +91,10 @@ def sendFileUI():
                               '_common']:
                         sendFileUI_dict[chname][subDirectory.index(subd)+1].append(
                             pm.checkBox(label=l))
-                pm.setParent('..')
-                pm.setParent('..')
+                    pm.setParent('..')
+                    pm.separator(style='out')
+                    pm.setParent('..')
+                    #pm.separator(style='out')
             pm.setParent('..')
     pm.setParent('..')
     pm.separator(style='shelf')
