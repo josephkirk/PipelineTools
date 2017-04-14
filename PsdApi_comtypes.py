@@ -1,10 +1,14 @@
 from comtypes.client import CreateObject
 import os
 currentPath = os.getcwd()
-psApp = CreatePSDApp()
+
+#### init 
 def CreatePSDApp():
     dispatchCom = CreateObject("Photoshop.Application.11")
     return dispatchCom
+psApp = CreatePSDApp()
+
+### Function
 def runJSX (aFilePath ):
     '''run javascript'''
     id60 = psApp.stringIDToTypeID ( "AdobeScriptAutomation Scripts" )
@@ -14,6 +18,17 @@ def runJSX (aFilePath ):
     id62 = psApp.charIDToTypeID( "jsMs" )
     desc12.putString( id62, "null" )
     psApp.executeAction( id60, desc12, 2 )
+
+def createEmptyLayer(name):
+    newLayer = psApp.activeDocument.artLayers.add()
+    newLayer.name = name
+    return newLayer
+
+def createTextLayer(name):
+    newLayer = psApp.activeDocument.artLayers.add()
+    newLayer.name = name
+    newLayer.kind = 2
+    return newLayer
 
 def createSolidFillLayer(R, G, B):
     '''create Solid Color Layer'''
@@ -43,8 +58,28 @@ def createSolidFillLayer(R, G, B):
     id128 = psApp.stringIDToTypeID( "contentLayer" )
     desc25.putObject( id120, id128, desc26 )
     psApp.executeAction( id117, desc25, 2 )
+    newLayer = psApp.activeDocument.activeLayer
+    newLayer.name = name
+    return newLayer
 
-fillSolidColour(255,0,0)
+def createLayer(name,type)
+    typeDict = {
+        "empty": createEmptyLayer(name)
+        "text": createTextLayer(name)
+        "fill": createSolidFillLayer(name)
+    }
+    if typeDict.has_key(type):
+        newLayer = typeDict[type]
+    return newLayer
+
+################### Main Class
+    
+class Layer(object):
+    """Photoshop Layer Class"""
+    def __init__(self, name, layerType):
+        self.name = name
+        self.type = layerType
+    def 
 #jsxFile = r'%s\\%s' % (currentPath,'PsdjsxHelper.jsx')
 #print jsxFile
 #runJSX(jsxFile)
