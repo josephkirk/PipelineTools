@@ -142,28 +142,30 @@ def GetAssetPath(Assetname, versionNum):
     CHPath['_common'] = pp(CH.texCommon)
     try:
         CHversion = CH[versionNum-1]
-        CHHairFiles = pp(CHversion.path['..']).files('*.mb')
-        if CHHairFiles:
-            CHHairFiles.sort(key=os.path.getmtime)
-            CHPath['hair'] = CHHairFiles[-1]
-        if CHversion.path.has_key('clothes'):
-            CHClothFiles = pp(CHversion.path['clothes']).files('*.mb')
-            if CHClothFiles:
-                CHClothFiles.sort(key=os.path.getmtime)
-                CHPath['cloth'] = CHClothFiles[-1]
-                # print "No folder 'clothes' in %s " % CH.path
-        try:
-            CHPath['render'] = CHversion.path['rend']
-        except:
-            pass
-            # print "No folder 'render' in %s " % CHversion.path['..']
-        CHPath['tex'] = CHversion.texPath['..']
-        for k in ['pattern','uv','zbr']:
+        if CHversion.path.has_key('..'):
+            CHHairFiles = pp(CHversion.path['..']).files('*.mb')
+            if CHHairFiles:
+                CHHairFiles.sort(key=os.path.getmtime)
+                CHPath['hair'] = CHHairFiles[-1]
+            if CHversion.path.has_key('clothes'):
+                CHClothFiles = pp(CHversion.path['clothes']).files('*.mb')
+                if CHClothFiles:
+                    CHClothFiles.sort(key=os.path.getmtime)
+                    CHPath['cloth'] = CHClothFiles[-1]
+                    # print "No folder 'clothes' in %s " % CH.path
             try:
-                CHPath[k] = pp(CHversion.texPath[k])
+                CHPath['render'] = CHversion.path['rend']
             except:
                 pass
-                # print "no folder '%s' in %s " % (k, CHPath['tex'])
+                # print "No folder 'render' in %s " % CHversion.path['..']
+        if CHversion.texPath.has_key('..'):
+            CHPath['tex'] = CHversion.texPath['..']
+            for k in ['pattern','uv','zbr']:
+                try:
+                    CHPath[k] = pp(CHversion.texPath[k])
+                except:
+                    pass
+                    # print "no folder '%s' in %s " % (k, CHPath['tex'])
     except (IOError, OSError) as why:
         print "Character %s has no version or \n\%s" % (Assetname,why)
     return CHPath

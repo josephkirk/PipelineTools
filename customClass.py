@@ -97,13 +97,13 @@ class subCharacter(Character):
         if version in self.version:
             self.version = version
             self.name = '_'.join([self.name, self.version])
-            self.path = {}
             RootPath = join(self.path, self.name)
+            self.path = {}
             if exists(RootPath):
                 self.path['..'] = RootPath
                 collectdir(self.path)
+            RootTexPath = join(self.texPath, self.name)
             self.texPath = {}
-            RootTexPath = r'%s' % join(self.texPath, self.name)
             if exists(RootTexPath):
                 self.texPath['..'] = RootTexPath
                 collectdir(self.texPath)
