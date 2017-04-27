@@ -6,10 +6,11 @@ def setCommand():
     if pm.hotkeySet('HairOps', q=1, exists=1):
         pm.hotkeySet('HairOps', edit=1, current=1)
     else:
-        pm.hotkeySet('HairOps', source="Maya_Defahot", current=1)
-    for ca in pm.windows.runTimeCommand(uca=1, q=1):
-        if ca.find('HairOps') == -1:
-            pm.windows.runTimeCommand(ca, edit=1, delete=1, s=1)
+        pm.hotkeySet('HairOps', source="Maya_Default", current=1)
+    if pm.windows.runTimeCommand(uca=1, q=1):
+        for ca in pm.windows.runTimeCommand(uca=1, q=1):
+            if ca.find('HairOps') == -1:
+                pm.windows.runTimeCommand(ca, edit=1, delete=1, s=1)
     #pm.nameCommand('HairOpsMarkingMenu_PressNameCommand',ann='HairMk',c=command)
     #pm.hotkey(
     #   k = '`',

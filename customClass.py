@@ -17,10 +17,15 @@ class Asset(object):
     def get(self):
         RootPath = normpath(join(projectRoot, 'scenes', self.kind, self.type))
         RootTexPath = normpath(join(projectRoot, 'sourceimages', self.kind, self.type))
+        XgenPath = normpath(join(projectRoot, 'xgen', 'collections'))
         if not isdir(RootPath) and not isdir(RootTexPath):
             print "These directories are not exist, please create them:\n\t%s\n\t%s" % (RootPath,RootTexPath)
             return
         CHList = []
+        if XgenPath:
+            for d in listdir(XgenPath):
+                if self.name in d:
+                    self.xgenPath = join(XgenPath, d)
         for d in listdir(RootPath):
             if self.name in d:
                 self.path = join(RootPath, d)
@@ -85,13 +90,16 @@ class subCharacter(Character):
             try:
                 if exists(dirDict['..']):
                     for d in listdir(dirDict['..']):
-                        if any([di in d.lower() for di in ['rend','clothes', 'pattern', 'zbr', 'uv']]):
-                            fullPath = join(dirDict['..'], d) 
+                        if any([di in d.lower() for di in ['hair','clothes', 'pattern', 'zbr', 'uv']]):
+                            fullPath = join(dirDict['..'], d)
                             if isdir(fullPath):
                                 dirDict[d.lower()] = fullPath
                                 if 'cloth' in d.lower():
                                     if isdir(join(fullPath,'rend')):
-                                         dirDict['clothRender'] = join(fullPath,'rend')
+                                        dirDict['clothRender'] = join(fullPath,'rend')
+                                if 'hair' in d.lower():
+                                    if isdir(join(fullPath,'rend')):
+                                        dirDict['hairRender'] = join(fullPath,'rend')
             except (IOError,OSError) as why:
                 print why
         if version in self.version:

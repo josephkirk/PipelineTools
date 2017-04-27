@@ -62,24 +62,84 @@ def createSolidFillLayer(R, G, B):
     newLayer.name = name
     return newLayer
 
-def createLayer(name,type)
+def createLevelLayer(name):
+    idMk = psApp.CharIDToTypeID( "Mk  " )
+    desc4 = CreateObject( "Photoshop.ActionDescriptor" )
+    idnull = psApp.CharIDToTypeID( "null" )
+    ref1 = CreateObject( "Photoshop.ActionReference" )
+    idAdjL = psApp.CharIDToTypeID( "AdjL" )
+    ref1.PutClass( idAdjL )
+    desc4.PutReference( idnull, ref1)
+    idUsng = psApp.CharIDToTypeID( "Usng" )
+    desc5 = CreateObject( "Photoshop.ActionDescriptor" )
+    idType = psApp.CharIDToTypeID( "Type" )
+    desc6 = CreateObject( "Photoshop.ActionDescriptor" )
+    idpresetKind = psApp.StringIDToTypeID( "presetKind" )
+    idpresetKindType = psApp.StringIDToTypeID( "presetKindType" )
+    idpresetKindDefault = psApp.StringIDToTypeID( "presetKindDefault" )
+    desc6.PutEnumerated( idpresetKind, idpresetKindType, idpresetKindDefault )
+    idLvls = psApp.CharIDToTypeID( "Lvls" )
+    desc5.PutObject( idType, idLvls, desc6 )
+    idAdjL = psApp.CharIDToTypeID( "AdjL" )
+    desc4.PutObject( idUsng, idAdjL, desc5 )
+    psApp.ExecuteAction( idMk, desc4, 2 )
+    newLayer = psApp.activeDocument.activeLayer
+    newLayer.name = name
+    return newLayer
+
+def createColorCorrectLayer(name):
+    idMk = psApp.CharIDToTypeID( "Mk  " )
+    desc8 = CreateObject( "Photoshop.ActionDescriptor" )
+    idnull = psApp.CharIDToTypeID( "null" )
+    ref3 = CreateObject( "Photoshop.ActionReference" )
+    idAdjL = psApp.CharIDToTypeID( "AdjL" )
+    ref3.PutClass( idAdjL )
+    desc8.PutReference( idnull, ref3 )
+    idUsng = psApp.CharIDToTypeID( "Usng" )
+    desc9 = CreateObject( "Photoshop.ActionDescriptor" )
+    idType = psApp.CharIDToTypeID( "Type" )
+    desc10 = CreateObject( "Photoshop.ActionDescriptor" )
+    idpresetKind = psApp.StringIDToTypeID( "presetKind" )
+    idpresetKindType = psApp.StringIDToTypeID( "presetKindType" )
+    idpresetKindDefault = psApp.StringIDToTypeID( "presetKindDefault" )
+    desc10.PutEnumerated( idpresetKind, idpresetKindType, idpresetKindDefault )
+    idClrz = psApp.CharIDToTypeID( "Clrz" )
+    desc10.PutBoolean( idClrz, False )
+    idHStr = psApp.CharIDToTypeID( "HStr" )
+    desc9.PutObject( idType, idHStr, desc10 )
+    idAdjL = psApp.CharIDToTypeID( "AdjL" )
+    desc8.PutObject( idUsng, idAdjL, desc9 )
+    psApp.ExecuteAction( idMk, desc8, dialogMode )
+    newLayer = psApp.activeDocument.activeLayer
+    newLayer.name = name
+    return newLayer
+
+def createLayer(name, type, blendMode, opacity):
     typeDict = {
-        "empty": createEmptyLayer(name)
-        "text": createTextLayer(name)
-        "fill": createSolidFillLayer(name)
+        "empty": createEmptyLayer(name),
+        "text": createTextLayer(name),
+        "fill": createSolidFillLayer(name),
+        "level": createLevelLayer(name)
     }
     if typeDict.has_key(type):
         newLayer = typeDict[type]
-    return newLayer
+        newLayer.blendMode = blendMode
+        newLayer.opacity = opacity
+        return newLayer
 
 ################### Main Class
-    
+class Document(object):
+    def __init__(self)
+        self = psApp.documents
 class Layer(object):
     """Photoshop Layer Class"""
-    def __init__(self, name, layerType):
+    def __init__(self, name, layerType, blendMode=2, opacity=100):
         self.name = name
         self.type = layerType
-    def 
+        self.blendMode = blendMode
+        self.opacity = opacity
+        createLayer(name, layerType, blendMode, opacity)
+
 #jsxFile = r'%s\\%s' % (currentPath,'PsdjsxHelper.jsx')
 #print jsxFile
 #runJSX(jsxFile)

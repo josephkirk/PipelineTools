@@ -143,7 +143,7 @@ def GetAssetPath(Assetname, versionNum):
     try:
         CHversion = CH[versionNum-1]
         if CHversion.path.has_key('..'):
-            CHHairFiles = pp(CHversion.path['..']).files('*.mb')
+            CHHairFiles = pp(CHversion.path['hair']).files('*.mb')
             if CHHairFiles:
                 CHHairFiles.sort(key=os.path.getmtime)
                 CHPath['hair'] = CHHairFiles[-1]
@@ -154,7 +154,8 @@ def GetAssetPath(Assetname, versionNum):
                     CHPath['cloth'] = CHClothFiles[-1]
                     # print "No folder 'clothes' in %s " % CH.path
             try:
-                CHPath['render'] = CHversion.path['rend']
+                CHPath['clothRender'] = CHversion.path['clothRender']
+                CHPath['hairRender'] = CHversion.path['hairRender']
             except:
                 pass
                 # print "No folder 'render' in %s " % CHversion.path['..']
@@ -178,7 +179,7 @@ def sendFile(CH,
                  'Send':False,
                  'hair':False,
                  'cloth':False,
-                 'render':False,
+                 'xgen':False,
                  'uv':False,
                  'zbr':False,
                  'tex':False,
@@ -246,6 +247,8 @@ def sendFile(CH,
             print "no %s folder" % k
     if sendFile['cloth']:
         sendFile['clothRender'] = True
+    if sendFile['hair']:
+        sendFile['hairRender'] = True
     if sendFile['Send'] == True:
         AllPath = GetAssetPath(CH, ver)
         #print AllPath
