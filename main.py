@@ -54,8 +54,6 @@ def sendFileUI():
                             sendFile=sendFileDict)
     #
     pm.frameLayout(label="Character List:")
-    #pm.columnLayout(adjustableColumn=1)
-    #pm.gridLayout( numberOfColumns=4, cellWidthHeight=(120, 100))
     pm.rowColumnLayout(numberOfColumns=4,
                        columnWidth=[(1, 120), (2, 120), (3, 120), (4, 120)],
                        columnSpacing=[(1, 5), (2, 5), (3, 5), (4, 5)],
@@ -65,6 +63,7 @@ def sendFileUI():
     CHdirList.sort(key=lambda d:d.basename())
     for d in CHdirList:
         subDirectory = d.dirs()
+        subDirectory.sort()
         if (subDirectory
                 and any([d.basename().split('_')[1] in subd.basename()
                      for subd in subDirectory])):
@@ -83,7 +82,7 @@ def sendFileUI():
                     pm.separator(style='in')
                     for l in ['hair',
                               'cloth',
-                              'render',
+                              'xgen',
                               'uv',
                               'zbr',
                               'tex',
@@ -96,6 +95,12 @@ def sendFileUI():
                     pm.setParent('..')
                     #pm.separator(style='out')
             pm.setParent('..')
+    pm.setParent('..')
+    pm.frameLayout(label="BG List:")
+    pm.rowColumnLayout(numberOfColumns=4,
+                       columnWidth=[(1, 120), (2, 120), (3, 120), (4, 120)],
+                       columnSpacing=[(1, 5), (2, 5), (3, 5), (4, 5)],
+                       rowSpacing=[1, 20])
     pm.setParent('..')
     pm.separator(style='shelf')
     pm.rowColumnLayout(numberOfColumns=4,

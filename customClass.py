@@ -115,3 +115,11 @@ class subCharacter(Character):
             if exists(RootTexPath):
                 self.texPath['..'] = RootTexPath
                 collectdir(self.texPath)
+
+class Background(Asset):
+    """Background prop Link"""
+    def __init__(self, name):
+        self.kind = "Model"
+        self.type = "BG"
+        Asset.__init__(self, name, self.type, self.kind)
+

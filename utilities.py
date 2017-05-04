@@ -86,6 +86,11 @@ def addVrayOpenSubdivAttr():
             cm.vray('addAttributesFromGroup', obShape, "vray_opensubdiv", 1)
             pm.setAttr(obShape+".vrayOsdPreserveMapBorders", 2)
 
+def removeUnwantedAttr(attrName):
+    for o in pm.selected():
+        for atr in o.listAttr():
+            if attrName in atr.name().lower():
+                pm.deleteAttr(atr)
 ####
 
 def loc42Curve():
