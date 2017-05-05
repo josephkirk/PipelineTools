@@ -14,35 +14,46 @@ class Asset(object):
         self.texPath = ""
         self.get()
         #self.getFiles()
+
     def get(self):
-        RootPath = normpath(join(projectRoot, 'scenes', self.kind, self.type))
-        RootTexPath = normpath(join(projectRoot, 'sourceimages', self.kind, self.type))
+        RootPath = normpath(join(projectRoot, 'scenes'))
+        RootTexPath = normpath(join(projectRoot, 'sourceimages'))
         XgenPath = normpath(join(projectRoot, 'xgen', 'collections'))
-        if not isdir(RootPath) and not isdir(RootTexPath):
-            print "These directories are not exist, please create them:\n\t%s\n\t%s" % (RootPath,RootTexPath)
+        if self.kind in listdir(RootPath):
+            self.kindPath = normpath(join(RootPath,self.kind))
+            self.kindTexPath = normpath(join(RootTexPath,self.kind))
+            if not isdir(self.kindTexPath):
+                self.kindTexPath= RootTexPath
+            if self.type in listdir(self.kindPath):
+                self.typePath = normpath(join(self.kindPath,self.type))
+                self.typeTexPath = normpath(join(self.kindTexPath,self.type))
+                if not isdir(self.typeTexPath):
+                    self.typeTexPath= self.kindTexPath
+        else:
+            print "These directories are not exist, please create them:\n\t%s\n\t%s" % (self.kind, self.type)
             return
-        CHList = []
+        AssetList = []
         if XgenPath:
             for d in listdir(XgenPath):
                 if self.name in d:
                     self.xgenPath = join(XgenPath, d)
-        for d in listdir(RootPath):
+        for d in listdir(self.typePath):
             if self.name in d:
-                self.path = join(RootPath, d)
-                if isdir(join(RootTexPath, d)):
-                    self.texPath = join(RootTexPath, d)
+                self.path = join(self.typePath, d)
+                if isdir(join(self.typeTexPath, d)):
+                    self.texPath = join(self.typeTexPath, d)
                 if d.split('_')[0].isdigit():
                     self.ID = int(d.split('_')[0])
                 else:
-                    self.ID = listdir(RootPath).index(d)
+                    self.ID = listdir(self.typePath).index(d)
                 return
             else:
-                if isdir(join(RootPath,d)) and d.split('_')[0].isdigit():
-                    CHList.append(d)
-        print 'Can\'t find character %s' % self.name
-        print 'Current Avalaible Character:'
-        for ch in CHList:
-            print ch
+                if isdir(join(self.typePath,d)):
+                    AssetList.append(d)
+        print 'Can\'t find Asset %s' % self.name
+        print 'Current Avalaible Asset:'
+        for asset in AssetList:
+            print asset
         raise Exception
 
 class Character(Asset):
