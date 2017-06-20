@@ -10,6 +10,37 @@ import PipelineTools.customClass as cc
 reload(cc)
 ###misc function
 
+###Rigging
+def mirror_joint_tranform(bone, translate=False,rotate=True, **kwargs):
+    opbone = get_opposite_joint(bone,**kwargs)
+    if opbone:
+        if all([type(b) == pm.nt.Joint for b in [bone,opbone]]):
+            if rotate:
+                pm.joint(opbone,edit=True,ax = pm.joint(bone,q=True,ax=True),
+                         ay = pm.joint(bone,q=True,ay=True),
+                         az = pm.joint(bone,q=True,az=True))
+            if translate:
+                for at in ['tx','ty','tz']:
+                    opbone.attr(at).set(bone.attr(at).get()*-1)
+
+def get_opposite_joint(bone, mirrorprefix = ['Left','Right']):
+    boneFullName=bone.name()
+    prefix = bone.name().split('_')[0]
+    for i,d in enumerate(mirrorprefix):
+        if d in boneFullName:
+            index = boneFullName.find(d)
+            boneName = boneFullName[index+len(d):]
+            opBoneName = "_".join([prefix,(mirrorprefix[i-1]+boneName)])
+            obBone = pm.ls(opBoneName)[0] if pm.ls(opBoneName) else None
+            return obBone
+
+def reset_bindPose():
+    newbp = pm.dagPose(bp=True,save=True)
+    bindPoses = pm.ls(type=pm.nt.DagPose)
+    for bp in bindPoses:
+        if bp != newbp:
+            pm.delete(bp)
+
 ###function
 def exportCam():
     '''export allBake Camera to FBX files'''
