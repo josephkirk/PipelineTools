@@ -7,32 +7,68 @@ import shutil
 import os
 import random as rand
 import PipelineTools.customClass as cc
+from functools import wraps
 reload(cc)
 ###misc function
-
 ###Rigging
-def mirror_joint_tranform(bone, translate=False,rotate=True, **kwargs):
-    opbone = get_opposite_joint(bone,**kwargs)
-    if opbone:
-        if all([type(b) == pm.nt.Joint for b in [bone,opbone]]):
-            if rotate:
-                pm.joint(opbone,edit=True,ax = pm.joint(bone,q=True,ax=True),
-                         ay = pm.joint(bone,q=True,ay=True),
-                         az = pm.joint(bone,q=True,az=True))
-            if translate:
-                for at in ['tx','ty','tz']:
-                    opbone.attr(at).set(bone.attr(at).get()*-1)
+def do_function_on(func):
+    """wrap a function to operate on select object or object name string"""
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        sel = pm.selected()
+        args_list = []
+        for arg in args:
+            if type(arg) == str:
+                ob_found = pm.ls(arg)
+                print ob_found
+                if ob_found:
+                    for ob in ob_found:
+                        print ob
+                        args_list.append(ob)
+        #print args_list
+        sel.extend(args_list)
+        for ob in sel:
+            func(ob, **kwargs)
+    return wrapper
 
-def get_opposite_joint(bone, mirrorprefix = ['Left','Right']):
-    boneFullName=bone.name()
+@do_function_on
+def mirror_joint_tranform(bone, translate=False,rotate=True, **kwargs):
+    #print bone
+    opbone = get_opposite_joint(bone,**kwargs)
+    offset = 1
+    if not opbone:
+        opbone = bone
+        offset = -1
+        translate=False
+    if all([type(b) == pm.nt.Joint for b in [bone,opbone]]):
+        if rotate:
+            pm.joint(opbone,edit=True,ax = pm.joint(bone,q=True,ax=True),
+                        ay = pm.joint(bone,q=True,ay=True)*offset,
+                        az = pm.joint(bone,q=True,az=True)*offset)
+        if translate:
+            bPos = pm.joint(bone,q=True,p=True)
+            pm.joint(opbone,edit=True, p=(bPos[0]*-1,bPos[1],bPos[2]),ch=False,co=True)
+
+#@do_function_on
+def get_opposite_joint(bone,select = False,opBoneOnly = True, mirrorprefix = ['Left','Right']):
+    #print bone
+    boneName = bone.name().split('_')[1]
     prefix = bone.name().split('_')[0]
     for i,d in enumerate(mirrorprefix):
-        if d in boneFullName:
-            index = boneFullName.find(d)
-            boneName = boneFullName[index+len(d):]
-            opBoneName = "_".join([prefix,(mirrorprefix[i-1]+boneName)])
-            obBone = pm.ls(opBoneName)[0] if pm.ls(opBoneName) else None
-            return obBone
+        if d in boneName:
+            index = boneName.find(d)
+            opBoneName = "_".join([prefix,(boneName[:index]+
+                                           mirrorprefix[i-1]+
+                                           boneName[index+len(d):])])
+            #print pm.ls(opBoneName)
+            opBone = pm.ls(opBoneName)[0] if pm.ls(opBoneName) else None
+            if select:
+                if opBoneOnly:
+                    pm.select(opBone)
+                else:
+                    pm.select(bone,opBone)
+            print opBoneName
+            return opBone
 
 def reset_bindPose():
     newbp = pm.dagPose(bp=True,save=True)
@@ -80,7 +116,8 @@ def exportCam():
         cc = 'FBXExport -f "%s" -s' % filePath
         mm.eval(cc)
 
-def mirrorTransform(obs, axis="x",xform=[0,4]):
+@do_function_on
+def mirror_transform(obs, axis="x",xform=[0,4]):
     if not obs:
         print "no object to mirror"
         return
