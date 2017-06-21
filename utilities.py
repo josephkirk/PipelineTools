@@ -32,6 +32,14 @@ def do_function_on(func):
     return wrapper
 
 @do_function_on
+def reset_joint_orient(bone):
+    if type(bone) != pm.nt.Joint:
+        return
+    attrList = ["jointOrientX","jointOrientY","jointOrientZ"]
+    for at in attrList:
+        bone.attr(at).set(0)
+
+@do_function_on
 def mirror_joint_tranform(bone, translate=False,rotate=True, **kwargs):
     #print bone
     opbone = get_opposite_joint(bone,**kwargs)
