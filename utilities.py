@@ -11,7 +11,7 @@ from functools import wraps
 reload(cc)
 ###misc function
 ###Rigging
-def do_function_on(func):
+def do_function_on_single(func):
     """wrap a function to operate on select object or object name string"""
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -31,7 +31,27 @@ def do_function_on(func):
             func(ob, **kwargs)
     return wrapper
 
-@do_function_on
+def do_function_on_set(func):
+    """wrap a function to operate on select object or object name string"""
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        sel = pm.selected()
+        args_list = []
+        for arg in args:
+            if type(arg) == str:
+                ob_found = pm.ls(arg)
+                print ob_found
+                if ob_found:
+                    for ob in ob_found:
+                        print ob
+                        args_list.append(ob)
+        #print args_list
+        sel.extend(args_list)
+        result = func(sel, **kwargs)
+        return result
+    return wrapper
+
+@do_function_on_single
 def reset_joint_orient(bone):
     if type(bone) != pm.nt.Joint:
         return
@@ -39,7 +59,7 @@ def reset_joint_orient(bone):
     for at in attrList:
         bone.attr(at).set(0)
 
-@do_function_on
+@do_function_on_single
 def mirror_joint_tranform(bone, translate=False,rotate=True, **kwargs):
     #print bone
     opbone = get_opposite_joint(bone,**kwargs)
@@ -124,7 +144,7 @@ def exportCam():
         cc = 'FBXExport -f "%s" -s' % filePath
         mm.eval(cc)
 
-@do_function_on
+@do_function_on_single
 def mirror_transform(obs, axis="x",xform=[0,4]):
     if not obs:
         print "no object to mirror"
@@ -168,6 +188,25 @@ def removeUnwantedAttr(attrName):
             if attrName in atr.name().lower():
                 pm.deleteAttr(atr)
 ####
+@do_function_on_set
+def find_instance(obs,instanceOnly=True):
+    allTransform = [tr for tr in pm.ls(type=pm.nt.Transform) if tr.getShape()]
+    instanceShapes =[]
+    if instanceOnly:
+        pm.select(cl=True)
+    for ob in obs:
+        obShape = ob.getShape()
+        if obShape.name().count('|'):
+            obShapeName = obShape.name().split('|')[-1]
+            for tr in allTransform:
+                shape = tr.getShape()
+                if obShapeName == shape.name().split('|')[-1] and tr != ob:
+                    #pm.select(ob,add=True)
+                    instanceShapes.append(tr)
+        #else:
+            #print "%s have no Instance Shape" % ob
+    pm.select(instanceShapes,add=True)
+    return instanceShapes
 
 def loc42Curve():
     sel = pm.selected()
