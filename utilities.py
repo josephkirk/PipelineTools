@@ -55,51 +55,52 @@ def do_function_on_set(func):
 def reset_joint_orient(bone):
     if type(bone) != pm.nt.Joint:
         return
-    attrList = ["jointOrientX","jointOrientY","jointOrientZ"]
+    attrList = ["jointOrientX", "jointOrientY", "jointOrientZ"]
     for at in attrList:
         bone.attr(at).set(0)
 
 @do_function_on_single
-def mirror_joint_tranform(bone, translate=False,rotate=True, **kwargs):
+def mirror_joint_tranform(bone, translate=False, rotate=True, **kwargs):
     #print bone
-    opbone = get_opposite_joint(bone,**kwargs)
+    opbone = get_opposite_joint(bone, **kwargs)
     offset = 1
     if not opbone:
         opbone = bone
         offset = -1
-        translate=False
-    if all([type(b) == pm.nt.Joint for b in [bone,opbone]]):
+        translate = False
+    if all([type(b) == pm.nt.Joint for b in [bone, opbone]]):
         if rotate:
-            pm.joint(opbone,edit=True,ax = pm.joint(bone,q=True,ax=True),
-                        ay = pm.joint(bone,q=True,ay=True)*offset,
-                        az = pm.joint(bone,q=True,az=True)*offset)
+            pm.joint(opbone, edit=True, ax=pm.joint(bone, q=True, ax=True),
+                     ay=pm.joint(bone, q=True, ay=True)*offset,
+                     az=pm.joint(bone, q=True, az=True)*offset)
         if translate:
-            bPos = pm.joint(bone,q=True,p=True)
-            pm.joint(opbone,edit=True, p=(bPos[0]*-1,bPos[1],bPos[2]),ch=False,co=True)
+            bPos = pm.joint(bone, q=True, p=True)
+            pm.joint(opbone, edit=True, p=(bPos[0]*-1, bPos[1], bPos[2]), ch=False, co=True)
 
 #@do_function_on
-def get_opposite_joint(bone,select = False,opBoneOnly = True, mirrorprefix = ['Left','Right']):
-    #print bone
-    boneName = bone.name().split('_')[1]
-    prefix = bone.name().split('_')[0]
-    for i,d in enumerate(mirrorprefix):
-        if d in boneName:
+def get_opposite_joint(bone, select=False, opBoneOnly=True, customPrefix=None):
+    "get opposite Bone"
+    mirrorPrefixes_list = [
+        ('Left', 'Right'),
+        ('_L_', '_R_')
+    ]
+    if all(customPrefix, type(customPrefix) == tupe, len(customPrefix) == 2):
+        mirrorPrefixes_list.append(customPrefix)
+    for mirrorprefix in mirrorPrefixes_list:
+        if any([mp in boneName for mp in mirrorprefix]):
             index = boneName.find(d)
-            opBoneName = "_".join([prefix,(boneName[:index]+
-                                           mirrorprefix[i-1]+
-                                           boneName[index+len(d):])])
-            #print pm.ls(opBoneName)
+            opBoneName = bone.name().replace(mirrorprefix[0], mirrorprefix[1])
             opBone = pm.ls(opBoneName)[0] if pm.ls(opBoneName) else None
             if select:
                 if opBoneOnly:
                     pm.select(opBone)
                 else:
-                    pm.select(bone,opBone)
+                    pm.select(bone, opBone)
             print opBoneName
             return opBone
 
 def reset_bindPose():
-    newbp = pm.dagPose(bp=True,save=True)
+    newbp = pm.dagPose(bp=True, save=True)
     bindPoses = pm.ls(type=pm.nt.DagPose)
     for bp in bindPoses:
         if bp != newbp:
