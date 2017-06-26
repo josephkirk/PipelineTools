@@ -51,6 +51,32 @@ def do_function_on_set(func):
         return result
     return wrapper
 
+def do_function_on_setToLast(func):
+    """wrap a function to operate on select object or object name string"""
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        sel = pm.selected()
+        args_list = []
+        for arg in args:
+            if type(arg) == str:
+                ob_found = pm.ls(arg)
+                print ob_found
+                if ob_found:
+                    for ob in ob_found:
+                        print ob
+                        args_list.append(ob)
+        #print args_list
+        sel.extend(args_list)
+        target = sel[-1]
+        result = func(sel, target, **kwargs)
+        return result
+    return wrapper
+
+@do_function_on_setToLast
+def connect_joint(bones,boneRoot,**kwargs):
+    for bone in bones:
+        pm.connectJoint(bone, boneRoot, **kwargs)
+
 @do_function_on_single
 def reset_joint_orient(bone):
     if type(bone) != pm.nt.Joint:
@@ -62,7 +88,7 @@ def reset_joint_orient(bone):
 @do_function_on_single
 def mirror_joint_tranform(bone, translate=False, rotate=True, **kwargs):
     #print bone
-    opbone = get_opposite_joint(bone, **kwargs)
+    opbone = get_opposite_joint(bone, customPrefix=(kwargs['customPrefix']if kwargs.has_key('customPrefix') else None))
     offset = 1
     if not opbone:
         opbone = bone
@@ -75,7 +101,9 @@ def mirror_joint_tranform(bone, translate=False, rotate=True, **kwargs):
                      az=pm.joint(bone, q=True, az=True)*offset)
         if translate:
             bPos = pm.joint(bone, q=True, p=True)
-            pm.joint(opbone, edit=True, p=(bPos[0]*-1, bPos[1], bPos[2]), ch=False, co=True)
+            pm.joint(opbone, edit=True, p=(bPos[0]*-1, bPos[1], bPos[2]),
+                     ch=kwargs['ch'] if kwargs.has_key('ch') else False,
+                     co=not kwargs['ch'] if kwargs.has_key('ch') else True)
 
 #@do_function_on
 def get_opposite_joint(bone, select=False, opBoneOnly=True, customPrefix=None):
@@ -84,20 +112,23 @@ def get_opposite_joint(bone, select=False, opBoneOnly=True, customPrefix=None):
         ('Left', 'Right'),
         ('_L_', '_R_')
     ]
-    if all(customPrefix, type(customPrefix) == tupe, len(customPrefix) == 2):
-        mirrorPrefixes_list.append(customPrefix)
+    try:
+        if all(customPrefix, type(customPrefix) == tuple, len(customPrefix) == 2):
+            mirrorPrefixes_list.append(customPrefix)
+    except:
+        pass
     for mirrorprefix in mirrorPrefixes_list:
-        if any([mp in boneName for mp in mirrorprefix]):
-            index = boneName.find(d)
-            opBoneName = bone.name().replace(mirrorprefix[0], mirrorprefix[1])
-            opBone = pm.ls(opBoneName)[0] if pm.ls(opBoneName) else None
-            if select:
-                if opBoneOnly:
-                    pm.select(opBone)
-                else:
-                    pm.select(bone, opBone)
-            print opBoneName
-            return opBone
+        for index,mp in enumerate(mirrorprefix):
+            if mp in bone.name():
+                opBoneName = bone.name().replace(mirrorprefix[index], mirrorprefix[index-1])
+                opBone = pm.ls(opBoneName)[0] if pm.ls(opBoneName) else None
+                if select:
+                    if opBoneOnly:
+                        pm.select(opBone)
+                    else:
+                        pm.select(bone, opBone)
+                print opBoneName
+                return opBone
 
 def reset_bindPose():
     newbp = pm.dagPose(bp=True, save=True)
@@ -162,12 +193,8 @@ def mirror_transform(obs, axis="x",xform=[0,4]):
             for at in axisDict[axis][xform[0]:xform[1]]:
                 ob.attr(at).set(ob.attr(at).get()*-1)
 
+@do_function_on_set
 def lockTransform(obs,lock=True):
-    if not obs:
-        print "no object to mirror"
-        return
-    if type(obs) != list:
-        obs = [obs]
     for ob in obs:
         for at in ['translate','rotate','scale']:
             ob.attr(at).set(lock=lock)
