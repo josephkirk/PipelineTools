@@ -134,6 +134,27 @@ def sendFileUI():
                                                    destdrive=descDriveUI.getText()))
     pm.showWindow()
 
+def sendCurrentFileUI():
+    if pm.window('SendCurrentFileUI', ex=True):
+        pm.deleteUI('SendCurrentFileUI', window=True)
+        pm.windowPref('SendCurrentFileUI', remove=True)
+    pm.window('SendCurrentFileUI', t="Send current file")
+    pm.columnLayout(adjustableColumn=1)
+    pm.rowColumnLayout(
+        numberOfColumns=2,
+        columnWidth=[(1, 90), (2, 90)])
+    pm.text(label='Destination :', align='right')
+    descDriveUI = pm.textField(text="N")
+    pm.text(label='Version :', align='right')
+    sendFolderIDUI = pm.intField(value=1,min=1)
+    pm.text(label='')
+    pm.button(label="Send",
+              c=lambda *arg: ul.send_current_file(
+                drive=descDriveUI.getText(),
+                version=sendFolderIDUI.getValue()))
+    pm.setParent('..')
+    pm.showWindow()
+
 def mirrorUVui():
     if pm.window('MirrorUVUI', ex=True):
         pm.deleteUI('MirrorUVUI', window=True)

@@ -199,22 +199,23 @@ def lockTransform(obs,lock=True):
         for at in ['translate','rotate','scale']:
             ob.attr(at).set(lock=lock)
 
-def addVrayOpenSubdivAttr():
+@do_function_on_single
+def addVrayOpenSubdivAttr(ob):
     '''add Vray OpenSubdiv attr to enable smooth mesh render'''
-    sel = pm.selected()
-    if not sel:
-        return
-    for o in sel:
-        if str(cm.getAttr('defaultRenderGlobals.ren')) == 'vray':
-            obShape = pm.listRelatives(o, shapes=True)[0]
-            cm.vray('addAttributesFromGroup', obShape, "vray_opensubdiv", 1)
-            pm.setAttr(obShape+".vrayOsdPreserveMapBorders", 2)
+    if str(pm.getAttr('defaultRenderGlobals.ren')) == 'vray':
+        obShape = ob.getShape()
+        pm.vray('addAttributesFromGroup', obShape, "vray_opensubdiv", 1)
+        pm.setAttr(obShape+".vrayOsdPreserveMapBorders", 2)
 
-def removeUnwantedAttr(attrName):
-    for o in pm.selected():
-        for atr in o.listAttr():
-            if attrName in atr.name().lower():
-                pm.deleteAttr(atr)
+@do_function_on_single
+def clean_attr(ob):
+    '''clean all Attribute'''
+    for atr in ob.listAttr():
+        try:
+            atr.delete()
+            print "%s is deleted" % atr.name()
+        except:
+            pass
 ####
 @do_function_on_set
 def find_instance(obs,instanceOnly=True):
@@ -278,6 +279,23 @@ def getInfo():
         except:
             continue
         print ("-"*100+"\n")*2
+
+def send_current_file(drive='N', version=1, verbose=True):
+    src = pm.sceneName()
+    todayFolder = pm.date(f='YYMMDD')
+    if version>1:
+        todayFolder = "_".join([todayFolder,
+                               ('%02d' % version)])
+    dest = src.replace(drive+':',
+                       '%s:/to/%s' % (drive, todayFolder))
+    try:
+        checkDir(dest)
+        pm.sysFile(src, copy=dest)
+        if verbose:
+            print "%s copy to %s" % (src,dest)
+    except (IOError, OSError) as why:
+        print "Copy Error"
+        print why
 
 def GetAssetPath(Assetname, versionNum):
     ''' get AssetPath Relate to Character'''
