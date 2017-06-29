@@ -16,6 +16,7 @@ def do_function_on_single(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
         sel = pm.selected()
+        #pm.select(cl=True)
         args_list = []
         for arg in args:
             if type(arg) == str:
@@ -27,8 +28,11 @@ def do_function_on_single(func):
                         args_list.append(ob)
         #print args_list
         sel.extend(args_list)
-        for ob in sel:
-            func(ob, **kwargs)
+        if sel:
+            for ob in sel:
+                func(ob, **kwargs)
+        else:
+            print 'no object to operate on'
     return wrapper
 
 def do_function_on_set(func):
@@ -36,19 +40,23 @@ def do_function_on_set(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
         sel = pm.selected()
+        #pm.select(cl=True)
         args_list = []
         for arg in args:
             if type(arg) == str:
                 ob_found = pm.ls(arg)
-                print ob_found
+                #print ob_found
                 if ob_found:
                     for ob in ob_found:
-                        print ob
+                        #print ob
                         args_list.append(ob)
         #print args_list
         sel.extend(args_list)
-        result = func(sel, **kwargs)
-        return result
+        if sel:
+            result = func(sel, **kwargs)
+            return result
+        else:
+            print 'no object to operate on'
     return wrapper
 
 def do_function_on_setToLast(func):
@@ -56,6 +64,7 @@ def do_function_on_setToLast(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
         sel = pm.selected()
+        #pm.select(cl=True)
         args_list = []
         for arg in args:
             if type(arg) == str:
@@ -67,9 +76,12 @@ def do_function_on_setToLast(func):
                         args_list.append(ob)
         #print args_list
         sel.extend(args_list)
-        target = sel[-1]
-        result = func(sel, target, **kwargs)
-        return result
+        if sel:
+            target = sel[-1]
+            result = func(sel[:-1], target, **kwargs)
+            return result
+        else:
+            print "no object to operate on"
     return wrapper
 
 @do_function_on_setToLast
@@ -193,14 +205,33 @@ def mirror_transform(obs, axis="x",xform=[0,4]):
             for at in axisDict[axis][xform[0]:xform[1]]:
                 ob.attr(at).set(ob.attr(at).get()*-1)
 
-@do_function_on_set
-def lockTransform(obs,lock=True):
-    for ob in obs:
-        for at in ['translate','rotate','scale']:
-            ob.attr(at).set(lock=lock)
+@do_function_on_setToLast
+def transfer_material(obs, obSrc):
+    try:
+        obSrc_SG = obSrc.getShape().listConnections(type=pm.nt.ShadingEngine)[0]
+    except:
+        obSrc_SG = None
+    if obSrc_SG:
+        for ob in obs:
+            set_material(ob,obSrc_SG)
+
+#@do_function_on_single
+def set_material(ob, SG):
+    if type(SG) == pm.nt.ShadingEngine:
+        try:
+            pm.sets(SG,forceElement=ob)
+        except:
+            print "cannot apply %s to %s" % (SG.name(), ob.name())
+    else:
+        print "There is no %s" % SG.name()
 
 @do_function_on_single
-def addVrayOpenSubdivAttr(ob):
+def lock_transform(ob,lock=True):
+    for at in ['translate','rotate','scale']:
+        ob.attr(at).set(lock=lock)
+
+@do_function_on_single
+def add_VrayOSD(ob):
     '''add Vray OpenSubdiv attr to enable smooth mesh render'''
     if str(pm.getAttr('defaultRenderGlobals.ren')) == 'vray':
         obShape = ob.getShape()
