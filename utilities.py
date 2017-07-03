@@ -98,6 +98,10 @@ def reset_joint_orient(bone):
         bone.attr(at).set(0)
 
 @do_function_on_single
+def add_suffix(ob,suff="_skinDeform"):
+    pm.rename(ob,ob.name()+str(suff))
+
+@do_function_on_single
 def mirror_joint_tranform(bone, translate=False, rotate=True, **kwargs):
     #print bone
     opbone = get_opposite_joint(bone, customPrefix=(kwargs['customPrefix']if kwargs.has_key('customPrefix') else None))
