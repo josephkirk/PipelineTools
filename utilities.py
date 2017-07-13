@@ -35,6 +35,20 @@ def do_function_on_single(func):
             print 'no object to operate on'
     return wrapper
 
+def do_function_on_singleToSecond(func):
+    """wrap a function to operate on select object or object name string"""
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        sel = pm.selected()
+        source = sel[0] if sel else None
+        target = sel[-1] if sel else None
+        if target != source and target:
+            result = func(source, target, **kwargs)
+            return result
+        else:
+            print "select 2 object"
+    return wrapper
+
 def do_function_on_set(func):
     """wrap a function to operate on select object or object name string"""
     @wraps(func)
@@ -84,18 +98,63 @@ def do_function_on_setToLast(func):
             print "no object to operate on"
     return wrapper
 
+@do_function_on_singleToSecond
+def copy_skin_multi(source_skin_grp,dest_skin_grp):
+    source_skins = source_skin_grp.listRelatives(type='transform',ad=1)
+    dest_skins = dest_skin_grp.listRelatives(type='transform',ad=1)
+    if len(dest_skins) == len(source_skins):
+        for index,skinTR in enumerate(source_skins):
+            dest_skinTR = dest_skins[index]
+            if skinTR.name().split(':')[-1] != dest_skinTR.name().split(':')[-1]:
+                print skinTR.name().split(':')[-1], dest_skinTR.name().split(':')[-1]
+            else:
+                skin = skinTR.getShape().listConnections(type='skinCluster')[0] if skinTR.getShape() else None
+                dest_skin = dest_skinTR.getShape().listConnections(type='skinCluster')[0] if dest_skinTR.getShape() else None
+                if skin and dest_skin:
+                    try:
+                        pm.copySkinWeights(ss=skin,ds=dest_skin,nm=1,nr=1,sa='closestPoint',ia=['oneToOne','name'])
+                    except:
+                        print '%s cannot copy skin to %s'%(skinTR.name(),dest_skinTR.name())
+                else:
+                    print '%s, %s does not contain skinCluster'%(skinTR.name(),dest_skinTR.name())
+    else:
+        print 'source and target are not the same'
+
 @do_function_on_setToLast
 def connect_joint(bones,boneRoot,**kwargs):
     for bone in bones:
         pm.connectJoint(bone, boneRoot, **kwargs)
 
 @do_function_on_single
+def create_roll_joint(oldJoint):
+    newJoint = pm.duplicate(oldJoint,rr=1,po=1)[0]
+    pm.rename(newJoint,('%sRoll1'%oldJoint.name()).replace('Left','LeafLeft'))
+    newJoint.attr('radius').set(2)
+    pm.parent(newJoint, oldJoint)
+    return newJoint
+
+@do_function_on_single
+def create_sub_joint(ob):
+    subJoint = pm.duplicate(ob,name='%sSub'%ob.name(),rr=1,po=1,)[0]
+    new_pairBlend = pm.createNode('pairBlend')
+    subJoint.radius.set(2.0)
+    pm.rename(new_pairBlend,'%sPairBlend'%ob.name())
+    new_pairBlend.attr('weight').set(0.5)
+    ob.rotate >> new_pairBlend.inRotate2
+    new_pairBlend.outRotate >> subJoint.rotate
+    return (ob,new_pairBlend,subJoint)
+
+@do_function_on_single
 def reset_joint_orient(bone):
     if type(bone) != pm.nt.Joint:
         return
     attrList = ["jointOrientX", "jointOrientY", "jointOrientZ"]
-    for at in attrList:
+    for at in attrList[:-1]:
         bone.attr(at).set(0)
+
+@do_function_on_single
+def add_suffix(ob,suff):
+    pm.rename(ob,ob.name()+str(suff))
 
 @do_function_on_single
 def mirror_joint_tranform(bone, translate=False, rotate=True, **kwargs):
@@ -150,6 +209,74 @@ def reset_bindPose():
             pm.delete(bp)
 
 ###function
+@do_function_on_single
+def assign_curve_to_hair(abc_curve,hair_system="",preserve=False):
+    '''assign Alembic curve Shape or tranform contain multi curve Shape to hairSystem'''
+    curve_list = detach_shape(abc_curve, preserve=preserve)
+    for curve in curve_list:
+        hair_from_curve(curve,hair_system=hair_system)
+
+def hair_from_curve(input_curve, hair_system="") :
+    '''
+    Assign curve to Hair System
+    Modify Function from 
+    Author: Tyler Hurd, www.tylerhurd.com '''
+    print input_curve
+    for attr in ['tx','ty','tz','rx','ry','rz','sx','sy','sz'] :
+        if 's' in attr and pm.getAttr('%s.%s'%(input_curve,attr)) != 1.0 :
+            pm.warning('Transform values found! "%s.%s" is set to %s! Freeze transformations for expected results.'%(input_curve,attr,pm.getAttr('%s.%s'%(input_curve,attr))))
+        elif not 's' in attr and pm.getAttr('%s.%s'%(input_curve,attr)) != 0 :
+            pm.warning('Transform values found! "%s.%s" is set to %s! Freeze transformations for expected results.'%(input_curve,attr,pm.getAttr('%s.%s'%(input_curve,attr))))
+
+    # duplicate driver curve for hair and follicle
+    hair_curve = pm.rename(pm.duplicate(input_curve,rr=1),'%s_HairCurve'%input_curve)
+    follicle = pm.rename(pm.createNode('follicle',ss=1,n='%s_FollicleShape'%input_curve).getParent(),'%s_Follicle'%input_curve)
+    follicle.restPose.set(1)
+    # if no hair system given create new hair system, if name given and it doesn't exist, give it that name
+    if hair_system == '' :
+        if pm.ls(type='hairSystem'):
+            hair_system = pm.ls(type='hairSystem')[0]
+        else:
+            hair_system = pm.rename(pm.createNode('hairSystem',ss=1,n='%s_HairSystemShape'%input_curve).getParent(),'%s_HairSystem'%input_curve)
+            pm.PyNode('time1').outTime >> hair_system.getShape().currentTime
+            pm.select(hair_system)
+            mm.eval('addPfxToHairSystem;')
+    elif hair_system and not pm.objExists(hair_system) :
+        hair_system = pm.rename(pm.createNode('hairSystem',ss=1,n='%sShape'%hair_system).getParent(),hair_system)
+        pm.PyNode('time1').outTime >> hair_system.getShape().currentTime
+        pm.select(hair_system)
+        mm.eval('addPfxToHairSystem;')
+    hair_system = pm.PyNode(hair_system)
+    #hair_system = pm.PyNode(hair_system)
+    hair_ind = len(hair_system.getShape().inputHair.listConnections())
+    if not pm.objExists('%s_follicles'%hair_system):
+        pm.group(name='%s_follicles'%hair_system)
+    # connections
+    pm.parent(input_curve,follicle)
+    pm.parent(follicle,'%s_follicles'%hair_system)
+    input_curve.getShape().worldSpace[0] >> follicle.getShape().startPosition
+    follicle.getShape().outCurve >> hair_curve.getShape().create
+    follicle.getShape().outHair >> hair_system.getShape().inputHair[hair_ind]
+    hair_system.getShape().outputHair[hair_ind] >> follicle.getShape().currentPosition
+    
+    return [input_curve,hair_curve,follicle,hair_system]
+
+#@do_function_on_single
+def detach_shape(ob, preserve=False):
+    '''detach Multi Shape to individual Object'''
+    result= []
+    if preserve:
+        ob = pm.duplicate(ob, rr=True)[0]
+    obShape = ob.listRelatives(type='shape')
+    result.append(ob)
+    if len(obShape)>1:
+        for shape in obShape[1:]:
+            transformName = "newTransform01"
+            newTransform = pm.nt.Transform(name=transformName)
+            pm.parent(shape, newTransform, r=1, s=1)
+            result.append(newTransform)
+    return result
+
 def exportCam():
     '''export allBake Camera to FBX files'''
     FBXSettings = [
