@@ -161,7 +161,11 @@ def reset_joint_orient(bone):
         bone.attr(at).set(0)
 
 @do_function_on_single
+<<<<<<< HEAD
 def add_suffix(ob,suff):
+=======
+def add_suffix(ob,suff="_skinDeform"):
+>>>>>>> c132d83f30f6a6752cad54e7e362959e56e1b43f
     pm.rename(ob,ob.name()+str(suff))
 
 @do_function_on_single
