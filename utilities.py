@@ -108,17 +108,25 @@ def copy_skin_multi(source_skin_grp,dest_skin_grp):
             if skinTR.name().split(':')[-1] != dest_skinTR.name().split(':')[-1]:
                 print skinTR.name().split(':')[-1], dest_skinTR.name().split(':')[-1]
             else:
-                skin = skinTR.getShape().listConnections(type='skinCluster')[0] if skinTR.getShape() else None
-                dest_skin = dest_skinTR.getShape().listConnections(type='skinCluster')[0] if dest_skinTR.getShape() else None
-                if skin and dest_skin:
-                    try:
-                        pm.copySkinWeights(ss=skin,ds=dest_skin,nm=1,nr=1,sa='closestPoint',ia=['oneToOne','name'])
-                    except:
-                        print '%s cannot copy skin to %s'%(skinTR.name(),dest_skinTR.name())
-                else:
-                    print '%s, %s does not contain skinCluster'%(skinTR.name(),dest_skinTR.name())
+                try:
+                    skin = skinTR.getShape().listConnections(type='skinCluster')[0]
+                    dest_skin = dest_skinTR.getShape().listConnections(type='skinCluster')[0]
+                    pm.copySkinWeights(ss=skin,ds=dest_skin,nm=1,nr=1,sa='closestPoint',ia='oneToOne')
+                    dest_skin.setSkinMethod(skin.getSkinMethod())
+                    print skinTR,'copied to', dest_skinTR, '\n'
+                except:
+                    print skinTR.getShape(), dest_skinTR.getShape()
+                    print '%s cannot copy skin to %s'%(skinTR.name(),dest_skinTR.name())
     else:
         print 'source and target are not the same'
+
+@do_function_on_singleToSecond
+def copy_skin_single(source_skin,dest_skin):
+    skin = source_skin.getShape().listConnections(type='skinCluster')[0]
+    dest_skin = dest_skin.getShape().listConnections(type='skinCluster')[0]
+    print skin,dest_skin
+    pm.copySkinWeights(ss=skin,ds=dest_skin,nm=1,nr=1,sa='closestPoint',ia=['oneToOne','name'])
+    dest_skin.setSkinMethod(skin.getSkinMethod())
 
 @do_function_on_setToLast
 def connect_joint(bones,boneRoot,**kwargs):
