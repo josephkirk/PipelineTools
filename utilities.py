@@ -99,6 +99,22 @@ def do_function_on_setToLast(func):
     return wrapper
 
 @do_function_on_singleToSecond
+def parent_shape(tranform1,tranform2):
+    pm.parent(tranform1.getShape(),tranform2,r=True,s=True)
+    pm.delete(tranform1)
+
+@do_function_on_single
+def un_parent_shape(ob):
+    shapeList = ob.listRelatives(type=pm.nt.Shape)
+    if shapeList:
+        for shape in shapeList:
+            newTr = pm.nt.Transform(name=(shape.name()[:shape.name().find('Shape')]))
+            newTr.setMatrix(ob.getMatrix(ws=True),ws=True)
+            pm.parent(shape,newTr,r=True,s=True)
+    if type(ob) != pm.nt.Joint:
+        pm.delete(ob)
+
+@do_function_on_singleToSecond
 def copy_skin_multi(source_skin_grp,dest_skin_grp):
     source_skins = source_skin_grp.listRelatives(type='transform',ad=1)
     dest_skins = dest_skin_grp.listRelatives(type='transform',ad=1)
@@ -161,11 +177,7 @@ def reset_joint_orient(bone):
         bone.attr(at).set(0)
 
 @do_function_on_single
-<<<<<<< HEAD
-def add_suffix(ob,suff):
-=======
 def add_suffix(ob,suff="_skinDeform"):
->>>>>>> c132d83f30f6a6752cad54e7e362959e56e1b43f
     pm.rename(ob,ob.name()+str(suff))
 
 @do_function_on_single
