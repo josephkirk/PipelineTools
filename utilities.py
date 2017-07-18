@@ -84,6 +84,24 @@ def do_function_on_setToLast(func):
             print "no object to operate on"
     return wrapper
 
+def parent_shape():
+    sel = pm.selected()
+    if sel and len(sel)==2:
+        pm.parent(sel[0].getShape(),sel[1],r=True,s=True)
+        pm.delete(sel[0])
+
+def un_parent_shape():
+    sel = pm.selected()
+    for ob in sel:
+        shapeList = ob.listRelatives(type=pm.nt.Shape)
+        if shapeList:
+            for shape in shapeList:
+                newTr = pm.nt.Transform(name=(shape.name()[:shape.name().find('Shape')]))
+                newTr.setMatrix(ob.getMatrix(ws=True),ws=True)
+                pm.parent(shape,newTr,r=True,s=True)
+        if type(ob) != pm.nt.Joint:
+            pm.delete(ob)
+
 @do_function_on_setToLast
 def connect_joint(bones,boneRoot,**kwargs):
     for bone in bones:
