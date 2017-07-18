@@ -9,8 +9,19 @@ import random as rand
 import PipelineTools.customClass as cc
 from functools import wraps
 reload(cc)
-###misc function
-###Rigging
+### decorator
+def error_alert(func):
+    """print Error if function fail"""
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            result = func(*args, **kwargs)
+            return result
+        except (IOError, OSError) as why:
+            print func.__name__, "create error:"
+            print why
+    return wrapper
+
 def do_function_on_single(func):
     """wrap a function to operate on select object or object name string"""
     @wraps(func)
@@ -97,7 +108,9 @@ def do_function_on_setToLast(func):
         else:
             print "no object to operate on"
     return wrapper
+###misc function
 
+###Rigging
 @do_function_on_singleToSecond
 def parent_shape(tranform1,tranform2):
     pm.parent(tranform1.getShape(),tranform2,r=True,s=True)
@@ -115,24 +128,44 @@ def un_parent_shape(ob):
         pm.delete(ob)
 
 @do_function_on_singleToSecond
+def snap_simple(ob1, ob2, worldspace=False, hierachy=False, preserve_child=False):
+    ob1_childs = ob1.listRelatives(type=['joint','transform'],ad=1)
+    if hierachy:
+        ob1_childs.append(ob1)
+        ob2_childs = ob2.listRelatives(type=['joint','transform'],ad=1)
+        ob2_childs.append(ob2)
+        for ob1_child,ob2_child in zip(ob1_childs,ob2_childs):
+            ob1_child.setMatrix(ob2_child.getMatrix(ws=worldspace), ws=worldspace)
+    else:
+        ob1_child_old_matrixes = [ob_child.getMatrix(ws=True)
+                                  for ob_child in ob1_childs]
+        ob1.setMatrix(ob2.getMatrix(ws=worldspace), ws=worldspace)
+        if preserve_child:
+            for ob1_child, ob1_child_old_matrix in zip(ob1_childs, ob1_child_old_matrixes):
+                ob1_child.setMatrix(ob1_child_old_matrix,ws=True)
+
+@do_function_on_singleToSecond
 def copy_skin_multi(source_skin_grp,dest_skin_grp):
     source_skins = source_skin_grp.listRelatives(type='transform',ad=1)
     dest_skins = dest_skin_grp.listRelatives(type='transform',ad=1)
     if len(dest_skins) == len(source_skins):
-        for index,skinTR in enumerate(source_skins):
-            dest_skinTR = dest_skins[index]
+        print '---Copying skin from %s to %s---'%(source_skin_grp, dest_skin_grp)
+        for skinTR, dest_skinTR in zip(source_skins, dest_skins):
             if skinTR.name().split(':')[-1] != dest_skinTR.name().split(':')[-1]:
                 print skinTR.name().split(':')[-1], dest_skinTR.name().split(':')[-1]
             else:
                 try:
                     skin = skinTR.getShape().listConnections(type='skinCluster')[0]
                     dest_skin = dest_skinTR.getShape().listConnections(type='skinCluster')[0]
-                    pm.copySkinWeights(ss=skin,ds=dest_skin,nm=1,nr=1,sa='closestPoint',ia='oneToOne')
+                    pm.copySkinWeights(ss=skin.name(),ds=dest_skin.name(),
+                                       noMirror=True, normalize=True,
+                                       surfaceAssociation='closestPoint',
+                                       influenceAssociation='closestJoint')
                     dest_skin.setSkinMethod(skin.getSkinMethod())
                     print skinTR,'copied to', dest_skinTR, '\n'
                 except:
-                    print skinTR.getShape(), dest_skinTR.getShape()
-                    print '%s cannot copy skin to %s'%(skinTR.name(),dest_skinTR.name())
+                    print '%s cannot copy skin to %s'%(skinTR.name(),dest_skinTR.name()), '\n'
+        print '---Copy Skin Finish---'
     else:
         print 'source and target are not the same'
 
