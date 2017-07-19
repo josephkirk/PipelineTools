@@ -9,8 +9,19 @@ import random as rand
 import PipelineTools.customClass as cc
 from functools import wraps
 reload(cc)
-###misc function
-###Rigging
+### decorator
+def error_alert(func):
+    """print Error if function fail"""
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            result = func(*args, **kwargs)
+            return result
+        except (IOError, OSError) as why:
+            print func.__name__, "create error:"
+            print why
+    return wrapper
+
 def do_function_on_single(func):
     """wrap a function to operate on select object or object name string"""
     @wraps(func)
@@ -33,6 +44,20 @@ def do_function_on_single(func):
                 func(ob, **kwargs)
         else:
             print 'no object to operate on'
+    return wrapper
+
+def do_function_on_singleToSecond(func):
+    """wrap a function to operate on select object or object name string"""
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        sel = pm.selected()
+        source = sel[0] if sel else None
+        target = sel[-1] if sel else None
+        if target != source and target:
+            result = func(source, target, **kwargs)
+            return result
+        else:
+            print "select 2 object"
     return wrapper
 
 def do_function_on_set(func):
@@ -83,6 +108,87 @@ def do_function_on_setToLast(func):
         else:
             print "no object to operate on"
     return wrapper
+###misc function
+
+###Rigging
+@do_function_on_single
+def insert_joint(joint, num_joint=2):
+    joint_child = joint.getChildren()[0] if joint.getChildren() else None
+    joint_child.orientJoint('none')
+    if joint_child:
+        distance = joint_child.tx.get()/(num_joint+1)
+        while num_joint:
+            insert_joint = pm.insertJoint(joint)
+            pm.joint(insert_joint, edit=True, co=True,ch=False, p=[distance,0,0], r=True)
+            joint = insert_joint
+            num_joint-=1
+
+@do_function_on_singleToSecond
+def parent_shape(tranform1,tranform2):
+    pm.parent(tranform1.getShape(),tranform2,r=True,s=True)
+    pm.delete(tranform1)
+
+@do_function_on_single
+def un_parent_shape(ob):
+    shapeList = ob.listRelatives(type=pm.nt.Shape)
+    if shapeList:
+        for shape in shapeList:
+            newTr = pm.nt.Transform(name=(shape.name()[:shape.name().find('Shape')]))
+            newTr.setMatrix(ob.getMatrix(ws=True),ws=True)
+            pm.parent(shape,newTr,r=True,s=True)
+    if type(ob) != pm.nt.Joint:
+        pm.delete(ob)
+
+@do_function_on_singleToSecond
+def snap_simple(ob1, ob2, worldspace=False, hierachy=False, preserve_child=False):
+    ob1_childs = ob1.listRelatives(type=['joint','transform'],ad=1)
+    if hierachy:
+        ob1_childs.append(ob1)
+        ob2_childs = ob2.listRelatives(type=['joint','transform'],ad=1)
+        ob2_childs.append(ob2)
+        for ob1_child,ob2_child in zip(ob1_childs,ob2_childs):
+            ob1_child.setMatrix(ob2_child.getMatrix(ws=worldspace), ws=worldspace)
+    else:
+        ob1_child_old_matrixes = [ob_child.getMatrix(ws=True)
+                                  for ob_child in ob1_childs]
+        ob1.setMatrix(ob2.getMatrix(ws=worldspace), ws=worldspace)
+        if preserve_child:
+            for ob1_child, ob1_child_old_matrix in zip(ob1_childs, ob1_child_old_matrixes):
+                ob1_child.setMatrix(ob1_child_old_matrix,ws=True)
+
+@do_function_on_singleToSecond
+def copy_skin_multi(source_skin_grp,dest_skin_grp):
+    source_skins = source_skin_grp.listRelatives(type='transform',ad=1)
+    dest_skins = dest_skin_grp.listRelatives(type='transform',ad=1)
+    if len(dest_skins) == len(source_skins):
+        print '---Copying skin from %s to %s---'%(source_skin_grp, dest_skin_grp)
+        for skinTR, dest_skinTR in zip(source_skins, dest_skins):
+            if skinTR.name().split(':')[-1] != dest_skinTR.name().split(':')[-1]:
+                print skinTR.name().split(':')[-1], dest_skinTR.name().split(':')[-1]
+            else:
+                try:
+                    skin = skinTR.getShape().listConnections(type='skinCluster')[0]
+                    dest_skin = dest_skinTR.getShape().listConnections(type='skinCluster')[0]
+                    pm.copySkinWeights(ss=skin.name(),ds=dest_skin.name(),
+                                       noMirror=True, normalize=True,
+                                       surfaceAssociation='closestPoint',
+                                       influenceAssociation='closestJoint')
+                    dest_skin.setSkinMethod(skin.getSkinMethod())
+                    print skinTR,'copied to', dest_skinTR, '\n'
+                except:
+                    print '%s cannot copy skin to %s'%(skinTR.name(),dest_skinTR.name()), '\n'
+        print '---Copy Skin Finish---'
+    else:
+        print 'source and target are not the same'
+@error_alert
+@do_function_on_singleToSecond
+def copy_skin_single(source_skin,dest_skin):
+    skin = source_skin.getShape().listConnections(type='skinCluster')[0]
+    dest_skin = dest_skin.getShape().listConnections(type='skinCluster')[0]
+    print skin,dest_skin
+    pm.copySkinWeights(ss=skin.name(),ds=dest_skin.name(),
+                       nm=True,nr=True,sm=True,sa='closestPoint',ia=['closestJoint','name'])
+    dest_skin.setSkinMethod(skin.getSkinMethod())
 
 def parent_shape():
     sel = pm.selected()
@@ -108,11 +214,30 @@ def connect_joint(bones,boneRoot,**kwargs):
         pm.connectJoint(bone, boneRoot, **kwargs)
 
 @do_function_on_single
+def create_roll_joint(oldJoint):
+    newJoint = pm.duplicate(oldJoint,rr=1,po=1)[0]
+    pm.rename(newJoint,('%sRoll1'%oldJoint.name()).replace('Left','LeafLeft'))
+    newJoint.attr('radius').set(2)
+    pm.parent(newJoint, oldJoint)
+    return newJoint
+
+@do_function_on_single
+def create_sub_joint(ob):
+    subJoint = pm.duplicate(ob,name='%sSub'%ob.name(),rr=1,po=1,)[0]
+    new_pairBlend = pm.createNode('pairBlend')
+    subJoint.radius.set(2.0)
+    pm.rename(new_pairBlend,'%sPairBlend'%ob.name())
+    new_pairBlend.attr('weight').set(0.5)
+    ob.rotate >> new_pairBlend.inRotate2
+    new_pairBlend.outRotate >> subJoint.rotate
+    return (ob,new_pairBlend,subJoint)
+
+@do_function_on_single
 def reset_joint_orient(bone):
     if type(bone) != pm.nt.Joint:
         return
     attrList = ["jointOrientX", "jointOrientY", "jointOrientZ"]
-    for at in attrList:
+    for at in attrList[:-1]:
         bone.attr(at).set(0)
 
 @do_function_on_single
@@ -172,6 +297,74 @@ def reset_bindPose():
             pm.delete(bp)
 
 ###function
+@do_function_on_single
+def assign_curve_to_hair(abc_curve,hair_system="",preserve=False):
+    '''assign Alembic curve Shape or tranform contain multi curve Shape to hairSystem'''
+    curve_list = detach_shape(abc_curve, preserve=preserve)
+    for curve in curve_list:
+        hair_from_curve(curve,hair_system=hair_system)
+
+def hair_from_curve(input_curve, hair_system="") :
+    '''
+    Assign curve to Hair System
+    Modify Function from 
+    Author: Tyler Hurd, www.tylerhurd.com '''
+    print input_curve
+    for attr in ['tx','ty','tz','rx','ry','rz','sx','sy','sz'] :
+        if 's' in attr and pm.getAttr('%s.%s'%(input_curve,attr)) != 1.0 :
+            pm.warning('Transform values found! "%s.%s" is set to %s! Freeze transformations for expected results.'%(input_curve,attr,pm.getAttr('%s.%s'%(input_curve,attr))))
+        elif not 's' in attr and pm.getAttr('%s.%s'%(input_curve,attr)) != 0 :
+            pm.warning('Transform values found! "%s.%s" is set to %s! Freeze transformations for expected results.'%(input_curve,attr,pm.getAttr('%s.%s'%(input_curve,attr))))
+
+    # duplicate driver curve for hair and follicle
+    hair_curve = pm.rename(pm.duplicate(input_curve,rr=1),'%s_HairCurve'%input_curve)
+    follicle = pm.rename(pm.createNode('follicle',ss=1,n='%s_FollicleShape'%input_curve).getParent(),'%s_Follicle'%input_curve)
+    follicle.restPose.set(1)
+    # if no hair system given create new hair system, if name given and it doesn't exist, give it that name
+    if hair_system == '' :
+        if pm.ls(type='hairSystem'):
+            hair_system = pm.ls(type='hairSystem')[0]
+        else:
+            hair_system = pm.rename(pm.createNode('hairSystem',ss=1,n='%s_HairSystemShape'%input_curve).getParent(),'%s_HairSystem'%input_curve)
+            pm.PyNode('time1').outTime >> hair_system.getShape().currentTime
+            pm.select(hair_system)
+            mm.eval('addPfxToHairSystem;')
+    elif hair_system and not pm.objExists(hair_system) :
+        hair_system = pm.rename(pm.createNode('hairSystem',ss=1,n='%sShape'%hair_system).getParent(),hair_system)
+        pm.PyNode('time1').outTime >> hair_system.getShape().currentTime
+        pm.select(hair_system)
+        mm.eval('addPfxToHairSystem;')
+    hair_system = pm.PyNode(hair_system)
+    #hair_system = pm.PyNode(hair_system)
+    hair_ind = len(hair_system.getShape().inputHair.listConnections())
+    if not pm.objExists('%s_follicles'%hair_system):
+        pm.group(name='%s_follicles'%hair_system)
+    # connections
+    pm.parent(input_curve,follicle)
+    pm.parent(follicle,'%s_follicles'%hair_system)
+    input_curve.getShape().worldSpace[0] >> follicle.getShape().startPosition
+    follicle.getShape().outCurve >> hair_curve.getShape().create
+    follicle.getShape().outHair >> hair_system.getShape().inputHair[hair_ind]
+    hair_system.getShape().outputHair[hair_ind] >> follicle.getShape().currentPosition
+    
+    return [input_curve,hair_curve,follicle,hair_system]
+
+#@do_function_on_single
+def detach_shape(ob, preserve=False):
+    '''detach Multi Shape to individual Object'''
+    result= []
+    if preserve:
+        ob = pm.duplicate(ob, rr=True)[0]
+    obShape = ob.listRelatives(type='shape')
+    result.append(ob)
+    if len(obShape)>1:
+        for shape in obShape[1:]:
+            transformName = "newTransform01"
+            newTransform = pm.nt.Transform(name=transformName)
+            pm.parent(shape, newTransform, r=1, s=1)
+            result.append(newTransform)
+    return result
+
 def exportCam():
     '''export allBake Camera to FBX files'''
     FBXSettings = [
