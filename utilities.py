@@ -111,6 +111,18 @@ def do_function_on_setToLast(func):
 ###misc function
 
 ###Rigging
+@do_function_on_single
+def insert_joint(joint, num_joint=2):
+    joint_child = joint.getChildren()[0] if joint.getChildren() else None
+    joint_child.orientJoint('none')
+    if joint_child:
+        distance = joint_child.tx.get()/(num_joint+1)
+        while num_joint:
+            insert_joint = pm.insertJoint(joint)
+            pm.joint(insert_joint, edit=True, co=True,ch=False, p=[distance,0,0], r=True)
+            joint = insert_joint
+            num_joint-=1
+
 @do_function_on_singleToSecond
 def parent_shape(tranform1,tranform2):
     pm.parent(tranform1.getShape(),tranform2,r=True,s=True)
@@ -168,13 +180,14 @@ def copy_skin_multi(source_skin_grp,dest_skin_grp):
         print '---Copy Skin Finish---'
     else:
         print 'source and target are not the same'
-
+@error_alert
 @do_function_on_singleToSecond
 def copy_skin_single(source_skin,dest_skin):
     skin = source_skin.getShape().listConnections(type='skinCluster')[0]
     dest_skin = dest_skin.getShape().listConnections(type='skinCluster')[0]
     print skin,dest_skin
-    pm.copySkinWeights(ss=skin,ds=dest_skin,nm=1,nr=1,sa='closestPoint',ia=['oneToOne','name'])
+    pm.copySkinWeights(ss=skin.name(),ds=dest_skin.name(),
+                       nm=True,nr=True,sm=True,sa='closestPoint',ia=['closestJoint','name'])
     dest_skin.setSkinMethod(skin.getSkinMethod())
 
 @do_function_on_setToLast
