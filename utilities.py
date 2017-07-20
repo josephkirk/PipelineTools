@@ -109,12 +109,18 @@ def do_function_on_setToLast(func):
             print "no object to operate on"
     return wrapper
 ###misc function
-
+def remove_number(string):
+    for index, character in enumerate(string):
+        if character.isdigit():
+            return (string[:index], int(string[index:] if string[index:].isdigit() else string[index:]))
 ###Rigging
+@error_alert
 @do_function_on_single
 def insert_joint(joint, num_joint=2):
+    og_joint = joint
     joint_child = joint.getChildren()[0] if joint.getChildren() else None
     joint_child.orientJoint('none')
+    joint_name = remove_number(joint.name())
     if joint_child:
         distance = joint_child.tx.get()/(num_joint+1)
         while num_joint:
@@ -122,6 +128,14 @@ def insert_joint(joint, num_joint=2):
             pm.joint(insert_joint, edit=True, co=True,ch=False, p=[distance,0,0], r=True)
             joint = insert_joint
             num_joint-=1
+        joint_list = og_joint.listRelatives(type='joint', ad=1)
+        joint_list.reverse()
+        joint_list.insert(0,og_joint)
+        for index, bone in enumerate(joint_list):
+            try:
+                pm.rename(bone, "%s%02d"%(joint_name[0], index+1))
+            except:
+                pm.rename(bone, "%s#"%joint_name[0])
 
 @do_function_on_singleToSecond
 def parent_shape(tranform1,tranform2):
