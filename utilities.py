@@ -298,6 +298,41 @@ def reset_bindPose():
 
 ###function
 @do_function_on_single
+def set_material_attr(mat,mat_type='dielectric',**kwargs):
+    '''set Material Attribute'''
+    if type(mat) == pm.nt.VRayMtl:
+        dielectric_setting = {
+            'brdfType':1,
+            'reflectionGlossiness':0.805,
+            'reflectionColorAmount':1,
+            'useFresnel':1,
+            'lockFresnelIORToRefractionIOR':1,
+            'bumpMapType':1,
+            'bumpMult':2.2
+        }
+        metal_setting = {
+            'brdfType':1,
+            'reflectionGlossiness':0.743,
+            'reflectionColorAmount':1,
+            'useFresnel':0,
+            'lockFresnelIORToRefractionIOR':1,
+            'bumpMapType':1,
+            'bumpMult':1.8
+        }
+        shader_type = {
+            'metal':metal_setting,
+            'dielectric':dielectric_setting
+        }
+        if shader_type.has_key(mat_type):
+            for attr,value in shader_type[mat_type].items():
+                mat.attr(attr).set(value)
+    for key,value in kwargs.items():
+        try:
+            mat.attr(key).set(value)
+        except (IOError, OSError, AttributeError) as why:
+            print why
+
+@do_function_on_single
 def assign_curve_to_hair(abc_curve,hair_system="",preserve=False):
     '''assign Alembic curve Shape or tranform contain multi curve Shape to hairSystem'''
     curve_list = detach_shape(abc_curve, preserve=preserve)
