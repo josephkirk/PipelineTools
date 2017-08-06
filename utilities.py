@@ -40,8 +40,11 @@ def do_function_on_single(func):
         #print args_list
         sel.extend(args_list)
         if sel:
+            results = []
             for ob in sel:
-                func(ob, **kwargs)
+                result = func(ob, **kwargs)
+                results.append(result)
+            return results
         else:
             print 'no object to operate on'
     return wrapper
@@ -113,7 +116,38 @@ def remove_number(string):
     for index, character in enumerate(string):
         if character.isdigit():
             return (string[:index], int(string[index:] if string[index:].isdigit() else string[index:]))
+
+def get_pos_center_from_edge(edge):
+    if type(edge) == pm.general.MeshEdge:
+        t_node = edge.node()
+        verts_set= set()
+        edge_loop_list = pm.ls(pm.polySelect(t_node, edgeLoop=edge.currentItemIndex(), ns=True, ass=True))
+        for ed in edge_loop_list:
+            unpack_edges = [t_node.e[edg] for edg in ed.indices()]
+            for true_edge in unpack_edges:
+                for vert in true_edge.connectedVertices():
+                    verts_set.add(vert)
+        vert_pos = sum([v.getPosition() for v in list(verts_set)])/len(verts_set)
+        return vert_pos
 ###Rigging
+
+
+def create_joint(ob_list):
+    new_joints = []
+    for ob in ob_list:
+        if type(ob) == pm.nt.Transform:
+            get_pos = ob.translate.get()
+        elif type(ob) == pm.general.MeshVertex:
+            get_pos = ob.getPosition(space='world')
+        elif type(ob) == pm.general.MeshEdge:
+            get_pos = get_pos_center_from_edges(ob)
+        new_joint = pm.joint(p=get_pos)
+        new_joints.append(new_joint)
+    for new_joint in new_joints:
+        pm.joint(new_joint ,edit=True, oj='xyz', sao='yup', ch=True, zso=True)
+        if new_joint == new_joints[-1]:
+            pm.joint(new_joint ,edit=True, oj='none', ch=True, zso=True)
+
 @error_alert
 @do_function_on_single
 def insert_joint(joint, num_joint=2):
