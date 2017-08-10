@@ -155,6 +155,23 @@ def sendCurrentFileUI():
     pm.setParent('..')
     pm.showWindow()
 
+def skin_weight_setter_UI():
+    if pm.window('SkinWeightSetterUI', ex=True):
+        pm.deleteUI('SkinWeightSetterUI', window=True)
+        pm.windowPref('SkinWeightSetterUI', remove=True)
+    pm.window('SkinWeightSetterUI', t="Skin Weight Setter")
+    pm.columnLayout(adjustableColumn=1)
+    pm.rowColumnLayout(
+        numberOfColumns=2,
+        columnWidth=[(1, 90), (2, 90)])
+    pm.text(label='Weight :', align='left')
+    pm.text(label='')
+    weight_value_ID = pm.intField(value=1,min=1)
+    pm.button(label="Set",
+              c=pm.Callback(ul.skin_weight_setter, skin_value=weight_value_ID.getValue()))
+    pm.setParent('..')
+    pm.showWindow()
+
 def mirrorUVui():
     if pm.window('MirrorUVUI', ex=True):
         pm.deleteUI('MirrorUVUI', window=True)

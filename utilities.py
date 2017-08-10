@@ -22,95 +22,52 @@ def error_alert(func):
             print why
     return wrapper
 
-def do_function_on_single(func):
-    """wrap a function to operate on select object or object name string"""
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        sel = pm.selected()
-        #pm.select(cl=True)
-        args_list = []
-        for arg in args:
-            if type(arg) == str:
-                ob_found = pm.ls(arg)
-                print ob_found
-                if ob_found:
-                    for ob in ob_found:
-                        print ob
-                        args_list.append(ob)
-        #print args_list
-        sel.extend(args_list)
-        if sel:
-            results = []
-            for ob in sel:
-                result = func(ob, **kwargs)
-                results.append(result)
-            return results
-        else:
-            print 'no object to operate on'
-    return wrapper
+def do_function_on(mode='single', type_filter=[]):
+    def decorator(func):
+        """wrap a function to operate on select object or object name string according to mode
+                mode: single, double, set, last, doubleType"""
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            sel = pm.selected()
+            #pm.select(cl=True)
+            sel.extend(args)
+            #print args_list
+            object_list = list(set(pm.ls(sel,type=type_filter)))
+            if object_list:
+                results = []
+                if mode == 'single':
+                    for ob in object_list:
+                        result = func(ob, **kwargs)
+                        results.append(result)
+                elif mode == 'double':
+                    if len(object_list)>1:
+                        result = func(sel[0], sel[-1], **kwargs)
+                        results.append(result)
+                    else:
+                        pm.warning('Select two objects')
+                elif mode == 'sets':
+                    result = func(object_list, **kwargs)
+                    results.append(result)
+                elif mode == 'last':
+                    if len(object_list)>1:
+                        result = func(object_list[:-1], object_list[-1], **kwargs)
+                        results.append(result)
+                    else:
+                        pm.warning('Select affect objects then target object')
+                elif mode == 'doubleType':
+                    if len(type_filter) == 2 and len(object_list) > 1:
+                        object_type1 = pm.ls(object_list, type=type_filter[0])
+                        object_type2 = pm.ls(object_list, type=type_filter[1])
+                        result = func(object_type1, object_type2, **kwargs)
+                        results.append(result)
+                    else:
+                        pm.warning('Select more than 2 object of 2 kind and input those kind into type_filter keyword')
+                return results
+            else:
+                pm.error('no object to operate on')
+        return wrapper
+    return decorator
 
-def do_function_on_singleToSecond(func):
-    """wrap a function to operate on select object or object name string"""
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        sel = pm.selected()
-        source = sel[0] if sel else None
-        target = sel[-1] if sel else None
-        if target != source and target:
-            result = func(source, target, **kwargs)
-            return result
-        else:
-            print "select 2 object"
-    return wrapper
-
-def do_function_on_set(func):
-    """wrap a function to operate on select object or object name string"""
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        sel = pm.selected()
-        #pm.select(cl=True)
-        args_list = []
-        for arg in args:
-            if type(arg) == str:
-                ob_found = pm.ls(arg)
-                #print ob_found
-                if ob_found:
-                    for ob in ob_found:
-                        #print ob
-                        args_list.append(ob)
-        #print args_list
-        sel.extend(args_list)
-        if sel:
-            result = func(sel, **kwargs)
-            return result
-        else:
-            print 'no object to operate on'
-    return wrapper
-
-def do_function_on_setToLast(func):
-    """wrap a function to operate on select object or object name string"""
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        sel = pm.selected()
-        #pm.select(cl=True)
-        args_list = []
-        for arg in args:
-            if type(arg) == str:
-                ob_found = pm.ls(arg)
-                print ob_found
-                if ob_found:
-                    for ob in ob_found:
-                        print ob
-                        args_list.append(ob)
-        #print args_list
-        sel.extend(args_list)
-        if sel:
-            target = sel[-1]
-            result = func(sel[:-1], target, **kwargs)
-            return result
-        else:
-            print "no object to operate on"
-    return wrapper
 ###misc function
 def remove_number(string):
     for index, character in enumerate(string):
@@ -130,8 +87,36 @@ def get_pos_center_from_edge(edge):
         vert_pos = sum([v.getPosition() for v in list(verts_set)])/len(verts_set)
         return vert_pos
 ###Rigging
+@do_function_on(mode='doubleType', type_filter=['float3', 'joint'])
+def skin_weight_setter(component_list, joints_list, skin_value=1.0):
+    '''set skin weight to skin_value for vert in verts_list to first joint,
+       other joint will receive average from normalized weight'''
+    verts_list = []
+    for component in component_list:
+        if type(component) == pm.general.MeshEdge:
+            verts = component.connectedVertices()
+            verts_list.append(verts)
+        if type(component) == pm.general.MeshFace:
+            vert_index = component.getVertices()
+            for index in vert_index:
+                verts_list.append(component.node().vtx[index])
+        elif type(component) == pm.general.MeshVertex:
+            verts_list.append(component)
+    try:
+        shape_node = verts_list[0].node()
+        skin_cluster = shape_node.listConnections(type='skinCluster')[0]
+    except:
+        skin_cluster = False
+    if all([skin_cluster, verts_list, joints_list]):
+        skin_weight = [(joints_list[0], skin_value)]
+        if len(joints_list) > 1:
+            skin_normalized = (1.0-skin_value)/(len(joints_list)-1)
+            for joint in joints_list[1:]:
+                skin_weight.append((joint, skin_normalized))
+        pm.select(verts_list)
+        pm.skinPercent(skin_cluster, transformValue=skin_weight)
 
-
+@do_function_on(mode='single', type_filter=['float3', 'transform'])
 def create_joint(ob_list):
     new_joints = []
     for ob in ob_list:
@@ -144,12 +129,12 @@ def create_joint(ob_list):
         new_joint = pm.joint(p=get_pos)
         new_joints.append(new_joint)
     for new_joint in new_joints:
-        pm.joint(new_joint ,edit=True, oj='xyz', sao='yup', ch=True, zso=True)
+        pm.joint(new_joint, edit=True, oj='xyz', sao='yup', ch=True, zso=True)
         if new_joint == new_joints[-1]:
-            pm.joint(new_joint ,edit=True, oj='none', ch=True, zso=True)
+            pm.joint(new_joint, edit=True, oj='none', ch=True, zso=True)
 
 @error_alert
-@do_function_on_single
+@do_function_on(mode='single')
 def insert_joint(joint, num_joint=2):
     og_joint = joint
     joint_child = joint.getChildren()[0] if joint.getChildren() else None
@@ -159,24 +144,98 @@ def insert_joint(joint, num_joint=2):
         distance = joint_child.tx.get()/(num_joint+1)
         while num_joint:
             insert_joint = pm.insertJoint(joint)
-            pm.joint(insert_joint, edit=True, co=True,ch=False, p=[distance,0,0], r=True)
+            pm.joint(insert_joint, edit=True, co=True, ch=False, p=[distance, 0, 0], r=True)
             joint = insert_joint
-            num_joint-=1
+            num_joint -= 1
         joint_list = og_joint.listRelatives(type='joint', ad=1)
         joint_list.reverse()
-        joint_list.insert(0,og_joint)
+        joint_list.insert(0, og_joint)
         for index, bone in enumerate(joint_list):
             try:
                 pm.rename(bone, "%s%02d"%(joint_name[0], index+1))
             except:
                 pm.rename(bone, "%s#"%joint_name[0])
 
-@do_function_on_singleToSecond
-def parent_shape(tranform1,tranform2):
-    pm.parent(tranform1.getShape(),tranform2,r=True,s=True)
-    pm.delete(tranform1)
+@do_function_on(mode='double')
+def parent_shape(src, target, delete_src=True):
+    '''parent shape from source to target'''
+    pm.parent(src.getShape(), target, r=True, s=True)
+    if delete_src:
+        pm.delete(src)
 
-@do_function_on_single
+@do_function_on(mode='single')
+def un_parent_shape(ob):
+    '''unParent all shape and create new trasnform for each shape'''
+    shapeList = ob.listRelatives(type=pm.nt.Shape)
+    if shapeList:
+        for shape in shapeList:
+            newTr = pm.nt.Transform(name=(shape.name()[:shape.name().find('Shape')]))
+            newTr.setMatrix(ob.getMatrix(ws=True), ws=True)
+            pm.parent(shape, newTr, r=True, s=True)
+    if type(ob) != pm.nt.Joint:
+        pm.delete(ob)
+
+@do_function_on(mode='double')
+def snap_simple(ob1, ob2, worldspace=False, hierachy=False, preserve_child=False):
+    '''snap Transform for 2 object'''
+    ob1_childs = ob1.listRelatives(type=['joint', 'transform'], ad=1)
+    if hierachy:
+        ob1_childs.append(ob1)
+        ob2_childs = ob2.listRelatives(type=['joint', 'transform'], ad=1)
+        ob2_childs.append(ob2)
+        for ob1_child, ob2_child in zip(ob1_childs, ob2_childs):
+            ob1_child.setMatrix(ob2_child.getMatrix(ws=worldspace), ws=worldspace)
+    else:
+        ob1_child_old_matrixes = [ob_child.getMatrix(ws=True)
+                                  for ob_child in ob1_childs]
+        ob1.setMatrix(ob2.getMatrix(ws=worldspace), ws=worldspace)
+        if preserve_child:
+            for ob1_child, ob1_child_old_matrix in zip(ob1_childs, ob1_child_old_matrixes):
+                ob1_child.setMatrix(ob1_child_old_matrix, ws=True)
+
+@do_function_on(mode='double')
+def copy_skin_multi(source_skin_grp, dest_skin_grp):
+    '''copy skin for 2 identical group hierachy'''
+    source_skins = source_skin_grp.listRelatives(type='transform', ad=1)
+    dest_skins = dest_skin_grp.listRelatives(type='transform', ad=1)
+    if len(dest_skins) == len(source_skins):
+        print '---Copying skin from %s to %s---'%(source_skin_grp, dest_skin_grp)
+        for skinTR, dest_skinTR in zip(source_skins, dest_skins):
+            if skinTR.name().split(':')[-1] != dest_skinTR.name().split(':')[-1]:
+                print skinTR.name().split(':')[-1], dest_skinTR.name().split(':')[-1]
+            else:
+                try:
+                    skin = skinTR.getShape().listConnections(type='skinCluster')[0]
+                    dest_skin = dest_skinTR.getShape().listConnections(type='skinCluster')[0]
+                    pm.copySkinWeights(ss=skin.name(), ds=dest_skin.name(),
+                                       noMirror=True, normalize=True,
+                                       surfaceAssociation='closestPoint',
+                                       influenceAssociation='closestJoint')
+                    dest_skin.setSkinMethod(skin.getSkinMethod())
+                    print skinTR, 'copied to', dest_skinTR, '\n'
+                except:
+                    print '%s cannot copy skin to %s'%(skinTR.name(), dest_skinTR.name()), '\n'
+        print '---Copy Skin Finish---'
+    else:
+        print 'source and target are not the same'
+@error_alert
+@do_function_on(mode='double')
+def copy_skin_single(source_skin,dest_skin):
+    '''copy skin for 2 object, target object do not need to have skin Cluster'''
+    skin = source_skin.getShape().listConnections(type='skinCluster')[0]
+    dest_skin = dest_skin.getShape().listConnections(type='skinCluster')[0]
+    print skin,dest_skin
+    pm.copySkinWeights(ss=skin.name(),ds=dest_skin.name(),
+                       nm=True,nr=True,sm=True,sa='closestPoint',ia=['closestJoint','name'])
+    dest_skin.setSkinMethod(skin.getSkinMethod())
+
+@do_function_on(mode='double')
+def parent_shape(src,target):
+    if src.getShape():
+        pm.parent(src.getShape(), target, r=True, s=True)
+        pm.delete(src)
+
+@do_function_on(mode='single')
 def un_parent_shape(ob):
     shapeList = ob.listRelatives(type=pm.nt.Shape)
     if shapeList:
@@ -187,81 +246,12 @@ def un_parent_shape(ob):
     if type(ob) != pm.nt.Joint:
         pm.delete(ob)
 
-@do_function_on_singleToSecond
-def snap_simple(ob1, ob2, worldspace=False, hierachy=False, preserve_child=False):
-    ob1_childs = ob1.listRelatives(type=['joint','transform'],ad=1)
-    if hierachy:
-        ob1_childs.append(ob1)
-        ob2_childs = ob2.listRelatives(type=['joint','transform'],ad=1)
-        ob2_childs.append(ob2)
-        for ob1_child,ob2_child in zip(ob1_childs,ob2_childs):
-            ob1_child.setMatrix(ob2_child.getMatrix(ws=worldspace), ws=worldspace)
-    else:
-        ob1_child_old_matrixes = [ob_child.getMatrix(ws=True)
-                                  for ob_child in ob1_childs]
-        ob1.setMatrix(ob2.getMatrix(ws=worldspace), ws=worldspace)
-        if preserve_child:
-            for ob1_child, ob1_child_old_matrix in zip(ob1_childs, ob1_child_old_matrixes):
-                ob1_child.setMatrix(ob1_child_old_matrix,ws=True)
-
-@do_function_on_singleToSecond
-def copy_skin_multi(source_skin_grp,dest_skin_grp):
-    source_skins = source_skin_grp.listRelatives(type='transform',ad=1)
-    dest_skins = dest_skin_grp.listRelatives(type='transform',ad=1)
-    if len(dest_skins) == len(source_skins):
-        print '---Copying skin from %s to %s---'%(source_skin_grp, dest_skin_grp)
-        for skinTR, dest_skinTR in zip(source_skins, dest_skins):
-            if skinTR.name().split(':')[-1] != dest_skinTR.name().split(':')[-1]:
-                print skinTR.name().split(':')[-1], dest_skinTR.name().split(':')[-1]
-            else:
-                try:
-                    skin = skinTR.getShape().listConnections(type='skinCluster')[0]
-                    dest_skin = dest_skinTR.getShape().listConnections(type='skinCluster')[0]
-                    pm.copySkinWeights(ss=skin.name(),ds=dest_skin.name(),
-                                       noMirror=True, normalize=True,
-                                       surfaceAssociation='closestPoint',
-                                       influenceAssociation='closestJoint')
-                    dest_skin.setSkinMethod(skin.getSkinMethod())
-                    print skinTR,'copied to', dest_skinTR, '\n'
-                except:
-                    print '%s cannot copy skin to %s'%(skinTR.name(),dest_skinTR.name()), '\n'
-        print '---Copy Skin Finish---'
-    else:
-        print 'source and target are not the same'
-@error_alert
-@do_function_on_singleToSecond
-def copy_skin_single(source_skin,dest_skin):
-    skin = source_skin.getShape().listConnections(type='skinCluster')[0]
-    dest_skin = dest_skin.getShape().listConnections(type='skinCluster')[0]
-    print skin,dest_skin
-    pm.copySkinWeights(ss=skin.name(),ds=dest_skin.name(),
-                       nm=True,nr=True,sm=True,sa='closestPoint',ia=['closestJoint','name'])
-    dest_skin.setSkinMethod(skin.getSkinMethod())
-
-def parent_shape():
-    sel = pm.selected()
-    if sel and len(sel)==2:
-        pm.parent(sel[0].getShape(),sel[1],r=True,s=True)
-        pm.delete(sel[0])
-
-def un_parent_shape():
-    sel = pm.selected()
-    for ob in sel:
-        shapeList = ob.listRelatives(type=pm.nt.Shape)
-        if shapeList:
-            for shape in shapeList:
-                newTr = pm.nt.Transform(name=(shape.name()[:shape.name().find('Shape')]))
-                newTr.setMatrix(ob.getMatrix(ws=True),ws=True)
-                pm.parent(shape,newTr,r=True,s=True)
-        if type(ob) != pm.nt.Joint:
-            pm.delete(ob)
-
-@do_function_on_setToLast
+@do_function_on(mode='last')
 def connect_joint(bones,boneRoot,**kwargs):
     for bone in bones:
         pm.connectJoint(bone, boneRoot, **kwargs)
 
-@do_function_on_single
+@do_function_on(mode='single')
 def create_roll_joint(oldJoint):
     newJoint = pm.duplicate(oldJoint,rr=1,po=1)[0]
     pm.rename(newJoint,('%sRoll1'%oldJoint.name()).replace('Left','LeafLeft'))
@@ -269,7 +259,7 @@ def create_roll_joint(oldJoint):
     pm.parent(newJoint, oldJoint)
     return newJoint
 
-@do_function_on_single
+@do_function_on(mode='single')
 def create_sub_joint(ob):
     subJoint = pm.duplicate(ob,name='%sSub'%ob.name(),rr=1,po=1,)[0]
     new_pairBlend = pm.createNode('pairBlend')
@@ -280,7 +270,7 @@ def create_sub_joint(ob):
     new_pairBlend.outRotate >> subJoint.rotate
     return (ob,new_pairBlend,subJoint)
 
-@do_function_on_single
+@do_function_on(mode='single')
 def reset_joint_orient(bone):
     if type(bone) != pm.nt.Joint:
         return
@@ -288,11 +278,11 @@ def reset_joint_orient(bone):
     for at in attrList[:-1]:
         bone.attr(at).set(0)
 
-@do_function_on_single
+@do_function_on(mode='single')
 def add_suffix(ob,suff="_skinDeform"):
     pm.rename(ob,ob.name()+str(suff))
 
-@do_function_on_single
+@do_function_on(mode='single')
 def mirror_joint_tranform(bone, translate=False, rotate=True, **kwargs):
     #print bone
     opbone = get_opposite_joint(bone, customPrefix=(kwargs['customPrefix']if kwargs.has_key('customPrefix') else None))
@@ -345,7 +335,7 @@ def reset_bindPose():
             pm.delete(bp)
 
 ###function
-@do_function_on_single
+@do_function_on(mode='single')
 def set_material_attr(mat,mat_type='dielectric',**kwargs):
     '''set Material Attribute'''
     if type(mat) == pm.nt.VRayMtl:
@@ -380,7 +370,7 @@ def set_material_attr(mat,mat_type='dielectric',**kwargs):
         except (IOError, OSError, AttributeError) as why:
             print why
 
-@do_function_on_single
+@do_function_on(mode='single')
 def assign_curve_to_hair(abc_curve,hair_system="",preserve=False):
     '''assign Alembic curve Shape or tranform contain multi curve Shape to hairSystem'''
     curve_list = detach_shape(abc_curve, preserve=preserve)
@@ -432,7 +422,7 @@ def hair_from_curve(input_curve, hair_system="") :
     
     return [input_curve,hair_curve,follicle,hair_system]
 
-#@do_function_on_single
+#@do_function_on(mode='single')
 def detach_shape(ob, preserve=False):
     '''detach Multi Shape to individual Object'''
     result= []
@@ -486,7 +476,7 @@ def exportCam():
         cc = 'FBXExport -f "%s" -s' % filePath
         mm.eval(cc)
 
-@do_function_on_single
+@do_function_on(mode='single')
 def mirror_transform(obs, axis="x",xform=[0,4]):
     if not obs:
         print "no object to mirror"
@@ -503,7 +493,7 @@ def mirror_transform(obs, axis="x",xform=[0,4]):
             for at in axisDict[axis][xform[0]:xform[1]]:
                 ob.attr(at).set(ob.attr(at).get()*-1)
 
-@do_function_on_setToLast
+@do_function_on(mode='last')
 def transfer_material(obs, obSrc):
     try:
         obSrc_SG = obSrc.getShape().listConnections(type=pm.nt.ShadingEngine)[0]
@@ -513,7 +503,7 @@ def transfer_material(obs, obSrc):
         for ob in obs:
             set_material(ob,obSrc_SG)
 
-#@do_function_on_single
+#@do_function_on(mode='single')
 def set_material(ob, SG):
     if type(SG) == pm.nt.ShadingEngine:
         try:
@@ -523,12 +513,12 @@ def set_material(ob, SG):
     else:
         print "There is no %s" % SG.name()
 
-@do_function_on_single
+@do_function_on(mode='single')
 def lock_transform(ob,lock=True):
     for at in ['translate','rotate','scale']:
         ob.attr(at).set(lock=lock)
 
-@do_function_on_single
+@do_function_on(mode='single')
 def add_VrayOSD(ob):
     '''add Vray OpenSubdiv attr to enable smooth mesh render'''
     if str(pm.getAttr('defaultRenderGlobals.ren')) == 'vray':
@@ -536,7 +526,7 @@ def add_VrayOSD(ob):
         pm.vray('addAttributesFromGroup', obShape, "vray_opensubdiv", 1)
         pm.setAttr(obShape+".vrayOsdPreserveMapBorders", 2)
 
-@do_function_on_single
+@do_function_on(mode='single')
 def clean_attr(ob):
     '''clean all Attribute'''
     for atr in ob.listAttr():
@@ -546,7 +536,7 @@ def clean_attr(ob):
         except:
             pass
 ####
-@do_function_on_set
+@do_function_on(mode='set')
 def find_instance(obs,instanceOnly=True):
     allTransform = [tr for tr in pm.ls(type=pm.nt.Transform) if tr.getShape()]
     instanceShapes =[]
