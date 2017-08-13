@@ -155,22 +155,79 @@ def sendCurrentFileUI():
     pm.setParent('..')
     pm.showWindow()
 
-def skin_weight_setter_UI():
-    if pm.window('SkinWeightSetterUI', ex=True):
-        pm.deleteUI('SkinWeightSetterUI', window=True)
-        pm.windowPref('SkinWeightSetterUI', remove=True)
-    pm.window('SkinWeightSetterUI', t="Skin Weight Setter")
-    pm.columnLayout(adjustableColumn=1)
-    pm.rowColumnLayout(
-        numberOfColumns=2,
-        columnWidth=[(1, 90), (2, 90)])
-    pm.text(label='Weight :', align='left')
-    pm.text(label='')
-    weight_value_ID = pm.intField(value=1,min=1)
-    pm.button(label="Set",
-              c=pm.Callback(ul.skin_weight_setter, skin_value=weight_value_ID.getValue()))
-    pm.setParent('..')
-    pm.showWindow()
+class skin_weight_setter_UI(object):
+    def __init__(self):
+        self.weight_value = 1.0
+        self.dual_weight_value = 0.0
+        self.interactive = False
+        self.dual_interactive = False
+        self.weight_tick=5
+        self.init_ui()
+    
+    def set_interactive_state(self):
+        self.interactive = False if self.interactive else True
+        print self.interactive
+
+    def set_dual_interactive_state(self):
+        self.dual_interactive = False if self.interactive else True
+        print self.interactive
+    
+    def set_weight(self, value):
+        self.weight_value = round(value,2)
+        self.skin_weight_slider_ui.setValue(self.weight_value)
+        if self.interactive:
+            self.apply_weight()
+
+    def set_dual_weight(self, value):
+        self.dual_weight_value = round(value,2)
+        self.dual_weight_slider_ui.setValue(self.dual_weight_value)
+        if self.dual_interactive:
+            self.dual_weight_setter()
+    @pm.showsHourglass
+    def apply_weight(self):
+        ul.skin_weight_setter(skin_value=self.weight_value)
+    @pm.showsHourglass
+    def apply_dual_weight(self):
+        print self.dual_weight_value
+        ul.dual_weight_setter(weight_value=self.dual_weight_value)
+
+    def init_ui(self):
+        if pm.window('SkinWeightSetterUI', ex=True):
+            pm.deleteUI('SkinWeightSetterUI', window=True)
+            pm.windowPref('SkinWeightSetterUI', remove=True)
+        pm.window('SkinWeightSetterUI', t="Skin Weight Setter")
+        pm.columnLayout(adjustableColumn=1)
+        self.skin_weight_slider_ui = pm.floatSliderButtonGrp(
+            label='Skin Weight: ', annotation='Click "Set" to set skin weight or use loop button to turn on interactive mode',
+            field=True, precision=2, value=self.weight_value, minValue=0.0, maxValue=1.0,cc=self.set_weight,
+            buttonLabel='Set', bc=pm.Callback(self.apply_weight),
+            image='playbackLoopingContinuous.png', sbc=self.set_interactive_state)
+        pm.separator(height=5, style='none')
+        pm.gridLayout( numberOfColumns=self.weight_tick, cellWidthHeight=(95, 30))
+        weight_value = 1.0/(self.weight_tick-1)
+        for i in range(self.weight_tick):
+            pm.button(
+                label=str(weight_value*i),
+                annotation='Set skin weight to %04.2f'%(weight_value*i),
+                c=pm.Callback(self.set_weight,weight_value*i))
+        pm.setParent('..')
+        pm.separator(height=10)
+        self.dual_weight_slider_ui = pm.floatSliderButtonGrp(
+            label='Dual Quarternion Weight: ', annotation='Click "Set" to set skin weight or use loop button to turn on interactive mode',
+            field=True, precision=2, value=self.dual_weight_value, minValue=0.0, maxValue=1.0,cc=self.set_dual_weight,
+            buttonLabel='Set', bc=pm.Callback(self.apply_dual_weight),
+            image='playbackLoopingContinuous.png', sbc=self.set_dual_interactive_state)
+        pm.separator(height=5, style='none')
+        pm.gridLayout( numberOfColumns=self.weight_tick, cellWidthHeight=(95, 30))
+        for i in range(self.weight_tick):
+            pm.button(
+                label=str(weight_value*i),
+                annotation='Set dual quaternion weight to %04.2f'%(weight_value*i),
+                c=pm.Callback(self.set_dual_weight, weight_value*i))
+        pm.setParent('..')
+        pm.separator(height=10, style='none')
+        pm.helpLine(annotation='haha')
+        pm.showWindow()
 
 def mirrorUVui():
     if pm.window('MirrorUVUI', ex=True):

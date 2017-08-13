@@ -25,36 +25,47 @@ def error_alert(func):
 def do_function_on(mode='single', type_filter=[]):
     def decorator(func):
         """wrap a function to operate on select object or object name string according to mode
-                mode: single, double, set, last, doubleType"""
+                mode: single, double, set, singlelast, last, doubleType"""
         @wraps(func)
         def wrapper(*args, **kwargs):
             sel = pm.selected()
             #pm.select(cl=True)
-            sel.extend(args)
+            for arg in args:
+                if type(arg) == list:
+                    sel.append(arg)
+                else:
+                    sel.extend(arg)
             #print args_list
             object_list = list(set(pm.ls(sel,type=type_filter)))
             if object_list:
                 results = []
-                if mode == 'single':
+                if mode is 'single': # do function for every object in object_list
                     for ob in object_list:
                         result = func(ob, **kwargs)
                         results.append(result)
-                elif mode == 'double':
+                elif mode is 'double': # do function for first in object_list to affect last
                     if len(object_list)>1:
                         result = func(sel[0], sel[-1], **kwargs)
                         results.append(result)
                     else:
                         pm.warning('Select two objects')
-                elif mode == 'sets':
+                elif mode is 'sets': # do function directly to object_list
                     result = func(object_list, **kwargs)
                     results.append(result)
-                elif mode == 'last':
+                elif 'last' in mode: # set last object in object_list to affect others
                     if len(object_list)>1:
-                        result = func(object_list[:-1], object_list[-1], **kwargs)
-                        results.append(result)
+                        op_list = object_list[:-1]
+                        target = object_list[-1]
+                        if mode is 'singlelast':
+                            for op in op_list:
+                                result = func(op, target, **kwargs)
+                                results.append(result)
+                        else:
+                            result = func(op_list, target, **kwargs)
+                            results.append(result)
                     else:
                         pm.warning('Select affect objects then target object')
-                elif mode == 'doubleType':
+                elif mode is 'doubleType':
                     if len(type_filter) == 2 and len(object_list) > 1:
                         object_type1 = pm.ls(object_list, type=type_filter[0])
                         object_type2 = pm.ls(object_list, type=type_filter[1])
@@ -69,6 +80,12 @@ def do_function_on(mode='single', type_filter=[]):
     return decorator
 
 ###misc function
+def convert_component(components_list, toVertex=True, toEdge=False, toFace=False):
+    converts = pm.polyListComponentConversion(components_list,
+                                              fromFace=True, fromEdge=True, fromVertex=True,
+                                              toFace=toFace, toEdge=toEdge, toVertex=toVertex)
+    return pm.ls(converts)
+
 def remove_number(string):
     for index, character in enumerate(string):
         if character.isdigit():
@@ -86,35 +103,78 @@ def get_pos_center_from_edge(edge):
                     verts_set.add(vert)
         vert_pos = sum([v.getPosition() for v in list(verts_set)])/len(verts_set)
         return vert_pos
+
+def get_shape(ob):
+    '''return shape from ob, if cannot find raise error'''
+    if hasattr(ob, 'getShape'):
+        return ob.getShape()
+    else:
+        if issubclass(ob.node().__class__, pm.nt.Shape):
+            return ob.node()
+        else:
+            pm.error('object have no shape')
+def get_skin_cluster(ob):
+    '''return skin cluster from ob, if cannot find raise error'''
+    ob_shape = get_shape(ob)
+    try:
+        return ob_shape.listConnections(type='skinCluster')[0]
+    except:
+        pm.error('object have no skin bind')
+
 ###Rigging
+@do_function_on(mode='singlelast')
+def skin_weight_filter(ob, joint, threshold=0.1, select=False):
+    '''return vertex with weight less than theshold'''
+    skin_cluster = get_skin_cluster(ob)
+    ob_shape = get_shape(ob)
+    filter_weight = []
+    for vtx in ob_shape.vtx:
+        weight = pm.skinPercent(skin_cluster, vtx, query=True, transform=joint, transformValue=True)
+        #print weight
+        if 0 < weight <= threshold:
+            filter_weight.append(vtx)
+    if select:
+        pm.select(filter_weight)
+    return filter_weight
+
 @do_function_on(mode='doubleType', type_filter=['float3', 'joint'])
 def skin_weight_setter(component_list, joints_list, skin_value=1.0):
     '''set skin weight to skin_value for vert in verts_list to first joint,
-       other joint will receive average from normalized weight'''
-    verts_list = []
-    for component in component_list:
-        if type(component) == pm.general.MeshEdge:
-            verts = component.connectedVertices()
-            verts_list.append(verts)
-        if type(component) == pm.general.MeshFace:
-            vert_index = component.getVertices()
-            for index in vert_index:
-                verts_list.append(component.node().vtx[index])
-        elif type(component) == pm.general.MeshVertex:
-            verts_list.append(component)
-    try:
-        shape_node = verts_list[0].node()
-        skin_cluster = shape_node.listConnections(type='skinCluster')[0]
-    except:
-        skin_cluster = False
+       other joint will receive average from normalized weight,
+       can be use to set Dual Quarternion Weight'''
+    verts_list = convert_component(component_list)
+    skin_cluster = get_skin_cluster(verts_list[0])
     if all([skin_cluster, verts_list, joints_list]):
-        skin_weight = [(joints_list[0], skin_value)]
+        print skin_value
+        skin_weight = [joints_list[0], skin_value]
         if len(joints_list) > 1:
             skin_normalized = (1.0-skin_value)/(len(joints_list)-1)
             for joint in joints_list[1:]:
-                skin_weight.append((joint, skin_normalized))
+                skin_weight.append(joint, skin_normalized)
         pm.select(verts_list)
         pm.skinPercent(skin_cluster, transformValue=skin_weight)
+        pm.select(joints_list, add=True)
+        #skin_cluster.setWeights(joints_list,[skin])
+
+@do_function_on(mode='sets', type_filter=['float3'])
+def dual_weight_setter(component_list, weight_value=0.0, query=False):
+    verts_list = convert_component(component_list)
+    shape = verts_list[0].node()
+    skin_cluster = get_skin_cluster(verts_list[0])
+    if query:
+        weight_list = []
+        for vert in verts_list:
+            for vert in vert.indices():
+                weight = skin_cluster.getBlendWeights(shape, shape.vtx[vert])
+                weight_list.append((shape.vtx[vert], weight))
+        return weight_list
+    else:
+        for vert in verts_list:
+            for vert in vert.indices():
+                skin_cluster.setBlendWeights(shape, shape.vtx[vert], [weight_value,weight_value])
+        #     print skin_cluster.getBlendWeights(shape, vert)
+        #pm.select(verts_list)
+        #skin_cluster.setBlendWeights(shape, verts_list, [weight_value,])
 
 @do_function_on(mode='single', type_filter=['float3', 'transform'])
 def create_joint(ob_list):
