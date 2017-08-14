@@ -162,8 +162,17 @@ class skin_weight_setter_UI(object):
         self.interactive = False
         self.dual_interactive = False
         self.weight_tick=5
+        self.context = self.init_skin_context('artAttrSkinPaintCtx1')
+        print dir(self.context)
         self.init_ui()
     
+    def init_skin_context(self,name):
+        try:
+            pm.deleteUI(name)
+        except:
+            pass
+        return pm.artAttrSkinPaintCtx('artAttrSkinPaintCtx1')
+
     def set_interactive_state(self):
         self.interactive = False if self.interactive else True
         print self.interactive
