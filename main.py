@@ -157,6 +157,7 @@ def sendCurrentFileUI():
 
 class skin_weight_setter_UI(object):
     def __init__(self):
+        self.skin_type = 'Classic'
         self.weight_value = 1.0
         self.dual_weight_value = 0.0
         self.interactive = False
@@ -172,7 +173,11 @@ class skin_weight_setter_UI(object):
         except:
             pass
         return pm.artAttrSkinPaintCtx('artAttrSkinPaintCtx1')
-
+    
+    def set_skin_type(*args):
+        # print args
+        ul.switch_skin_type(type=args[1])
+    
     def set_interactive_state(self):
         self.interactive = False if self.interactive else True
         print self.interactive
@@ -206,6 +211,12 @@ class skin_weight_setter_UI(object):
             pm.windowPref('SkinWeightSetterUI', remove=True)
         pm.window('SkinWeightSetterUI', t="Skin Weight Setter")
         pm.columnLayout(adjustableColumn=1)
+        pm.optionMenu( label='Skin Type:', changeCommand=self.set_skin_type )
+        pm.menuItem( label='Classis' )
+        pm.menuItem( label='Dual' )
+        pm.menuItem( label='Blend' )
+        #pm.setParent('..')
+        pm.separator(height=10)
         self.skin_weight_slider_ui = pm.floatSliderButtonGrp(
             label='Skin Weight: ', annotation='Click "Set" to set skin weight or use loop button to turn on interactive mode',
             field=True, precision=2, value=self.weight_value, minValue=0.0, maxValue=1.0,cc=self.set_weight,

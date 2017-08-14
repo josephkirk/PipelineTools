@@ -66,9 +66,9 @@ def do_function_on(mode='single', type_filter=[]):
                     else:
                         pm.warning('Select affect objects then target object')
                 elif mode is 'doubleType':
-                    if len(type_filter) == 2 and len(object_list) > 1:
-                        object_type1 = pm.ls(object_list, type=type_filter[0])
-                        object_type2 = pm.ls(object_list, type=type_filter[1])
+                    if len(object_list) > 1:
+                        object_type1 = pm.ls(object_list, type=type_filter[:-1])
+                        object_type2 = pm.ls(object_list, type=type_filter[-1], orderedSelection=True)
                         result = func(object_type1, object_type2, **kwargs)
                         results.append(result)
                     else:
@@ -81,9 +81,18 @@ def do_function_on(mode='single', type_filter=[]):
 
 ###misc function
 def convert_component(components_list, toVertex=True, toEdge=False, toFace=False):
+    test_type = [o for o in components_list if type(o) is pm.nt.Transform]
+    
+    if test_type:
+        converts = []
+        for match in test_type:
+            convert = match.getShape().vtx
+            converts.append(convert)
+        return converts
     converts = pm.polyListComponentConversion(components_list,
                                               fromFace=True, fromEdge=True, fromVertex=True,
                                               toFace=toFace, toEdge=toEdge, toVertex=toVertex)
+    print converts
     return pm.ls(converts)
 
 def remove_number(string):
@@ -137,7 +146,20 @@ def skin_weight_filter(ob, joint, threshold=0.1, select=False):
         pm.select(filter_weight)
     return filter_weight
 
-@do_function_on(mode='doubleType', type_filter=['float3', 'joint'])
+@do_function_on(mode='single')
+def switch_skin_type(ob,type='classis'):
+    type_dict = {
+        'Classis':0,
+        'Dual':1,
+        'Blend':2}
+    if not get_skin_cluster(ob) and type not in type_dict.keys():
+        return
+    skin_cluster = get_skin_cluster(ob)
+    skin_cluster.setSkinMethod(type_dict[type])
+    deform_normal_state = 0 if type_dict[type] is 2 else 1
+    skin_cluster.attr('deformUserNormals').set(deform_normal_state)
+
+@do_function_on(mode='doubleType', type_filter=['float3', 'transform', 'joint'])
 def skin_weight_setter(component_list, joints_list, skin_value=1.0):
     '''set skin weight to skin_value for vert in verts_list to first joint,
        other joint will receive average from normalized weight,
@@ -146,14 +168,16 @@ def skin_weight_setter(component_list, joints_list, skin_value=1.0):
     skin_cluster = get_skin_cluster(verts_list[0])
     if all([skin_cluster, verts_list, joints_list]):
         print skin_value
-        skin_weight = [joints_list[0], skin_value]
+        skin_weight = [(joints_list[0], skin_value)]
         if len(joints_list) > 1:
             skin_normalized = (1.0-skin_value)/(len(joints_list)-1)
             for joint in joints_list[1:]:
-                skin_weight.append(joint, skin_normalized)
+                skin_weight.append((joint, skin_normalized))
         pm.select(verts_list)
         pm.skinPercent(skin_cluster, transformValue=skin_weight)
         pm.select(joints_list, add=True)
+        print verts_list
+        print skin_weight
         #skin_cluster.setWeights(joints_list,[skin])
 
 @do_function_on(mode='sets', type_filter=['float3'])
