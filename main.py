@@ -246,7 +246,7 @@ class skin_weight_setter_UI(object):
                 c=pm.Callback(self.set_dual_weight, weight_value*i))
         pm.setParent('..')
         pm.separator(height=10, style='none')
-        pm.helpLine(annotation='haha')
+        pm.helpLine(annotation='copyright 2018 by Nguyen Phi Hung')
         pm.showWindow()
 
 def mirrorUVui():

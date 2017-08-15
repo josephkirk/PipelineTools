@@ -126,9 +126,18 @@ def get_skin_cluster(ob):
     '''return skin cluster from ob, if cannot find raise error'''
     ob_shape = get_shape(ob)
     try:
-        return ob_shape.listConnections(type='skinCluster')[0]
+        shape_connections = ob_shape.listConnections(type=['skinCluster', 'objectSet'])
+        for connection in shape_connections:
+            if 'skinCluster' in connection.name():
+                if type(connection) == pm.nt.SkinCluster:
+                    return connection
+                try_get_skinCluster = connection.listConnections(type='skinCluster')
+                if try_get_skinCluster:
+                    return try_get_skinCluster[0]
+                else:
+                    pm.error('Object have no skin bind')
     except:
-        pm.error('object have no skin bind')
+        pm.error('Cannot get skinCluster from object')
 
 ###Rigging
 @do_function_on(mode='singlelast')
