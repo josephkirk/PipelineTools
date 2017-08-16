@@ -67,12 +67,21 @@ def do_function_on(mode='single', type_filter=[]):
                         pm.warning('Select affect objects then target object')
                 elif mode is 'doubleType':
                     if len(object_list) > 1:
-                        object_type1 = pm.ls(object_list, type=type_filter[:-1])
-                        object_type2 = pm.ls(object_list, type=type_filter[-1], orderedSelection=True)
-                        result = func(object_type1, object_type2, **kwargs)
-                        results.append(result)
+                        object_type2 = pm.ls(object_list,
+                                             type=type_filter[-1],
+                                             orderedSelection=True)
+                        if object_type2:
+                            object_type1 = [
+                                object for object in pm.ls(object_list, type=type_filter[:-1])
+                                if type(object) != type(object_type2[0])]
+                            result = func(object_type1, object_type2, **kwargs)
+                            results.append(result)
+                        else:
+                            pm.warning('Object type "%s" is not in selection or argument'
+                                       %type_filter[-1])
                     else:
-                        pm.warning('Select more than 2 object of 2 kind and input those kind into type_filter keyword')
+                        pm.warning('Select more than 2 object of 2 kind ',
+                                   'and input those kind into type_filter keyword')
                 return results
             else:
                 pm.error('no object to operate on')
@@ -122,6 +131,7 @@ def get_shape(ob):
             return ob.node()
         else:
             pm.error('object have no shape')
+
 def get_skin_cluster(ob):
     '''return skin cluster from ob, if cannot find raise error'''
     ob_shape = get_shape(ob)
@@ -141,7 +151,7 @@ def get_skin_cluster(ob):
 
 ###Rigging
 @do_function_on(mode='singlelast')
-def skin_weight_filter(ob, joint, threshold=0.1, select=False):
+def skin_weight_filter(ob, joint,min=0.0, max=0.1, select=False):
     '''return vertex with weight less than theshold'''
     skin_cluster = get_skin_cluster(ob)
     ob_shape = get_shape(ob)
@@ -149,7 +159,7 @@ def skin_weight_filter(ob, joint, threshold=0.1, select=False):
     for vtx in ob_shape.vtx:
         weight = pm.skinPercent(skin_cluster, vtx, query=True, transform=joint, transformValue=True)
         #print weight
-        if 0 < weight <= threshold:
+        if min < weight <= max:
             filter_weight.append(vtx)
     if select:
         pm.select(filter_weight)
@@ -173,21 +183,32 @@ def skin_weight_setter(component_list, joints_list, skin_value=1.0):
     '''set skin weight to skin_value for vert in verts_list to first joint,
        other joint will receive average from normalized weight,
        can be use to set Dual Quarternion Weight'''
-    verts_list = convert_component(component_list)
-    skin_cluster = get_skin_cluster(verts_list[0])
-    if all([skin_cluster, verts_list, joints_list]):
-        print skin_value
+    def get_skin_weight():
         skin_weight = [(joints_list[0], skin_value)]
         if len(joints_list) > 1:
             skin_normalized = (1.0-skin_value)/(len(joints_list)-1)
             for joint in joints_list[1:]:
                 skin_weight.append((joint, skin_normalized))
-        pm.select(verts_list)
-        pm.skinPercent(skin_cluster, transformValue=skin_weight)
-        pm.select(joints_list, add=True)
-        print verts_list
-        print skin_weight
+        return skin_weight
+    
+    if any([type(component) is pm.nt.Transform for component in component_list]):
+        for component in component_list:
+            skin_cluster = get_skin_cluster(component)
+            pm.select(component, r=True)
+            pm.skinPercent(skin_cluster, transformValue=get_skin_weight())
+            print component_list
+        pm.select(component_list,joints_list)
+    else:
+        verts_list = convert_component(component_list)
+        skin_cluster = get_skin_cluster(verts_list[0])
+        if all([skin_cluster, verts_list, joints_list]):
+            pm.select(verts_list)
+            pm.skinPercent(skin_cluster, transformValue=get_skin_weight())
+            pm.select(joints_list, add=True)
+        #print verts_list
+        #print skin_weight
         #skin_cluster.setWeights(joints_list,[skin])
+
 
 @do_function_on(mode='sets', type_filter=['float3'])
 def dual_weight_setter(component_list, weight_value=0.0, query=False):

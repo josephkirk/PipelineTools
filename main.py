@@ -158,33 +158,50 @@ def sendCurrentFileUI():
 class skin_weight_setter_UI(object):
     def __init__(self):
         self.skin_type = 'Classic'
+        self.last_selected = []
         self.weight_value = 1.0
         self.dual_weight_value = 0.0
         self.interactive = False
+        self.weight_threshold = (0.0,0.1)
         self.dual_interactive = False
         self.weight_tick=5
-        self.context = self.init_skin_context('artAttrSkinPaintCtx1')
-        print dir(self.context)
         self.init_ui()
     
-    def init_skin_context(self,name):
-        try:
-            pm.deleteUI(name)
-        except:
-            pass
-        return pm.artAttrSkinPaintCtx('artAttrSkinPaintCtx1')
-    
+    def last_selection(self):
+        self.last_selected = pm.selected()
+        return self.last_selected
+
+    def preview_skin_weight(self):
+        get_joint = pm.ls(self.last_selection(), type='joint', orderedSelection=True)
+        if not get_joint:
+            return
+        if pm.currentCtx() != 'artAttrSkinContext':
+             mm.eval('artAttrSkinToolScript 3;')
+        lastJoint = pm.artAttrSkinPaintCtx(pm.currentCtx(), query=True, influence=True)
+        #pm.artAttrSkinPaintCtx(pm.currentCtx(), edit=True, influence=get_joint[0])
+        mm.eval('''
+        artAttrSkinToolScript 3;
+        artSkinInflListChanging "%s" 01;
+        artSkinInflListChanging "%s" 1;
+        artSkinInflListChanged artAttrSkinPaintCtx;
+        artAttrSkinPaintModePaintSelect 1 artAttrSkinPaintCtx;'''
+        %(lastJoint, unicode(get_joint[0])))
+
+    def set_weight_threshold(self,*args):
+        self.weight_threshold = (args[0], args[1])
+
     def set_skin_type(*args):
         # print args
         ul.switch_skin_type(type=args[1])
+        pm.headsUpMessage("Skin type set to %s"%args[1], time=0.2)
     
     def set_interactive_state(self):
         self.interactive = False if self.interactive else True
-        print self.interactive
+        pm.headsUpMessage("Interactive %s"%self.interactive, time=0.2)
 
     def set_dual_interactive_state(self):
-        self.dual_interactive = False if self.interactive else True
-        print self.interactive
+        self.dual_interactive = False if self.dual_interactive else True
+        pm.headsUpMessage("Interactive %s"%self.dual_interactive, time=0.2)
     
     def set_weight(self, value):
         self.weight_value = round(value,2)
@@ -197,13 +214,31 @@ class skin_weight_setter_UI(object):
         self.dual_weight_slider_ui.setValue(self.dual_weight_value)
         if self.dual_interactive:
             self.dual_weight_setter()
+
+    def select_skin_vertex(self):
+        ul.skin_weight_filter(
+            min=self.weight_threshold[0],
+            max=self.weight_threshold[1],
+            select=True)
+
     @pm.showsHourglass
     def apply_weight(self):
+        if not pm.selected() or not pm.ls(sl=True,type='joint'):
+            pm.select(self.last_selected)
+        if pm.currentCtx() == 'artAttrSkinContext':
+            mm.eval('artAttrSkinPaintModePaintSelect 0 artAttrSkinPaintCtx')
         ul.skin_weight_setter(skin_value=self.weight_value)
+        self.last_selection()
+        self.preview_skin_weight()
+        pm.headsUpMessage("Weight Set!", time=0.2)
+
     @pm.showsHourglass
     def apply_dual_weight(self):
-        print self.dual_weight_value
+        if not pm.selected():
+            pm.select(self.last_selected)
         ul.dual_weight_setter(weight_value=self.dual_weight_value)
+        self.last_selection()
+        pm.headsUpMessage("Dual Quarternion Weight Set!", time=0.2)
 
     def init_ui(self):
         if pm.window('SkinWeightSetterUI', ex=True):
@@ -216,6 +251,17 @@ class skin_weight_setter_UI(object):
         pm.menuItem( label='Dual' )
         pm.menuItem( label='Blend' )
         #pm.setParent('..')
+        pm.separator(height=10)
+        pm.rowColumnLayout(
+            numberOfColumns=4,
+            columnWidth=[(1, 320), (2, 120)])
+        self.skin_weight_theshold = pm.floatFieldGrp(
+            numberOfFields=2,
+            label='Weight Threshold:',
+            value1=self.weight_threshold[0], value2=self.weight_threshold[1],
+            cc=self.set_weight_threshold)
+        pm.button(label='Select Vertices', c=pm.Callback(self.select_skin_vertex))
+        pm.setParent('..')
         pm.separator(height=10)
         self.skin_weight_slider_ui = pm.floatSliderButtonGrp(
             label='Skin Weight: ', annotation='Click "Set" to set skin weight or use loop button to turn on interactive mode',
