@@ -155,11 +155,117 @@ def sendCurrentFileUI():
     pm.setParent('..')
     pm.showWindow()
 
+# class skin_weight_setter_UI(object):
+#     def __init__(self):
+#         self.ui = {}
+#         self.ui_value = [(0.0, 0.1), # skin_weight threshold filter
+#                          1.0, # skin_weight
+#                          0.0] #dual_weight
+#         self.weight_tick = 5
+#         self.init_ui()
+    
+#     def update_ui_value(self):
+#         for index, (key, value) in enumerate(self.ui.iteritems()):
+#             if key is not 'main':
+#                 try:
+#                     self.ui_value[index-1] = value.getValue()
+#                 except:
+#                     self.ui_value.append(value.getValue())
+
+#     def set_value(self, *args, **kwargs):
+#         if args:
+#             if args[0] in self.ui.keys():
+#                 self.ui[args[0]].setValue(args[1])
+#                 self.update_ui_value()
+#             return
+#         if kwargs:
+#             for key,value in kwargs.iteritems():
+#                 if key in self.ui.keys():
+#                     self.ui[key].setValue(value)
+#             self.update_ui_value()
+#             return
+    
+#     def set_interactive(self,func,**kwargs):
+#         for kwarg in kwargs:
+#             if kwarg in self.ui.keys():
+#                 if self.ui_value[index][1]:
+#                     self.ui[kwarg].changeCommand(pm.Callback(func,**kwargs))
+#             else:
+#                 self.ui[kwarg].changeCommand('pass')
+
+#     @pm.showsHourglass
+#     def apply_weight(self,**kwargs):
+#         if all([k in kwargs.keys() for k in ['query','filter']]):
+#             ul.skin_weight_filter(
+#                 min_weight=self.ui_value[0][0],
+#                 max_weight=self.ui_value[0][1],
+#                 select=True)
+#             return
+#         if 'dualweight' in kwargs.keys():
+#             ul.dual_weight_setter(weight_value=self.ui_value[2])
+#             return
+#         ul.skin_weight_setter(skin_value=self.ui_value[1])
+
+#     def init_ui(self):
+#         def increasement_set(*args,**kwargs):
+#             pm.separator(height=5, style='none')
+#             pm.gridLayout( numberOfColumns=self.weight_tick, cellWidthHeight=(95, 30))
+#             weight_value = 1.0/(self.weight_tick-1)
+#             key = str(args[0])
+#             key_name = ' '.join(key.split('_'))
+#             for i in range(self.weight_tick):
+#                 pm.button(
+#                 label=str(weight_value*i),
+#                 annotation='Set %s value to %04.2f'%(key_name, weight_value*i),
+#                 c=pm.Callback(self.set_value, key, weight_value*i))
+#             pm.setParent('..')
+#         if pm.window('SkinWeightSetterUI', ex=True):
+#             pm.deleteUI('SkinWeightSetterUI', window=True)
+#             pm.windowPref('SkinWeightSetterUI', remove=True)
+#         self.ui['main'] = pm.window('SkinWeightSetterUI', t="Skin Weight Setter")
+#         pm.columnLayout(adjustableColumn=1)
+#         pm.rowColumnLayout(
+#             numberOfColumns=2,
+#             columnWidth=[(1, 328), (2, 60)])
+#         self.ui['skin_weight_filter'] = pm.floatFieldGrp(
+#             numberOfFields=2,
+#             label='Skin Weight Threshold: ',
+#             value1=self.ui_value[0][0],
+#             value2=self.ui_value[0][1])
+#         pm.button(
+#             label='Get', annotation='Select vertices with skin weight within threshold',
+#             c=pm.Callback(self.apply_weight, query=True, filter=True))
+#         #)
+#         pm.setParent('..')
+#         pm.separator(height=10, style='in')
+#         self.ui['skin_weight_slider'] = pm.floatSliderButtonGrp(
+#             label='Skin Weight: ',
+#             annotation='Click "Set" to set skin weight or use loop button to turn on interactive mode',
+#             field=True, precision=2, value=self.ui_value[1], minValue=0.0, maxValue=1.0,
+#             buttonLabel='Set', bc=pm.Callback(self.apply_weight),
+#             image='playbackLoopingContinuous.png')
+#         increasement_set('skin_weight_slider')
+#         pm.separator(height=10, style='none')
+#         self.ui['dual_weight_slider'] = pm.floatSliderButtonGrp(
+#             label='Dual Quarternion Weight: ',
+#             annotation='Click "Set" to set skin weight or use loop button to turn on interactive mode',
+#             field=True, precision=2, value=self.ui_value[2],
+#             minValue=0.0, maxValue=1.0,
+#             #cc=self.set_dual_weight,
+#             buttonLabel='Set', bc=pm.Callback(self.apply_weight,dualweight=True),
+#             image='playbackLoopingContinuous.png')
+#         increasement_set('dual_weight_slider')
+#         pm.separator(height=10, style='in')
+#         pm.helpLine()
+#         pm.showWindow()
+
 class skin_weight_setter_UI(object):
     def __init__(self):
         self.skin_type = 'Classic'
         self.last_selected = []
         self.weight_value = 1.0
+        self.normalize = True
+        self.hierachy = False
         self.dual_weight_value = 0.0
         self.interactive = False
         self.weight_threshold = (0.0,0.1)
@@ -208,6 +314,14 @@ class skin_weight_setter_UI(object):
         self.skin_weight_slider_ui.setValue(self.weight_value)
         if self.interactive:
             self.apply_weight()
+    
+    def set_normalize_state(self,value):
+        self.normalize = False if self.normalize else True
+        pm.headsUpMessage("Normalize %s"%self.normalize, time=0.2)
+    
+    def set_hierachy_state(self,value):
+        self.hierachy = False if self.hierachy else True
+        pm.headsUpMessage("Hierachy %s"%self.hierachy, time=0.2)
 
     def set_dual_weight(self, value):
         self.dual_weight_value = round(value,2)
@@ -223,11 +337,14 @@ class skin_weight_setter_UI(object):
 
     @pm.showsHourglass
     def apply_weight(self):
-        if not pm.selected() or not pm.ls(sl=True,type='joint'):
-            pm.select(self.last_selected)
         if pm.currentCtx() == 'artAttrSkinContext':
             mm.eval('artAttrSkinPaintModePaintSelect 0 artAttrSkinPaintCtx')
-        ul.skin_weight_setter(skin_value=self.weight_value)
+        if not pm.selected():
+            pm.select(self.last_selected)
+        ul.skin_weight_setter(
+            skin_value=self.weight_value,
+            normalized = self.normalize,
+            hierachy=self.hierachy)
         self.last_selection()
         self.preview_skin_weight()
         pm.headsUpMessage("Weight Set!", time=0.2)
@@ -253,7 +370,7 @@ class skin_weight_setter_UI(object):
         #pm.setParent('..')
         pm.separator(height=10)
         pm.rowColumnLayout(
-            numberOfColumns=4,
+            numberOfColumns=2,
             columnWidth=[(1, 320), (2, 120)])
         self.skin_weight_theshold = pm.floatFieldGrp(
             numberOfFields=2,
@@ -263,6 +380,17 @@ class skin_weight_setter_UI(object):
         pm.button(label='Select Vertices', c=pm.Callback(self.select_skin_vertex))
         pm.setParent('..')
         pm.separator(height=10)
+        pm.rowColumnLayout(
+            numberOfColumns=3,
+            columnWidth=[(1, 140), (2, 80)])
+        pm.text(label='Option: ', align='right')
+        pm.checkBox(
+            label='Normalize', annotation='if Normalize is uncheck, set all selected joint weight the same',
+            value=self.normalize, cc=self.set_normalize_state)
+        pm.checkBox(
+            label='Hierachy', annotation='if Hierachy is check, set weight value for child Joint',
+            value=self.hierachy, cc=self.set_hierachy_state)
+        pm.setParent('..')
         self.skin_weight_slider_ui = pm.floatSliderButtonGrp(
             label='Skin Weight: ', annotation='Click "Set" to set skin weight or use loop button to turn on interactive mode',
             field=True, precision=2, value=self.weight_value, minValue=0.0, maxValue=1.0,cc=self.set_weight,

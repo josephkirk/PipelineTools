@@ -179,18 +179,27 @@ def switch_skin_type(ob,type='classis'):
     skin_cluster.attr('deformUserNormals').set(deform_normal_state)
 
 @do_function_on(mode='doubleType', type_filter=['float3', 'transform', 'joint'])
-def skin_weight_setter(component_list, joints_list, skin_value=1.0):
+def skin_weight_setter(component_list, joints_list, skin_value=1.0, normalized=True, hierachy=False):
     '''set skin weight to skin_value for vert in verts_list to first joint,
        other joint will receive average from normalized weight,
        can be use to set Dual Quarternion Weight'''
     def get_skin_weight():
-        skin_weight = [(joints_list[0], skin_value)]
-        if len(joints_list) > 1:
-            skin_normalized = (1.0-skin_value)/(len(joints_list)-1)
-            for joint in joints_list[1:]:
-                skin_weight.append((joint, skin_normalized))
+        skin_weight = []
+        if normalized:
+            skin_weight.append((joints_list[0], skin_value))
+            if len(joints_list) > 1:
+                skin_normalized = (1.0-skin_value)/(len(joints_list)-1)
+                for joint in joints_list[1:]:
+                    skin_weight.append((joint, skin_normalized))
+            return skin_weight
+        for joint in joints_list:
+            skin_weight.append((joint,skin_value))
         return skin_weight
-    
+    if hierachy:
+        child_joint = joints_list[0].listRelatives(allDescendents=True)
+        joints_list.extend(child_joint)
+        print joints_list
+
     if any([type(component) is pm.nt.Transform for component in component_list]):
         for component in component_list:
             skin_cluster = get_skin_cluster(component)
