@@ -287,7 +287,7 @@ class skin_weight_setter_UI(object):
         #pm.artAttrSkinPaintCtx(pm.currentCtx(), edit=True, influence=get_joint[0])
         mm.eval('''
         artAttrSkinToolScript 3;
-        artSkinInflListChanging "%s" 01;
+        artSkinInflListChanging "%s" 0;
         artSkinInflListChanging "%s" 1;
         artSkinInflListChanged artAttrSkinPaintCtx;
         artAttrSkinPaintModePaintSelect 1 artAttrSkinPaintCtx;'''
