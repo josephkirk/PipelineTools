@@ -340,7 +340,7 @@ class skin_weight_setter_UI(object):
         if pm.currentCtx() == 'artAttrSkinContext':
             mm.eval('artAttrSkinPaintModePaintSelect 0 artAttrSkinPaintCtx')
         if not pm.selected():
-            pm.select(self.last_selected)
+            pm.select(self.last_selected,r=True)
         ul.skin_weight_setter(
             skin_value=self.weight_value,
             normalized = self.normalize,
