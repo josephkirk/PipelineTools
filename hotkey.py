@@ -13,6 +13,16 @@ def setHotkeys():
     import_command = "import PipelineTools.utilities as ul\nreload(ul)"
     commands_dict = {}
     skin_utilities_dict = {}
+    skin_utilities_dict['BindPose'] =(
+        "GoToBindPose", #Command
+        "BindPose", #Command Name
+        ['2', True, True, False] # Key, Ctrl, Alt, Shift
+    )
+    skin_utilities_dict['PaintWeight'] =(
+        "artAttrSkinToolScript 3", #Command
+        "PaintWeight", #CommandName
+        ['1', True, True, False] # Key, Ctrl, Alt, Shift
+    )
     weight_tick = 5
     weight_value = 1.0/(weight_tick-1)
     for i in range(weight_tick):
@@ -20,7 +30,7 @@ def setHotkeys():
         format_value = "".join(format_value.split('.'))
         skin_utilities_dict['SetWeight%s'%(format_value)] = (
             "\n".join([import_command,
-                       "ul.skin_weight_setter(skin_value=%s, normalized=False)"%(format_value)]),
+                       "ul.skin_weight_setter(skin_value=%s, normalized=False)"%(weight_value*i)]),
             "SetWeightTo%s"%(format_value),
             ["%d"%(i+1), False, True, False])
     commands_dict['skin_tool'] = skin_utilities_dict

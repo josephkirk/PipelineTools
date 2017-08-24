@@ -89,6 +89,9 @@ def do_function_on(mode='single', type_filter=[]):
     return decorator
 
 ###misc function
+def add_suffix(ob,suff="_skinDeform"):
+    pm.rename(ob,ob.name()+str(suff))
+
 def convert_component(components_list, toVertex=True, toEdge=False, toFace=False):
     test_type = [o for o in components_list if type(o) is pm.nt.Transform]
     
@@ -402,8 +405,10 @@ def reset_joint_orient(bone):
         bone.attr(at).set(0)
 
 @do_function_on(mode='single')
-def add_suffix(ob,suff="_skinDeform"):
-    pm.rename(ob,ob.name()+str(suff))
+def create_skinDeform(ob):
+    dupOb = pm.duplicate(ob,name="_".join([ob.name(),"skinDeform"]))
+    for child in dupOb[0].listRelatives(ad=True):
+        add_suffix(child)
 
 @do_function_on(mode='single')
 def mirror_joint_tranform(bone, translate=False, rotate=True, **kwargs):
@@ -637,7 +642,10 @@ def set_material(ob, SG):
         print "There is no %s" % SG.name()
 
 @do_function_on(mode='single')
-def lock_transform(ob,lock=True):
+def lock_transform(ob, lock=True, pivotToOrigin=True):
+    if pivotToOrigin:
+        pm.makeIdentity(ob, apply=True)
+        pm.xform(ob,pivots=(0,0,0),ws=True,dph=True,ztp=True)
     for at in ['translate','rotate','scale']:
         ob.attr(at).set(lock=lock)
 
