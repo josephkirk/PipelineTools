@@ -505,7 +505,7 @@ def assign_curve_to_hair(abc_curve,hair_system="",preserve=False):
     for curve in curve_list:
         hair_from_curve(curve,hair_system=hair_system)
 
-def hair_from_curve(input_curve, hair_system="") :
+def hair_from_curve(input_curve, hair_system=""):
     '''
     Assign curve to Hair System
     Modify Function from 
