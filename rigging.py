@@ -1,4 +1,9 @@
 from PipelineTools.utilities import *
+"""
+written by Nguyen Phi Hung 2017
+email: josephkirk.art@gmail.com
+All code written by me unless specify
+"""
 ###Rigging
 def get_skin_cluster(ob):
     '''return skin cluster from ob, if cannot find raise error'''
@@ -17,6 +22,66 @@ def get_skin_cluster(ob):
     except:
         pm.error('Cannot get skinCluster from object')
 
+def get_blendshape_target(bsname='', reset_value=False, rebuild=False, delete_old=True, parent=None, offset=0, exclude=[], exclude_last=False):
+    """get blendShape in scene match bsname 
+        misc function:
+            bsname : blendShape name or id to search for 
+            reset_value : reset all blendShape weight Value 
+            rebuild: rebuild all Target
+            parent: group all rebuild target under parent
+            offset: offset rebuild target in X axis
+            exclude: list of exclude blendShape target to rebuild and reset
+            exclude_last: exclude the last blendShape target from rebuild and reset"""
+    bs_list = pm.ls(type='blendShape')
+    if not bs_list:
+        return
+    blendshape = [b for b in bs_list if bsname in b.name()][0] if type(bsname) is not int else bs_list[bsname]
+    if blendshape is None:
+        return
+    target_list = []
+    for id,target in enumerate(blendshape.weight):
+        target_name = pm.aliasAttr(target,q=True)
+        if reset_value is True or rebuild is True:
+            if target_name not in exclude:
+                target.set(0)
+        target_weight = target.get()
+        target_list.append((target, target_name, target_weight))
+    #print target_list
+    if rebuild is True:
+        base_ob_name = blendshape.getBaseObjects()[0].split('|')[0]
+        base_ob_node = pm.PyNode(base_ob_name)
+        blendshape_name = blendshape.name()
+        iter = 1
+        target_rebuild_list =[]
+        if parent != None and type(parent) is str:
+            if pm.objExists(parent):
+                parent = pm.PyNode(parent)
+            else:
+                parent = pm.group(name=parent)
+        if exclude_last is True:
+            target_list[-1][0].set(1)
+            target_list = target_list[:-1]
+        base_dup = pm.duplicate(base_ob_node,name=base_ob_name+"_rebuild")
+        for target in target_list: 
+            if target[1] not in exclude:
+                target[0].set(1)
+                new_target = pm.duplicate(base_ob_node)
+                target_rebuild_list.append(new_target)
+                pm.parent(new_target, parent)
+                pm.rename(new_target, target[1])
+                target[0].set(0)
+                pm.move(offset*iter ,new_target, moveX=True)
+                iter += 1
+        if delete_old:
+            pm.delete(blendshape, base_ob_node) 
+        pm.select(target_rebuild_list, r=True)
+        pm.select(base_dup, add=True)
+        pm.blendShape(name=blendshape_name)
+        blend_reget = get_blendshape_target(blendshape_name)
+        blendshape = blend_reget[0]
+        target_list = blend_reget[1]
+    return (blendshape,target_list)
+#get_blendshape_target(-1, True, True, "MorphTarget", 20, exclude_last=True)
 @do_function_on(mode='singlelast')
 def skin_weight_filter(ob, joint,min=0.0, max=0.1, select=False):
     '''return vertex with weight less than theshold'''

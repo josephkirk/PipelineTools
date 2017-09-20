@@ -1,6 +1,10 @@
 import pymel.core as pm
 from PipelineTools import utilities as ul
-
+"""
+written by Nguyen Phi Hung 2017
+email: josephkirk.art@gmail.com
+All code written by me unless specify
+"""
 def setHotkeys():
     if pm.hotkeySet('Custom', q=1, exists=1):
         pm.hotkeySet('Custom', edit=1, current=1)

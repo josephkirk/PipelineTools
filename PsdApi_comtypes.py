@@ -1,7 +1,11 @@
 from comtypes.client import CreateObject
 import os
 currentPath = os.getcwd()
-
+"""
+written by Nguyen Phi Hung 2017
+email: josephkirk.art@gmail.com
+All code written by me unless specify
+"""
 #### init 
 def CreatePSDApp():
     dispatchCom = CreateObject("Photoshop.Application.11")

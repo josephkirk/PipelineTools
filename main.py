@@ -7,6 +7,11 @@ import shutil
 from PipelineTools import utilities as ul
 from datetime import date
 reload(ul)
+"""
+written by Nguyen Phi Hung 2017
+email: josephkirk.art@gmail.com
+All code written by me unless specify
+"""
 ###Global Var
 def addValue(v, t=None):
     if t:

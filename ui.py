@@ -1,5 +1,11 @@
 import sys
 from PySide2 import QtWidgets, QtCore
+"""
+written by Nguyen Phi Hung 2017
+email: josephkirk.art@gmail.com
+All code written by me unless specify
+"""
+### test decouple UI 
 class ConverterWindow(QtWidgets.QMainWindow):
     #convert signal from UI to command
     convertClicked = QtCore.Signal(list)

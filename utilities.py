@@ -9,6 +9,11 @@ import random as rand
 import PipelineTools.customClass as cc
 from functools import wraps
 reload(cc)
+"""
+written by Nguyen Phi Hung 2017
+email: josephkirk.art@gmail.com
+All code written by me unless specify
+"""
 ### decorator
 def error_alert(func): 
     """print Error if function fail"""

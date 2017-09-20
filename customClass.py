@@ -3,6 +3,11 @@ from os import listdir
 from os.path import join, isdir, normpath, isfile, getmtime, abspath, exists
 import pymel.core as pm
 projectRoot = pm.workspace.path
+"""
+written by Nguyen Phi Hung 2017
+email: josephkirk.art@gmail.com
+All code written by me unless specify
+"""
 class Asset(object):
     '''Base Class to find AssetPath'''
     def __init__(self, name, type, kind):
