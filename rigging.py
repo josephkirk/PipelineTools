@@ -5,6 +5,27 @@ email: josephkirk.art@gmail.com
 All code written by me unless specify
 """
 ###Rigging
+def facial_rig():
+    faceBS = 'FaceBaseBS'
+    control_name = "ctl"
+    brow_name = 'brow'
+    eye_name = 'eye'
+    mouth_name = 'mouth'
+    jaw_name = 'jaw'
+    teeU_name = 'teethUpper'
+    teeL_name = 'teethLower'
+    ton_name = 'tongue'
+    eye_variation = "smile,anger,sad,open,close".split(',')
+    eye_dir = 'L,R'.split(',')
+    mouth_variation = "A,I,U,E,O,shout,open,smileClose,angerClose".split(',')
+    ton_dir = 'Left,Right,Center'.split(',')
+    ton_ver = 'A,B,C,D'
+    connect_atr_list = 'translate,rotate,scale'.split(',')
+    try:
+        pass
+    except:
+        pm.error('something wrong with connecting')
+        pass
 
 def get_skin_cluster(ob):
     '''return skin cluster from ob, if cannot find raise error'''
