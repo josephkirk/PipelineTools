@@ -15,6 +15,7 @@ email: josephkirk.art@gmail.com
 All code written by me unless specify
 """
 ### decorator
+
 def error_alert(func): 
     """print Error if function fail"""
     @wraps(func)
@@ -94,6 +95,16 @@ def do_function_on(mode='single', type_filter=[]):
     return decorator
 
 ###misc function
+
+def reset_floating_window():
+    '''reset floating window position'''
+    window_list = pm.lsUI(windows=True)
+    for window in window_list:
+        if window != "MayaWindow" and window != "scriptEditorPanel1Window":
+            pm.deleteUI(window)
+            pm.windowPref(window,remove=True)
+            print window," reset"
+
 def add_suffix(ob,suff="_skinDeform"): 
     pm.rename(ob,ob.name()+str(suff))
 

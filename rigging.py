@@ -1,31 +1,83 @@
 from PipelineTools.utilities import *
+import string
 """
 written by Nguyen Phi Hung 2017
 email: josephkirk.art@gmail.com
 All code written by me unless specify
 """
 ###Rigging
-def facial_rig():
-    faceBS = 'FaceBaseBS'
-    control_name = "ctl"
-    brow_name = 'brow'
-    eye_name = 'eye'
-    mouth_name = 'mouth'
-    jaw_name = 'jaw'
-    teeU_name = 'teethUpper'
-    teeL_name = 'teethLower'
-    ton_name = 'tongue'
-    eye_variation = "smile,anger,sad,open,close".split(',')
-    eye_dir = 'L,R'.split(',')
-    mouth_variation = "A,I,U,E,O,shout,open,smileClose,angerClose".split(',')
-    ton_dir = 'Left,Right,Center'.split(',')
-    ton_ver = 'A,B,C,D'
-    connect_atr_list = 'translate,rotate,scale'.split(',')
-    try:
-        pass
-    except:
-        pm.error('something wrong with connecting')
-        pass
+class facial_rig(object):
+    def __init__(self):
+        self.facebs_name = 'FaceBaseBS'
+        self.control_name = "ctl"
+        self.direction_name = ['Left', 'Right', 'Center']
+        self.version_name = list(string.ascii_uppercase)
+        self.facepart_name = [
+            'eyebrow', 'eye', 'mouth',
+            'lip', 'nose', 'cheek',
+            'teethUpper', 'tongue', 'teethLower', 'jaw']
+        self.eyebs_name = ['sad', 'smile', 'anger', 'open', 'close']
+        self.mouthbs_name = [
+            'A', 'I', 'U', 'E', 'O',
+            'shout', 'open', 'smileClose', 'angerClose']
+        self.connect_atr_list = ['translate','rotate','scale']
+    def facebs(self,value=None):
+        if value is not None:
+            self.facebs_name = value
+        try:
+            facebs = pm.PyNode(self.facebs_name)
+            return facebs
+        except:
+            pm.error('blendShape with %s does not exist' % self.facebs_name,n=True)
+
+    def direction_shortname(self):
+        return [n[0] for n in self.direction_name] 
+
+    def add_direction(self, list, add_center=False, shortname=True):
+        result = []
+        dir_list = self.direction_shortname() if shortname else self.direction_name 
+        if add_center is False:
+            dir_list.pop(2)
+        for item in list:
+            for dir in dir_list:
+                result.append('_'.join([item, dir]))
+        return result
+
+    def connect_bs_controller(self):
+        facepart = self.facepart_name
+        bs_control_name = ["_".join([n, self.control_name])
+                           for n in facepart[:3]]
+        def create_bs_list(part, bs_name_list, add_dir=False):
+            bs_list = [
+                '_'.join([part, bs])
+                for bs in bs_name_list]
+            if add_dir is True:
+                bs_list = self.add_direction(bs_list)
+            return bs_list
+        bs_controller = {}
+        eyebrow = facepart[0].replace(facepart[1],'')
+        bs_controller[
+            '_'.join([eyebrow,self.control_name])
+            ] = create_bs_list(
+            facepart[0],
+            self.eyebs_name[:3],
+            True)
+        bs_controller[
+            '_'.join([facepart[1],self.control_name])
+            ] = create_bs_list(
+            facepart[1],
+            self.eyebs_name[1:],
+            True)
+        bs_controller[
+            '_'.join([facepart[2],self.control_name])
+            ] = create_bs_list(
+            facepart[2],
+            self.mouthbs_name,
+        )
+        for ctl_name,bs_targets in bs_controller.items():
+            for bs_target in bs_targets:
+                print '%s.%s >> %s.%s' %(ctl_name,bs_target,self.facebs(),bs_target)
+        #print bs_controller
 
 def get_skin_cluster(ob):
     '''return skin cluster from ob, if cannot find raise error'''
