@@ -95,7 +95,16 @@ def do_function_on(mode='single', type_filter=[]):
     return decorator
 
 ###misc function
-
+def getnode(self, node_name, get_method=False):
+    try:
+        node = pm.PyNode(node_name)
+        print "%s exists, is type %s" % (node,type(node))
+        if get_method:
+            print dir(node)
+        return node
+    except:
+        pm.error('node with %s does not exist' % self.node_name,n=True)
+    
 def reset_floating_window():
     '''reset floating window position'''
     window_list = pm.lsUI(windows=True)

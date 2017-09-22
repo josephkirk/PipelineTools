@@ -6,16 +6,34 @@ email: josephkirk.art@gmail.com
 All code written by me unless specify
 """
 ###Rigging
+class facepart(object):
+    def __init__(self, name, bone_name='bon', ctrl_name='ctl', version=1, direction=['Left','Right','Center']):
+        self.name = name
+        self.bon_suffix = bone_name
+        self.ctrl_suffix = ctrl_name
+    def create_joint(self):
+        pass
+    def create_ctrl(self):
+        pass
+
 class facial_rig(object):
     def __init__(self):
         self.facebs_name = 'FaceBaseBS'
         self.control_name = "ctl"
+        self.joint_name = 'bon'
         self.direction_name = ['Left', 'Right', 'Center']
         self.version_name = list(string.ascii_uppercase)
-        self.facepart_name = [
-            'eyebrow', 'eye', 'mouth',
-            'lip', 'nose', 'cheek',
-            'teethUpper', 'tongue', 'teethLower', 'jaw']
+        self.facepart_name = {
+            'eyebrow':['eyebrow','brow'],
+            'eye':['eye'],
+            'mouth':['mouth'],
+            'lip':['lip'],
+            'nose':['nose'],
+            'cheek':['cheek'], #2 direction, 3 version
+            'teethUpper':['teethUpper'],
+            'tongue':['tongue'],
+            'teethLower':['teethLower'],
+            'jaw':['jaw']}
         self.eyebs_name = ['sad', 'smile', 'anger', 'open', 'close']
         self.mouthbs_name = [
             'A', 'I', 'U', 'E', 'O',
@@ -24,11 +42,12 @@ class facial_rig(object):
     def facebs(self,value=None):
         if value is not None:
             self.facebs_name = value
-        try:
-            facebs = pm.PyNode(self.facebs_name)
-            return facebs
-        except:
-            pm.error('blendShape with %s does not exist' % self.facebs_name,n=True)
+        self.facebs = get_node(facebs_name)
+        return self.facebs
+    
+    def controls(self):
+        self.controls = {}
+        self.controls['BS Controls'] = 
 
     def direction_shortname(self):
         return [n[0] for n in self.direction_name] 
@@ -96,7 +115,14 @@ def get_skin_cluster(ob):
     except:
         pm.error('Cannot get skinCluster from object')
 
-def get_blendshape_target(bsname='', reset_value=False, rebuild=False, delete_old=True, parent=None, offset=0, exclude=[], exclude_last=False):
+def get_blendshape_target(
+    bsname,
+    reset_value=False,
+    rebuild=False,
+    delete_old=True,
+    parent=None,
+    offset=0,
+    exclude=[], exclude_last=False):
     """get blendShape in scene match bsname 
         misc function:
             bsname : blendShape name or id to search for 
@@ -109,7 +135,10 @@ def get_blendshape_target(bsname='', reset_value=False, rebuild=False, delete_ol
     bs_list = pm.ls(type='blendShape')
     if not bs_list:
         return
-    blendshape = [b for b in bs_list if bsname in b.name()][0] if type(bsname) is not int else bs_list[bsname]
+    if isinstance(bsname,int):
+        blendshape = bs_list[bsname]
+    else:
+        blendshape = pm.PyNode(bsname)
     if blendshape is None:
         return
     target_list = []
@@ -129,9 +158,8 @@ def get_blendshape_target(bsname='', reset_value=False, rebuild=False, delete_ol
         target_rebuild_list =[]
         if parent != None and type(parent) is str:
             if pm.objExists(parent):
-                parent = pm.PyNode(parent)
-            else:
-                parent = pm.group(name=parent)
+                pm.delete(pm.PyNode(parent))
+            parent = pm.group(name=parent)
         if exclude_last is True:
             target_list[-1][0].set(1)
             target_list = target_list[:-1]
@@ -146,11 +174,9 @@ def get_blendshape_target(bsname='', reset_value=False, rebuild=False, delete_ol
                 target[0].set(0)
                 pm.move(offset*iter ,new_target, moveX=True)
                 iter += 1
-        if delete_old:
-            pm.delete(blendshape, base_ob_node) 
         pm.select(target_rebuild_list, r=True)
         pm.select(base_dup, add=True)
-        pm.blendShape(name=blendshape_name)
+        pm.blendShape()
         blend_reget = get_blendshape_target(blendshape_name)
         blendshape = blend_reget[0]
         target_list = blend_reget[1]
@@ -461,10 +487,18 @@ def get_opposite_joint(bone, select=False, opBoneOnly=True, customPrefix=None):
                         pm.select(bone, opBone)
                 print opBoneName
                 return opBone
-
-def reset_bindPose():
+@do_function_on('single')
+def reset_bindPose(joint_root):
+    joint_childs = joint_root.listRelatives(type=pm.nt.Joint,ad=True)
+    for joint in joint_childs:
+        if joint.rotate.get() != pm.dt.Vector(0,0,0):
+            #print type(joint.rotate.get())
+            joint.jointOrient.set(joint.rotate.get())
+            joint.rotate.set(pm.dt.Vector(0,0,0))
     newbp = pm.dagPose(bp=True, save=True)
     bindPoses = pm.ls(type=pm.nt.DagPose)
     for bp in bindPoses:
         if bp != newbp:
             pm.delete(bp)
+    print "All bindPose has been reseted to %s" % newbp
+    return newbp
