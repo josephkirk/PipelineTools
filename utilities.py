@@ -150,8 +150,11 @@ def get_shape(ob):
             return ob.node()
         else:
             pm.error('object have no shape')
-
+def get_nearest_component_pos(ob):
+    #pm.nt.ClosestPointOnMesh()
+    pass
 ###function
+
 @do_function_on(mode='single')
 def set_material_attr(mat,mat_type='dielectric',**kwargs):
     '''set Material Attribute'''
