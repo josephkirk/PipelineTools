@@ -6,34 +6,49 @@ email: josephkirk.art@gmail.com
 All code written by me unless specify
 """
 ###Rigging
-class facepart(object):
-    def __init__(self, name, bone_name='bon', ctrl_name='ctl', version=1, direction=['Left','Right','Center']):
-        self.name = name
-        self.bon_suffix = bone_name
-        self.ctrl_suffix = ctrl_name
-    def create_joint(self):
-        pass
-    def create_ctrl(self):
-        pass
-
-class facial_rig(object):
+class FacialEyeRig(object):
+    pass
+class FacialBonRig(object):
+    offset_name = 'offset'
+    bone_name = 'bon'
+    def __init__(self):
+        self._joints = {
+            'eye':('LeftA', 'LeftB', 'LeftC', 'LeftD',
+                   'SubLeftA', 'SubLeftB', 'SubLeftC', 'SubLeftD'),
+            'eyebrow':('LeftA', 'LeftB', 'LeftC'),
+            'nose':('Top', 'LeftA'),
+            'cheek':('LeftA', 'LeftB', 'LeftC'),
+            'jaw':('Root', 'Top'),
+            'lip':('CenterA', 'CenterB', 'LeftA', 'LeftB', 'LeftC'),
+            'teeth':('Lower', 'Upper'),
+            'tongue':(
+                'Root',
+                'CenterARoot',  'CenterA', 'LeftA',
+                'CenterBRoot', 'CenterB', 'LeftB',
+                'CenterCRoot', 'CenterC', 'LeftC',
+                'CenterDRoot', 'CenterD', 'LeftD')}
+        self._get()
+    def _get(self):
+        self.joints = {}
+        for name,variations in self._joints.items():
+            self.joints[name] = {}
+            for variation in variations:
+                offset_bon = '_'.join([name+variation, self.offset_name, self.bone_name])
+                bon_name = '_'.join([name+variation, self.bone_name])
+                try:
+                    self.joints[name]['offset'] = pm.PyNode(offset_bon)
+                    self.joints[name]['joint'] = pm.PyNode(bon_name)
+                except:
+                    print offset_bon,' or', bon_name, ' is not exist'
+                    raise
+class FacialBsRig(object):
     def __init__(self):
         self.facebs_name = 'FaceBaseBS'
         self.control_name = "ctl"
         self.joint_name = 'bon'
         self.direction_name = ['Left', 'Right', 'Center']
         self.version_name = list(string.ascii_uppercase)
-        self.facepart_name = {
-            'eyebrow':['eyebrow','brow'],
-            'eye':['eye'],
-            'mouth':['mouth'],
-            'lip':['lip'],
-            'nose':['nose'],
-            'cheek':['cheek'], #2 direction, 3 version
-            'teethUpper':['teethUpper'],
-            'tongue':['tongue'],
-            'teethLower':['teethLower'],
-            'jaw':['jaw']}
+        self.facepart_name = ['eyebrow', 'eye', 'mouth']
         self.eyebs_name = ['sad', 'smile', 'anger', 'open', 'close']
         self.mouthbs_name = [
             'A', 'I', 'U', 'E', 'O',
@@ -44,10 +59,6 @@ class facial_rig(object):
             self.facebs_name = value
         self.facebs = get_node(facebs_name)
         return self.facebs
-    
-    def controls(self):
-        self.controls = {}
-        self.controls['BS Controls'] = 
 
     def direction_shortname(self):
         return [n[0] for n in self.direction_name] 
