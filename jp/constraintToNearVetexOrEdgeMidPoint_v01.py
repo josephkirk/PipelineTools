@@ -1,78 +1,78 @@
 # -*- coding: utf-8 -*-
 # --------------------------------------
-# ƒ|ƒŠƒSƒ“ËƒXƒiƒbƒv‚µ‚½‚¢ƒIƒuƒWƒFƒNƒg‚Ì‡‚Å‘I‘ğ
-# ’¸“_‚ÆƒGƒbƒW’†“_‚Åˆê”Ô‹ß‚¢‚à‚Ì‚ÉƒXƒiƒbƒv
-# ã‹Lƒvƒ‰ƒXPointToPoly‚ğ“K—p
+# ï¿½|ï¿½ï¿½ï¿½Sï¿½ï¿½ï¿½ËƒXï¿½iï¿½bï¿½vï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Iï¿½uï¿½Wï¿½Fï¿½Nï¿½gï¿½Ìï¿½ï¿½Å‘Iï¿½ï¿½
+# ï¿½ï¿½ï¿½_ï¿½ÆƒGï¿½bï¿½Wï¿½ï¿½ï¿½_ï¿½Åˆï¿½Ô‹ß‚ï¿½ï¿½ï¿½Ì‚ÉƒXï¿½iï¿½bï¿½v
+# ï¿½ï¿½Lï¿½vï¿½ï¿½ï¿½XPointToPolyï¿½ï¿½Kï¿½p
 # --------------------------------------
 
-import maya.cmds as cmds
+import pymel.core as pm
 import math
 
 vtxv = []
-name = cmds.ls(sl=True) #name[0]‚ªƒƒbƒVƒ…@name[1]ˆÈ~‚ª‹z’…‚³‚¹‚é‚â‚Â‚ç
-vname = cmds.ls((name[0] + '.vtx[*]'), v=True, fl=True) #‘S’¸“_æ“¾
-ename = cmds.ls((name[0] + '.e[*]'), v=True, fl=True) #‘SƒGƒbƒWæ“¾
+name = pm.ls(sl=True) #name[0]ï¿½ï¿½ï¿½ï¿½ï¿½bï¿½Vï¿½ï¿½ï¿½@name[1]ï¿½È~ï¿½ï¿½ï¿½zï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Â‚ï¿½
+vname = pm.ls((name[0] + '.vtx[*]'), v=True, fl=True) #ï¿½Sï¿½ï¿½ï¿½_ï¿½æ“¾
+ename = pm.ls((name[0] + '.e[*]'), v=True, fl=True) #ï¿½Sï¿½Gï¿½bï¿½Wï¿½æ“¾
 
 for i in range(1,len(name)):
-    mindistance = 9999999999999.0 #‹——£è‡’l‰Šú‰»
-    snappos = [0,0,0] #ƒXƒiƒbƒv‚³‚¹‚éƒ[ƒ‹ƒhÀ•W
-    snapuv = [0,0] #ƒXƒiƒbƒv‚³‚¹‚é’¸“_À•W
-    # --- name[i]Œ»İˆÊ’uæ“¾ ---
-    temploc = cmds.spaceLocator(p=(0,0,0))
-    pc = cmds.pointConstraint(name[i], temploc[0], o=(0,0,0), w=1)
-    cmds.delete(pc[0])
-    jpos = cmds.xform(temploc[0], q=True, ws=True, t=True)
-    # --- ’¸“_ ---
+    mindistance = 9999999999999.0 #ï¿½ï¿½ï¿½ï¿½è‡’lï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+    snappos = [0,0,0] #ï¿½Xï¿½iï¿½bï¿½vï¿½ï¿½ï¿½ï¿½ï¿½éƒï¿½[ï¿½ï¿½ï¿½hï¿½ï¿½ï¿½W
+    snapuv = [0,0] #ï¿½Xï¿½iï¿½bï¿½vï¿½ï¿½ï¿½ï¿½ï¿½é’¸ï¿½_ï¿½ï¿½ï¿½W
+    # --- name[i]ï¿½ï¿½ï¿½İˆÊ’uï¿½æ“¾ ---
+    temploc = pm.spaceLocator(p=(0,0,0))
+    pc = pm.pointConstraint(name[i], temploc[0], o=(0,0,0), w=1)
+    pm.delete(pc[0])
+    jpos = pm.xform(temploc[0], q=True, ws=True, t=True)
+    # --- ï¿½ï¿½ï¿½_ ---
     for vn in vname:
-        vpos = cmds.pointPosition(vn, w=True) #’¸“_À•Wæ“¾
+        vpos = pm.pointPosition(vn, w=True) #ï¿½ï¿½ï¿½_ï¿½ï¿½ï¿½Wï¿½æ“¾
         distancetemp = math.sqrt( pow((jpos[0]-vpos[0]),2) + pow((jpos[1]-vpos[1]),2) + pow((jpos[2]-vpos[2]),2) )
         if distancetemp <= mindistance :
             mindistance = distancetemp
             snappos = vpos
-            # --- ’¸“_‚©‚çUVÀ•Wæ“¾ ---
-            un = cmds.filterExpand(cmds.polyListComponentConversion(vn, tuv=True), sm=35)
-            snapuv = cmds.polyEditUV(un[0], q=True)
-    # --- ƒGƒbƒW ---
+            # --- ï¿½ï¿½ï¿½_ï¿½ï¿½ï¿½ï¿½UVï¿½ï¿½ï¿½Wï¿½æ“¾ ---
+            un = pm.filterExpand(pm.polyListComponentConversion(vn, tuv=True), sm=35)
+            snapuv = pm.polyEditUV(un[0], q=True)
+    # --- ï¿½Gï¿½bï¿½W ---
     for en in ename:
-        # --- ƒGƒbƒW‚©‚ç’¸“_æ“¾ ---
-        ev = cmds.filterExpand(cmds.polyListComponentConversion(en, tv=True), sm=31)
-        v1pos = cmds.pointPosition(ev[0], w=True) #’¸“_À•Wæ“¾
-        v2pos = cmds.pointPosition(ev[1], w=True) #’¸“_À•Wæ“¾
-        vmpos = [(v1pos[0]+v2pos[0])/2.0, (v1pos[1]+v2pos[1])/2.0, (v1pos[2]+v2pos[2])/2.0] #’†“_À•WŒvZ
+        # --- ï¿½Gï¿½bï¿½Wï¿½ï¿½ï¿½ç’¸ï¿½_ï¿½æ“¾ ---
+        ev = pm.filterExpand(pm.polyListComponentConversion(en, tv=True), sm=31)
+        v1pos = pm.pointPosition(ev[0], w=True) #ï¿½ï¿½ï¿½_ï¿½ï¿½ï¿½Wï¿½æ“¾
+        v2pos = pm.pointPosition(ev[1], w=True) #ï¿½ï¿½ï¿½_ï¿½ï¿½ï¿½Wï¿½æ“¾
+        vmpos = [(v1pos[0]+v2pos[0])/2.0, (v1pos[1]+v2pos[1])/2.0, (v1pos[2]+v2pos[2])/2.0] #ï¿½ï¿½ï¿½_ï¿½ï¿½ï¿½Wï¿½vï¿½Z
         distancetemp = math.sqrt( pow((jpos[0]-vmpos[0]),2) + pow((jpos[1]-vmpos[1]),2) + pow((jpos[2]-vmpos[2]),2) )
         if distancetemp <= mindistance :
             mindistance = distancetemp
             snappos = vmpos
-            # --- ’¸“_‚©‚çUVÀ•Wæ“¾ ---
-            un = cmds.filterExpand(cmds.polyListComponentConversion(en, tuv=True), sm=35)
-            a = cmds.polyEditUV(un[0], q=True)
-            if len(un) == 2: #\¬UV‚ª3‚ÂˆÈã‚Ìê‡‚Í1”Ô–Ú‚Æ3”Ô–Ú‚©‚çæ“¾
-                b = cmds.polyEditUV(un[1], q=True)
+            # --- ï¿½ï¿½ï¿½_ï¿½ï¿½ï¿½ï¿½UVï¿½ï¿½ï¿½Wï¿½æ“¾ ---
+            un = pm.filterExpand(pm.polyListComponentConversion(en, tuv=True), sm=35)
+            a = pm.polyEditUV(un[0], q=True)
+            if len(un) == 2: #ï¿½\ï¿½ï¿½UVï¿½ï¿½3ï¿½ÂˆÈï¿½Ìê‡ï¿½ï¿½1ï¿½Ô–Ú‚ï¿½3ï¿½Ô–Ú‚ï¿½ï¿½ï¿½æ“¾
+                b = pm.polyEditUV(un[1], q=True)
             elif len(un) > 2:
-                b = cmds.polyEditUV(un[2], q=True)
+                b = pm.polyEditUV(un[2], q=True)
             snapuv = [((a[0]+b[0])/2), ((a[1]+b[1])/2)]
 
-    # --- ˆÚ“®‚Ì‘O‚Éq‚ÌƒyƒAƒŒƒ“ƒg‚ğ‰ğœ ---
-    chld = cmds.listRelatives(name[i], c=True, typ='transform')
+    # --- ï¿½Ú“ï¿½ï¿½Ì‘Oï¿½Éqï¿½Ìƒyï¿½Aï¿½ï¿½ï¿½ï¿½ï¿½gï¿½ï¿½ï¿½ ---
+    chld = pm.listRelatives(name[i], c=True, typ='transform')
     if chld != None:
         for c in chld:
-            cmds.parent(c, w=True)
+            pm.parent(c, w=True)
             
-    # --- ˆÊ’u‚ ‚í‚¹‚Ì‚İ ---
-    cmds.setAttr(temploc[0]+'.translateX', snappos[0])
-    cmds.setAttr(temploc[0]+'.translateY', snappos[1])
-    cmds.setAttr(temploc[0]+'.translateZ', snappos[2])
-    pc = cmds.pointConstraint(temploc[0], name[i], o=(0,0,0), w=1)
-    cmds.delete(temploc[0])
+    # --- ï¿½Ê’uï¿½ï¿½ï¿½í‚¹ï¿½Ì‚ï¿½ ---
+    pm.setAttr(temploc[0]+'.translateX', snappos[0])
+    pm.setAttr(temploc[0]+'.translateY', snappos[1])
+    pm.setAttr(temploc[0]+'.translateZ', snappos[2])
+    pc = pm.pointConstraint(temploc[0], name[i], o=(0,0,0), w=1)
+    pm.delete(temploc[0])
     # --- Point to Poly ---
-    ptpcnst = cmds.pointOnPolyConstraint(name[0], name[i], mo=False, w=1.0)
-    cmds.setAttr(ptpcnst[0] + '.' + name[0] + 'U0', snapuv[0])
-    cmds.setAttr(ptpcnst[0] + '.' + name[0] + 'V0', snapuv[1])
+    ptpcnst = pm.pointOnPolyConstraint(name[0], name[i], mo=False, w=1.0)
+    pm.setAttr(ptpcnst[0] + '.' + name[0] + 'U0', snapuv[0])
+    pm.setAttr(ptpcnst[0] + '.' + name[0] + 'V0', snapuv[1])
     
-    # --- q‚ÌƒyƒAƒŒƒ“ƒg‚ğ–ß‚· ---    
+    # --- ï¿½qï¿½Ìƒyï¿½Aï¿½ï¿½ï¿½ï¿½ï¿½gï¿½ï¿½ß‚ï¿½ ---    
     if chld != None:
         for c in chld:
-            cmds.parent(c, name[i])
+            pm.parent(c, name[i])
     
     
     

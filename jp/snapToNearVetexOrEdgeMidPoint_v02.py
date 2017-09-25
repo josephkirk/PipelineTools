@@ -1,46 +1,46 @@
 # -*- coding: utf-8 -*-
-#ƒ|ƒŠƒSƒ“ËƒXƒiƒbƒv‚µ‚½‚¢ƒIƒuƒWƒFƒNƒg‚Ì‡‚Å‘I‘ğ
-#’¸“_‚ÆƒGƒbƒW’†“_‚Åˆê”Ô‹ß‚¢‚à‚Ì‚ÉƒXƒiƒbƒv
-import maya.cmds as cmds
+#ï¿½|ï¿½ï¿½ï¿½Sï¿½ï¿½ï¿½ËƒXï¿½iï¿½bï¿½vï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Iï¿½uï¿½Wï¿½Fï¿½Nï¿½gï¿½Ìï¿½ï¿½Å‘Iï¿½ï¿½
+#ï¿½ï¿½ï¿½_ï¿½ÆƒGï¿½bï¿½Wï¿½ï¿½ï¿½_ï¿½Åˆï¿½Ô‹ß‚ï¿½ï¿½ï¿½Ì‚ÉƒXï¿½iï¿½bï¿½v
+import pymel.core as pm
 import math
 
 vtxv = []
-name = cmds.ls(sl=True)
-vname = cmds.ls((name[0] + '.vtx[*]'), v=True, fl=True)
-ename = cmds.ls((name[0] + '.e[*]'), v=True, fl=True)
+name = pm.ls(sl=True)
+vname = pm.ls((name[0] + '.vtx[*]'), v=True, fl=True)
+ename = pm.ls((name[0] + '.e[*]'), v=True, fl=True)
 
 for i in range(1,len(name)):
     mindistance = 9999999999999.0
     snappos = [0,0,0]
-    temploc = cmds.spaceLocator(p=(0,0,0))
-    pc = cmds.pointConstraint(name[i], temploc[0], o=(0,0,0), w=1)
-    cmds.delete(pc[0])
-    jpos = cmds.xform(temploc[0], q=True, ws=True, t=True)
+    temploc = pm.spaceLocator(p=(0,0,0))
+    pc = pm.pointConstraint(name[i], temploc[0], o=(0,0,0), w=1)
+    pm.delete(pc[0])
+    jpos = pm.xform(temploc[0], q=True, ws=True, t=True)
     for vn in vname:
-        vpos = cmds.pointPosition(vn, w=True)
+        vpos = pm.pointPosition(vn, w=True)
         distancetemp = math.sqrt( pow((jpos[0]-vpos[0]),2) + pow((jpos[1]-vpos[1]),2) + pow((jpos[2]-vpos[2]),2) )
         if distancetemp <= mindistance :
             mindistance = distancetemp
             snappos = vpos
 
     for en in ename:
-        ev = cmds.filterExpand(cmds.polyListComponentConversion(en, tv=True), sm=31)
-        v1pos = cmds.pointPosition(ev[0], w=True)
-        v2pos = cmds.pointPosition(ev[1], w=True)
+        ev = pm.filterExpand(pm.polyListComponentConversion(en, tv=True), sm=31)
+        v1pos = pm.pointPosition(ev[0], w=True)
+        v2pos = pm.pointPosition(ev[1], w=True)
         vmpos = [(v1pos[0]+v2pos[0])/2.0, (v1pos[1]+v2pos[1])/2.0, (v1pos[2]+v2pos[2])/2.0]
         distancetemp = math.sqrt( pow((jpos[0]-vmpos[0]),2) + pow((jpos[1]-vmpos[1]),2) + pow((jpos[2]-vmpos[2]),2) )
         if distancetemp <= mindistance :
             mindistance = distancetemp
             snappos = vmpos
-    chld = cmds.listRelatives(name[i], c=True, typ='transform')
+    chld = pm.listRelatives(name[i], c=True, typ='transform')
     if chld != None:
         for c in chld:
-            cmds.parent(c, w=True)
-    cmds.setAttr(temploc[0]+'.translateX', snappos[0])
-    cmds.setAttr(temploc[0]+'.translateY', snappos[1])
-    cmds.setAttr(temploc[0]+'.translateZ', snappos[2])
-    pc = cmds.pointConstraint(temploc[0], name[i], o=(0,0,0), w=1)
-    cmds.delete(temploc[0])
+            pm.parent(c, w=True)
+    pm.setAttr(temploc[0]+'.translateX', snappos[0])
+    pm.setAttr(temploc[0]+'.translateY', snappos[1])
+    pm.setAttr(temploc[0]+'.translateZ', snappos[2])
+    pc = pm.pointConstraint(temploc[0], name[i], o=(0,0,0), w=1)
+    pm.delete(temploc[0])
     if chld != None:
         for c in chld:
-            cmds.parent(c, name[i])
+            pm.parent(c, name[i])

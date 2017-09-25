@@ -1,13 +1,13 @@
 #pointConstraint ctl to loc
 # -*- coding: utf-8 -*-
 
-import maya.cmds as cmds
+import pymel.core as pm
 
-name = cmds.ls(sl=True)
+name = pm.ls(sl=True)
 for n in name:
     offgpname = n.replace('_ctl','_offset_Gp')
     gpname = n.replace('_ctl','_Gp')
-    cmds.group(n, n=offgpname)
-    cmds.group(offgpname, n=gpname)
+    pm.group(n, n=offgpname)
+    pm.group(offgpname, n=gpname)
     locname = n.replace('_ctl','_loc')
-    cmds.pointConstraint(locname, gpname, o=(0,0,0), w=1)
+    pm.pointConstraint(locname, gpname, o=(0,0,0), w=1)

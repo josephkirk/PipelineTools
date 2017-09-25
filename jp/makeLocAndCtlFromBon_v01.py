@@ -1,18 +1,18 @@
 # -*- coding: utf-8 -*-
 # --------------------------------------
-# ‘I‘ğ‚µ‚½ƒWƒ‡ƒCƒ“ƒg‚ÌˆÊ’u‚ÉƒƒP[ƒ^‚ÆƒRƒ“ƒgƒ[ƒ‰‚ğì¬
+# ï¿½Iï¿½ï¿½ï¿½ï¿½Wï¿½ï¿½ï¿½Cï¿½ï¿½ï¿½gï¿½ÌˆÊ’uï¿½Éƒï¿½ï¿½Pï¿½[ï¿½^ï¿½ÆƒRï¿½ï¿½ï¿½gï¿½ï¿½ï¿½[ï¿½ï¿½ï¿½ï¿½ì¬
 # --------------------------------------
 
-import maya.cmds as cmds
+import pymel.core as pm
 
-name = cmds.ls(sl=True)
+name = pm.ls(sl=True)
 for n in name:
     locname = n.replace('_bon','_loc')
-    loc = cmds.spaceLocator(p=(0,0,0), n=locname)
-    pc = cmds.pointConstraint(n, loc, o=(0,0,0), w=1)
-    cmds.delete(pc[0])
+    loc = pm.spaceLocator(p=(0,0,0), n=locname)
+    pc = pm.pointConstraint(n, loc, o=(0,0,0), w=1)
+    pm.delete(pc[0])
 for n in name:
     ctlname = n.replace('_bon','_ctl')
-    sph = cmds.sphere(p=(0,0,0), ax=(0,1,0), ssw=0, esw=360, r=0.35, d=3, ut=False, tol=0.01, s=8, nsp=4, ch=False, n=ctlname)
-    pc = cmds.pointConstraint(n, sph, o=(0,0,0), w=1)
-    cmds.delete(pc[0])
+    sph = pm.sphere(p=(0,0,0), ax=(0,1,0), ssw=0, esw=360, r=0.35, d=3, ut=False, tol=0.01, s=8, nsp=4, ch=False, n=ctlname)
+    pc = pm.pointConstraint(n, sph, o=(0,0,0), w=1)
+    pm.delete(pc[0])

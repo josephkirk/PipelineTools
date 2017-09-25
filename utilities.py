@@ -42,7 +42,11 @@ def do_function_on(mode='single', type_filter=[]):
                 else:
                     sel.extend(arg)
             #print args_list
-            object_list = list(set(pm.ls(sel, type=type_filter)))
+            object_list = set()
+            for ob in pm.ls(sel, type=type_filter):
+                if ob not in object_list:
+                    object_list.add(ob)
+            object_list = list(object_list)
             if object_list:
                 results = []
                 if mode is 'single': # do function for every object in object_list
