@@ -11,22 +11,21 @@ class FacialEyeRig(object):
 class FacialBonRig(object):
     offset_name = 'offset'
     bone_name = 'bon'
+    alphabet = list(string.ascii_uppercase())
     def __init__(self):
         self._joints = {
-            'eye':('LeftA', 'LeftB', 'LeftC', 'LeftD',
-                   'SubLeftA', 'SubLeftB', 'SubLeftC', 'SubLeftD'),
-            'eyebrow':('LeftA', 'LeftB', 'LeftC'),
-            'nose':('Top', 'LeftA'),
-            'cheek':('LeftA', 'LeftB', 'LeftC'),
-            'jaw':('Root', 'Top'),
-            'lip':('CenterA', 'CenterB', 'LeftA', 'LeftB', 'LeftC'),
-            'teeth':('Lower', 'Upper'),
-            'tongue':(
-                'Root',
-                'CenterARoot',  'CenterA', 'LeftA',
-                'CenterBRoot', 'CenterB', 'LeftB',
-                'CenterCRoot', 'CenterC', 'LeftC',
-                'CenterDRoot', 'CenterD', 'LeftD')}
+            'eye':{'Left':alphabet[:4],
+                   'SubLeft':alphabet[:4]},
+            'eyebrow':{'Left':alphabet[:3]},
+            'nose':{'Top':"", 'Left':alphabet[0]},
+            'cheek':{'Left':alphabet[:3]},
+            'jaw':{'Root':"", 'Top':""},
+            'lip':{'Center':alphabet[:2], 'Left':alphabet[:3]},
+            'teeth':{'Lower':"", 'Upper':""},
+            'tongue':{
+                'Root':"",
+                'Center':([i+'Root' for i in alphabet[:4]]+alphabet[:4])
+                'Left':alphabet[:4]}}
         self._get()
     def _get(self):
         self.joints = {}
@@ -41,37 +40,55 @@ class FacialBonRig(object):
                 except:
                     print offset_bon,' or', bon_name, ' is not exist'
                     raise
+
 class FacialBsRig(object):
     def __init__(self):
         self.facebs_name = 'FaceBaseBS'
         self.control_name = "ctl"
         self.joint_name = 'bon'
-        self.direction_name = ['Left', 'Right', 'Center']
-        self.version_name = list(string.ascii_uppercase)
-        self.facepart_name = ['eyebrow', 'eye', 'mouth']
-        self.eyebs_name = ['sad', 'smile', 'anger', 'open', 'close']
-        self.mouthbs_name = [
-            'A', 'I', 'U', 'E', 'O',
-            'shout', 'open', 'smileClose', 'angerClose']
-        self.connect_atr_list = ['translate','rotate','scale']
+        self.bs_names = ['eyebrow', 'eye', 'mouth']
+        self.ctl_names = ['brow', 'eye', 'mouth']
+        self.direction_name = ['Left', 'Right']
+    
+    def facectl(self,value=None):
+        if value is not None:
+            if isinstance(value,list):
+                self.ctl_names = value
+        self.ctl_fullname = ['_'.joint([ctl_name,'ctl']) for ctl_name in ctl_names]
+        self.ctl = []
+        def create_bs_ctl():
+            pass
+        try:
+            for ctl_name in self.ctl_fullname:
+                ctl = PyNode(ctl)
+                self.ctl.append(ctl)
+        except:
+            create_bs_ctl(ctl)
     def facebs(self,value=None):
         if value is not None:
             self.facebs_name = value
-        self.facebs = get_node(facebs_name)
-        return self.facebs
-
-    def direction_shortname(self):
-        return [n[0] for n in self.direction_name] 
-
-    def add_direction(self, list, add_center=False, shortname=True):
-        result = []
-        dir_list = self.direction_shortname() if shortname else self.direction_name 
-        if add_center is False:
-            dir_list.pop(2)
-        for item in list:
-            for dir in dir_list:
-                result.append('_'.join([item, dir]))
-        return result
+        self.facebs = get_blendshape_target(self.facebs_name)
+        if self.facebs:
+            self.facebs_def ={}
+            self.facebs_def[misc] = []
+            for bs in self.facebs[0]:
+                for bs_name in bs_def:
+                    for direction in direction_name:
+                        if bs.startswith(bs_name):
+                            if not self.facebs_def.has_key(bs_name):
+                                self.facebs_def[bs_name] ={}
+                            if bs.endswith(direction[0]):
+                                if not self.facebs_def[bs_name].has_key(direction): 
+                                    self.facebs_def[bs_name][direction] = []
+                                self.facebs_def[bs_name][direction].append(bs)
+                            else:
+                                self.facebs_def[bs_name] = []
+                                self.facebs_def[bs_name].append(bs)
+            else:
+                self.facebs_def[misc].append(bs)
+        else:
+            print "no blendShape with name" % self.facebs_name
+        return self.facebs_def
 
     def connect_bs_controller(self):
         facepart = self.facepart_name
