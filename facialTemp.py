@@ -9,7 +9,7 @@ def constraint_ctrl_to_loc(n):
     pm.group(offgpname, n=gpname)
     locname = ob.replace('_ctl','_loc')
     pm.pointConstraint(locname, gpname, o=(0,0,0), w=1)
-
+@timeit
 @do_function_on('last')
 def snap_to_near_vertex_midedge(ob_list,target):
     target_pos_list = [v.getPosition(space='world') for v in target.vtx]
@@ -21,7 +21,7 @@ def snap_to_near_vertex_midedge(ob_list,target):
         ob_pos = ob.getTranslation(space='world')
         distance = [(ob_pos.distanceTo(target_pos), target_pos) for target_pos in target_pos_list]
         distance.sort(key=lambda x:x[0])
-        print ob,distance[0]
+        #print ob,distance[0]
         ob.setTranslation(distance[0][1], space='world')
     #get_closest_vert()
     #return distance_list
