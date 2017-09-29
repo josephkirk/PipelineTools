@@ -162,10 +162,20 @@ def get_shape(ob):
             return ob.node()
         else:
             pm.error('object have no shape')
+
 def get_nearest_component_pos(ob):
     #pm.nt.ClosestPointOnMesh()
     pass
 ###function
+@do_function_on(mode='single',type_filter=['float3'])
+def convert_edge_to_curve(edge):
+    pm.polySelect(edge.node(), el=edge.currentItemIndex())
+    pm.polyToCurve(degree=1)
+@do_function_on('single')
+def reset_transform(ob):
+    for atr in ['translate', 'rotate', 'scale']:
+        reset_value = [0,0,0] if atr is not 'scale' else [1,1,1]
+        ob.attr(atr).set(reset_value)
 
 @do_function_on(mode='single')
 def set_material_attr(mat,mat_type='dielectric',**kwargs):
