@@ -179,8 +179,9 @@ def get_blendshape_target(
         target_list.append((target, target_name, target_weight))
     #print target_list
     if rebuild is True:
-        base_ob_name = blendshape.getBaseObjects()[0].split('|')[0]
-        base_ob_node = pm.PyNode(base_ob_name)
+        base_ob_node = blendshape.getBaseObjects()[0].getParent().getParent()
+        print base_ob_node
+        base_ob_name = base_ob_node.name()
         blendshape_name = blendshape.name()
         iter = 1
         target_rebuild_list =[]
