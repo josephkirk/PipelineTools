@@ -35,11 +35,11 @@ def group_loc(ob):
 def make_loc_and_ctl_from_bon(ob):
     locname = ob.replace('_bon','_loc')
     loc = pm.spaceLocator(p=(0,0,0), n=locname)
-    pc = pm.pointConstraint(n, loc, o=(0,0,0), w=1)
+    pc = pm.pointConstraint(ob, loc, o=(0,0,0), w=1)
     pm.delete(pc[0])
     ctlname = ob.replace('_bon','_ctl')
     sph = pm.sphere(p=(0,0,0), ax=(0,1,0), ssw=0, esw=360, r=0.35, d=3, ut=False, tol=0.01, s=8, nsp=4, ch=False, n=ctlname)
-    pc = pm.pointConstraint(n, sph, o=(0,0,0), w=1)
+    pc = pm.pointConstraint(ob, sph, o=(0,0,0), w=1)
     pm.delete(pc[0])
 
 def connect_Bs_control():
@@ -129,6 +129,67 @@ def connect_face_ctl():
         pm.connectAttr(lR+'A_ctl.%s'%attr, lR+'A_bon.%s'%attr, f=True)
         pm.connectAttr(lR+'B_ctl.%s'%attr, lR+'B_bon.%s'%attr, f=True)
         pm.connectAttr(lR+'C_ctl.%s'%attr, lR+'C_bon.%s'%attr, f=True)
+
+def connect_face_ctl():
+    lC = 'lipCenter'
+    nT = 'noseTop'
+    ebL = 'eyebrowLeft'
+    eL = 'eyeLeft'
+    eSL = 'eyeSubLeft'
+    nL = 'noseLeft'
+    cL = 'cheekLeft'
+    lL = 'lipLeft'
+    ebR = 'eyebrowRight'
+    eR = 'eyeRight'
+    eSR = 'eyeSubRight'
+    nR = 'noseRight'
+    cR = 'cheekRight'
+    lR = 'lipRight'
+    for attr in ['translate', 'rotate', 'scale']:
+        #Center
+        pm.connectAttr(lC+'A_bon.%s'%attr, f=True)
+        pm.connectAttr(lC+'B_bon.%s'%attr, f=True)
+        pm.connectAttr(nT+'_ctl.%s'%attr, nT+'_bon.%s'%attr, f=True)
+        #Left
+        pm.connectAttr(ebL+'A_ctl.%s'%attr, ebL+'A_bon.%s'%attr, f=True)
+        pm.connectAttr(ebL+'B_ctl.%s'%attr, ebL+'B_bon.%s'%attr, f=True)
+        pm.connectAttr(ebL+'C_ctl.%s'%attr, ebL+'C_bon.%s'%attr, f=True)
+        pm.connectAttr(eL+'A_ctl.%s'%attr, eL+'A_bon.%s'%attr, f=True)
+        pm.connectAttr(eL+'B_ctl.%s'%attr, eL+'B_bon.%s'%attr, f=True)
+        pm.connectAttr(eL+'C_ctl.%s'%attr, eL+'C_bon.%s'%attr, f=True)
+        pm.connectAttr(eL+'D_ctl.%s'%attr, eL+'D_bon.%s'%attr, f=True)
+        pm.connectAttr(eSL+'A_ctl.%s'%attr, eSL+'A_bon.%s'%attr, f=True)
+        pm.connectAttr(eSL+'B_ctl.%s'%attr, eSL+'B_bon.%s'%attr, f=True)
+        pm.connectAttr(eSL+'C_ctl.%s'%attr, eSL+'C_bon.%s'%attr, f=True)
+        pm.connectAttr(eSL+'D_ctl.%s'%attr, eSL+'D_bon.%s'%attr, f=True)
+        pm.connectAttr(nL+'A_ctl.%s'%attr, nL+'A_bon.%s'%attr, f=True)
+        pm.connectAttr(cL+'A_ctl.%s'%attr, cL+'A_bon.%s'%attr, f=True)
+        pm.connectAttr(cL+'B_ctl.%s'%attr, cL+'B_bon.%s'%attr, f=True)
+        pm.connectAttr(cL+'C_ctl.%s'%attr, cL+'C_bon.%s'%attr, f=True)
+        pm.connectAttr(lL+'A_ctl.%s'%attr, lL+'A_bon.%s'%attr, f=True)
+        pm.connectAttr(lL+'B_ctl.%s'%attr, lL+'B_bon.%s'%attr, f=True)
+        pm.connectAttr(lL+'C_ctl.%s'%attr, lL+'C_bon.%s'%attr, f=True)
+        #Right
+        pm.connectAttr(ebR+'A_ctl.%s'%attr, ebR+'A_bon.%s'%attr, f=True)
+        pm.connectAttr(ebR+'B_ctl.%s'%attr, ebR+'B_bon.%s'%attr, f=True)
+        pm.connectAttr(ebR+'C_ctl.%s'%attr, ebR+'C_bon.%s'%attr, f=True)
+        pm.connectAttr(eR+'A_ctl.%s'%attr, eR+'A_bon.%s'%attr, f=True)
+        pm.connectAttr(eR+'B_ctl.%s'%attr, eR+'B_bon.%s'%attr, f=True)
+        pm.connectAttr(eR+'C_ctl.%s'%attr, eR+'C_bon.%s'%attr, f=True)
+        pm.connectAttr(eR+'D_ctl.%s'%attr, eR+'D_bon.%s'%attr, f=True)
+        pm.connectAttr(eSR+'A_ctl.%s'%attr, eSR+'A_bon.%s'%attr, f=True)
+        pm.connectAttr(eSR+'B_ctl.%s'%attr, eSR+'B_bon.%s'%attr, f=True)
+        pm.connectAttr(eSR+'C_ctl.%s'%attr, eSR+'C_bon.%s'%attr, f=True)
+        pm.connectAttr(eSR+'D_ctl.%s'%attr, eSR+'D_bon.%s'%attr, f=True)
+        pm.connectAttr(nR+'A_ctl.%s'%attr, nR+'A_bon.%s'%attr, f=True)
+        pm.connectAttr(cR+'A_ctl.%s'%attr, cR+'A_bon.%s'%attr, f=True)
+        pm.connectAttr(cR+'B_ctl.%s'%attr, cR+'B_bon.%s'%attr, f=True)
+        pm.connectAttr(cR+'C_ctl.%s'%attr, cR+'C_bon.%s'%attr, f=True)
+        pm.connectAttr(lR+'A_ctl.%s'%attr, lR+'A_bon.%s'%attr, f=True)
+        pm.connectAttr(lR+'B_ctl.%s'%attr, lR+'B_bon.%s'%attr, f=True)
+        pm.connectAttr(lR+'C_ctl.%s'%attr, lR+'C_bon.%s'%attr, f=True)
+
+
 
 def connect_mouth_ctl():
     jaw = 'jaw'

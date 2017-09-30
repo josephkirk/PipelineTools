@@ -5,13 +5,19 @@ written by Nguyen Phi Hung 2017
 email: josephkirk.art@gmail.com
 All code written by me unless specify
 """
+####misc
+#@do_function_on('single')
+def offcastshadow(wc='*eyeref*):
+    ob_list = pm.ls(wc,s=True)
+    for ob in ob_list:
+        eye.castsShadows.set(False)
 ###Rigging
 class FacialEyeRig(object):
     pass
 class FacialBonRig(object):
     offset_name = 'offset'
     bone_name = 'bon'
-    alphabet = list(string.ascii_uppercase())
+    alphabet = list(string.ascii_uppercase)
     def __init__(self):
         self._joints = {
             'eye':{'Left':alphabet[:4],
@@ -24,7 +30,7 @@ class FacialBonRig(object):
             'teeth':{'Lower':"", 'Upper':""},
             'tongue':{
                 'Root':"",
-                'Center':([i+'Root' for i in alphabet[:4]]+alphabet[:4])
+                'Center':([i+'Root' for i in alphabet[:4]]+alphabet[:4]),
                 'Left':alphabet[:4]}}
         self._get()
     def _get(self):

@@ -43,9 +43,9 @@ def do_function_on(mode='single', type_filter=[]):
                     sel.extend(arg)
             #print args_list
             object_list = []
-            for ob in pm.ls(sel, type=type_filter):
+            for ob in pm.ls(sel, type=type_filter, os=True):
                 if ob not in object_list:
-                    object_list.append(ob))
+                    object_list.append(ob)
             if object_list:
                 results = []
                 if mode is 'single': # do function for every object in object_list
