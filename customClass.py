@@ -8,6 +8,9 @@ written by Nguyen Phi Hung 2017
 email: josephkirk.art@gmail.com
 All code written by me unless specify
 """
+#Rigging Class
+
+#Pipeline Class
 class Asset(object):
     '''Base Class to find AssetPath'''
     def __init__(self, name, type, kind):

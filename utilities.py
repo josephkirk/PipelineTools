@@ -28,13 +28,15 @@ def error_alert(func):
             print why
     return wrapper
 
-def do_function_on(mode='single', type_filter=[]): 
+def do_function_on(mode='single', type_filter=[], get_selection=True): 
     def decorator(func):
         """wrap a function to operate on select object or object name string according to mode
                 mode: single, double, set, singlelast, last, doubleType"""
         @wraps(func)
         def wrapper(*args, **kwargs):
-            sel = pm.selected()
+            sel = []
+            if get_selection:
+                sel = pm.selected()
             #pm.select(cl=True)
             for arg in args:
                 if type(arg) == list:
@@ -98,27 +100,81 @@ def do_function_on(mode='single', type_filter=[]):
     return decorator
 
 ###misc function
-def getnode(self, node_name, get_method=False):
-    try:
+#@do_function_on('singlelast')
+def get_closest_component(ob, mesh_node, uv=True):
+    ob_pos = ob.getTranslation(space='world')
+    closest_info = get_closest_info(ob,mesh_node)
+    closest_vert_pos = closest_info['Closest Vertex'].getPosition(space='world')
+    closest_components = [closest_vert_pos, closest_info['Closest Mid Edge']]
+    distance_cmp = [ob_pos.distanceTo(cp) for cp in closest_components]
+    if distance_cmp[0] < distance_cmp[1]:
+        result = closest_info['Closest Vertex']
+        if uv:
+            vert_uv = pm.polyListComponentConversion(result,fv=True, tuv=True)
+            result = pm.polyEditUV(vert_uv,q=True)
+    else:
+        result = closest_info['Closest Edge']
+        if uv:
+            edge_uv = pm.polyListComponentConversion(result,fe=True, tuv=True)
+            edge_uv_coor = pm.polyEditUV(edge_uv,q=True)
+            mid_edge_uv = ((edge_uv_coor[0] + edge_uv_coor[2])/2,(edge_uv_coor[1] + edge_uv_coor[3])/2)
+            result = mid_edge_uv
+    return result
+
+def get_closest_info(ob, mesh_node):
+    if not isinstance(ob, pm.nt.Transform):
+        return
+    ob_pos = ob.getTranslation(space='world')
+    mesh_node = get_shape(pm.PyNode(mesh_node))
+    temp_node = pm.nt.ClosestPointOnMesh()
+    temp_loc = pm.spaceLocator(p=ob_pos)
+    mesh_node.worldMesh[0] >> temp_node.inMesh
+    temp_loc.worldPosition[0] >> temp_node.inPosition
+    temp_loc.worldMatrix[0] >> temp_node.inputMatrix
+    #temp_node.inPosition.set(ob_pos)
+    results = {}
+    results['Closest Vertex'] = mesh_node.vtx[temp_node.closestVertexIndex.get()]
+    results['Closest Face'] = mesh_node.f[temp_node.closestFaceIndex.get()]
+    edges = results['Closest Face'].getEdges()
+    mid_point_list = [
+        (mesh_node.e[edge],
+        (mesh_node.e[edge].getPoint(0, space='world')+mesh_node.e[edge].getPoint(1, space='world'))/2)
+        for edge in edges]
+    
+    distance = [(mid_point[0], mid_point[1], ob_pos.distanceTo(mid_point[1])) for mid_point in mid_point_list]
+    distance.sort(key=lambda d:d[2])
+    results['Closest Edge'] = distance[0][0]
+    results['Closest Mid Edge'] = distance[0][1]
+    results['Closest Point'] = mesh_node.getClosestPoint(pm.dt.Point(ob_pos), space='world')[0]
+    #closest_uv = mesh_node.getUVAtPoint(results['Closest Point'], space='world', uvSet=mesh_node.getCurrentUVSetName())
+    #print closest_uv
+    #results['Closest UV'] = closest_uv
+    results['Closest UV'] = (temp_node.parameterU.get(), temp_node.parameterV.get())
+    pm.delete([temp_node,temp_loc])
+    return results
+
+def get_node(node_name, get_method=False):
+    if pm.objExists(node_name):
         node = pm.PyNode(node_name)
-        print "%s exists, is type %s" % (node,type(node))
+        print "%s exists, is type %s" % (node, type(node))
         if get_method:
             print dir(node)
         return node
-    except:
-        pm.error('node with %s does not exist' % self.node_name,n=True)
-    
+    else:
+        pm.warning('node with %s does not exist' % node_name)
+        return
+
 def reset_floating_window():
     '''reset floating window position'''
     window_list = pm.lsUI(windows=True)
     for window in window_list:
         if window != "MayaWindow" and window != "scriptEditorPanel1Window":
             pm.deleteUI(window)
-            pm.windowPref(window,remove=True)
-            print window," reset"
+            pm.windowPref(window, remove=True)
+            print window, " reset"
 
-def add_suffix(ob,suff="_skinDeform"): 
-    pm.rename(ob,ob.name()+str(suff))
+def add_suffix(ob, suff="_skinDeform"):
+    pm.rename(ob, ob.name()+str(suff))
 
 def convert_component(components_list, toVertex=True, toEdge=False, toFace=False): 
     test_type = [o for o in components_list if type(o) is pm.nt.Transform]
@@ -163,9 +219,6 @@ def get_shape(ob):
         else:
             pm.error('object have no shape')
 
-def get_nearest_component_pos(ob):
-    #pm.nt.ClosestPointOnMesh()
-    pass
 ###function
 @do_function_on(mode='single',type_filter=['float3'])
 def convert_edge_to_curve(edge):

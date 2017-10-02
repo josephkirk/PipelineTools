@@ -1,4 +1,6 @@
-from PipelineTools.utilities import *
+from PipelineTools import utilities as ul
+from PipelineTools import riggingMisc as rm
+reload(ul)
 import string
 """
 written by Nguyen Phi Hung 2017
@@ -7,13 +9,231 @@ All code written by me unless specify
 """
 ####misc
 #@do_function_on('single')
-def offcastshadow(wc='*eyeref*):
+def offcastshadow(wc='*eyeref*'):
     ob_list = pm.ls(wc,s=True)
     for ob in ob_list:
         eye.castsShadows.set(False)
 ###Rigging
+class FacialGuide(object):
+    def __init__(self, name, guide_mesh=None, suffix='loc', gp_suffix='Gp'):
+        self._name = name
+        self._suffix = suffix
+        self._group_suffix = gp_suffix
+        self.name = '_'.join([name, suffix])
+        self.group_name = '_'.join([self.name, gp_suffix])
+        self.constraint_name = '_'.join([self.name,'pointOnPolyConstraint'])
+        self.guide_mesh = ul.get_shape(guide_mesh)
+        self._get()
+
+    def __call__(self,*args, **kwargs):
+        self._create(*args, **kwargs)
+        return self.node
+    
+    def set_guide_mesh(self, guide_mesh):
+        if pm.objExists(guide_mesh):
+            self.guide_mesh = ul.get_shape(guide_mesh)
+
+    def _create(self, pos=[0, 0, 0], parent=None):
+        self.node = pm.spaceLocator(name=self.name)
+        if pm.objExists(self.group_name):
+            self.group = pm.PyNode(self.group_name)
+        else:
+            self.group = pm.nt.Transform(name=self.group_name)
+        self.node.setParent(self.group)
+        self.group.setTranslation(pos, space='world')
+        self.group.setParent(parent)
+
+    def set_constraint(self):
+        if all([self.guide_mesh, self.guide_mesh, self.group]):
+           # print self.node
+            if pm.objExists(self.constraint_name):
+               self.constraint = ul.get_node(self.constraint_name)
+               pm.delete(self.constraint)
+            closest_info = ul.get_closest_info(self.node, self.guide_mesh)
+            closest_uv = ul.get_closest_component(self.node, self.guide_mesh)
+            self.constraint = pm.pointOnPolyConstraint(
+                self.guide_mesh, self.node, mo=False,
+                name=self.constraint_name)
+            self.constraint.attr(self.guide_mesh.getParent().name()+'U0').set(closest_uv[0])
+            self.constraint.attr(self.guide_mesh.getParent().name()+'V0').set(closest_uv[1])
+            pm.select(closest_info['Closest Vertex'])
+        else:
+            pm.error('Please set guide mesh')
+
+    def _get(self):
+        self.node = ul.get_node(self.name)
+        self.group = ul.get_node(self.group_name)
+        return self.node
+
+class FacialControl(object):
+    def __init__(self, name, suffix='ctl', offset_suffix='offset', gp_suffix='Gp'):
+        self._name = name
+        self._suffix = suffix
+        self._offset_suffix = offset_suffix
+        self._group_suffix = gp_suffix
+        self.name = '_'.join(name, suffix)
+        self.offset_name = '_'.join([self.name, offset_suffix, gp_suffix])
+        self.root_name = '_'.join([self.name, gp_suffix])
+        self._get()
+    
+    def __str__():
+        return self.node
+
+    def __call__(*args, **kwargs):
+        self.create(*args, **kwargs)
+        return self.node
+
+    def rename(self,new_name):
+        self.name = '_'.join(new_name, suffix)
+        self.offset_name = '_'.join([self.name, 'offset', 'GP'])
+        self.root_name = '_'.join([self.name, 'GP'])
+        if self.node:
+            pm.rename(self.node, self.name)
+        if self.offset:
+            pm.rename(self.offset, self.offset_name)
+        if self.root:
+            pm.rename(self.root, self.root_name) 
+
+    def create(shape=None, pos=[0,0,0], parent=None, create_offset=True):
+        if not self.node:
+            self.node = pm.nt.Transform(name=self.name)
+        if pm.objExists(shape):
+            parent_shape(shape , self.node)
+        if not self.offset and create_offset:
+            self.offset = pm.nt.Transform(name='_'.join([self.name, 'offset', 'GP']))
+            self.offset.setTranslation(self.node, space='world')
+            self.node.setParent(self.offset)
+        if not self.root:
+            self.root = pm.nt.Transform(name='_'.join([self.name, 'GP']))
+            self.root.setTranslation(self.node, space='world')
+            if self.offset:
+                self.offset.setParent(self.root)
+            else:
+                self.node.setParent(self.root)
+            self.root.setParent(parent)
+
+    def _set(self, new_node, rename=True):
+        if pm.objExists(new_node):
+            self.node = pm.PyNode(new_node)
+            if rename:
+                pm.rename(new_node, self.name)
+            self._get()
+
+    def _get(self):
+        self.node = pm.PyNode(self.name) if pm.objExists(self.name) else None
+        self.offset = pm.PyNode(self.offset_name) if pm.objExists(self.offset_name) else None
+        self.root = pm.PyNode(self.root_name) if pm.objExists(self.root_name) else None
+        
+
+class FacialBone(object):
+    def __init__(self, name, suffix='bon', offset_suffix='offset', ctl_suffix='ctl', gp_suffix='Gp'):
+        self._name = name
+        self._suffix = suffix
+        self._offset_suffix = offset_suffix
+        self._ctl_suffix = ctl_suffix
+        self.name = '_'.join([self._name, suffix])
+        self.offset_name = '_'.join([self._name, self._offset_suffix, self._suffix])
+        self.connect_attrs = [
+            'translate',
+            'rotate',
+            'scale']
+        self.control_name = self.name.replace(suffix, ctl_suffix)
+        self._get()
+
+    def __str__(self):
+        return self.name
+
+    def __call__(self,new_bone=None, pos=[0,0,0], parent=None, create_control=False):
+        if pm.objExists(newBone):
+            newBone = pm.PyNode(new_bone)
+            pm.rename(newBone, self.name)
+            self._set(newBone, pos=pos, parent=parent)
+        else:
+            if self._get():
+                self._set(self.bone)
+            else:
+                newBone = pm.nt.Joint()
+                newBone.setTranslation(pos, space='world')
+                newBone.setParent(parent)
+                self.__call__(newBone=newBone)
+        if create_control:
+            self.create_control()
+        return self.bone
+
+    def create_offset(self, pos=[0,0,0], space='world', reset_pos=False, parent=None):
+        boneParent = self.bone.getParent()
+        if boneParent and self._offset_suffix in boneParent.name():
+            self.offset_bone = boneParent
+        elif pm.objExists(self.offset_name):
+            self.offset_bone = pm.PyNode(self.offset_name)
+            self.offset_bone.setParent(boneParent)
+            self.bone.setParent(self.offset_bone)
+            reset_transform(self.bone)
+        else:
+            self.offset_bone = pm.nt.Joint(name=self.offset_name)
+            self.bone.setParent(self.offset_bone)
+            if reset_pos:
+                reset_transform(self.bone)
+            self.offset_bone.setTranslation(pos, space=space)
+            if parent:
+                self.offset_bone.setParent(parent)
+            else:
+                self.offset_bone.setParent(parent)
+        return self.offset_bone
+
+    def create_control(self, shape=None, parent=None):
+        pass
+
+    def is_connected(self):
+        if self.control:
+            connect_state = []
+            for atr in self.connect_attrs:
+                input = self.bone.attr(atr).inputs()
+                if input:
+                    if input[0] == self.control:
+                        connect = True
+                    else:
+                        connect = False
+                    print '%s connection to %s is %s'%(atr, self.control_name, connect)
+                    connect_state.append((atr, connect))
+        return connect_state
+
+    def connect(self):
+        if self.bone and self.control:
+            for atr in self.connect_attrs:
+                self.control.attr(atr) >> self.bone.attr(atr)
+
+    def set_control(self, control_ob, rename=True):
+        if pm.objExists(control_ob):
+            self.control = pm.PyNode(control_ob)
+            if rename:
+                pm.rename(self.control, self.control_name)
+        else:
+            self.create_control()
+        self.connect()
+        self.is_connected()
+        return self.control
+
+    def get_control(self):
+        self.control = FacialControl(self.control_name)
+        return self.control
+
+    def _get(self):
+        self.bone = pm.PyNode(self.name) if pm.objExists(self.name) else None
+        if self.bone:
+            self._set(self.bone)
+        self.get_control()
+        return self.bone
+
+    def _set(self, bone):
+        self.bone = bone
+        self.create_offset(
+            pos=self.bone.getTranslation(space='world'),
+            reset_pos=True)
+
 class FacialEyeRig(object):
     pass
+
 class FacialBonRig(object):
     offset_name = 'offset'
     bone_name = 'bon'

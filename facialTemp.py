@@ -9,7 +9,7 @@ def constraint_ctrl_to_loc(n):
     pm.group(offgpname, n=gpname)
     locname = ob.replace('_ctl','_loc')
     pm.pointConstraint(locname, gpname, o=(0,0,0), w=1)
-@timeit
+#@timeit
 @do_function_on('last')
 def snap_to_near_vertex_midedge(ob_list,target):
     target_pos_list = [v.getPosition(space='world') for v in target.vtx]
@@ -28,8 +28,8 @@ def snap_to_near_vertex_midedge(ob_list,target):
 
 @do_function_on('single')
 def group_loc(ob):
-    gpname = n + '_Gp'
-    pm.group(n, n=gpname)
+    gpname = ob + '_Gp'
+    pm.group(ob, n=gpname)
 
 @do_function_on('single')
 def make_loc_and_ctl_from_bon(ob):
