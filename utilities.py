@@ -215,10 +215,11 @@ def get_shape(ob):
     if hasattr(ob, 'getShape'):
         return ob.getShape()
     else:
-        if issubclass(ob.node().__class__, pm.nt.Shape):
-            return ob.node()
-        else:
-            pm.error('object have no shape')
+        try:
+            if issubclass(ob.node().__class__, pm.nt.Shape):
+                return ob.node()
+        except:
+            print('object have no shape')
 
 ###function
 @do_function_on(mode='single',type_filter=['float3'])

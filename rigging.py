@@ -15,15 +15,18 @@ def offcastshadow(wc='*eyeref*'):
         eye.castsShadows.set(False)
 ###Rigging
 class FacialGuide(object):
-    def __init__(self, name, guide_mesh=None, suffix='loc', gp_suffix='Gp'):
+    def __init__(self, name, guide_mesh=None, suffix='loc', root_suffix='Gp'):
         self._name = name
         self._suffix = suffix
-        self._root_suffix = gp_suffix
+        self._root_suffix = root_suffix
         self.name = '_'.join([name, suffix])
-        self.root_name = '_'.join([self.name, gp_suffix])
-        self.constraint_name = '_'.join([self.name,'pointOnPolyConstraint'])
+        self.root_name = '_'.join([self.name, root_suffix])
+        self.constraint_name = '_'.join([self.root_name,'pointOnPolyConstraint1'])
         self.guide_mesh = ul.get_shape(guide_mesh)
         self._get()
+
+    def __repr__(self):
+        return self.name
 
     def __call__(self,*args, **kwargs):
         self._create(*args, **kwargs)
@@ -64,6 +67,17 @@ class FacialGuide(object):
         self.constraint = ul.get_node(self.constraint_name)
         return self.node
 
+    @classmethod
+    def guides(cls, name='eye',root_suffix='Gp', suffix='loc', separator='_'):
+        list_all = pm.ls('*%s*%s*'%(name,suffix), type='transform')
+        guides = []
+        for ob in list_all:
+            if root_suffix not in ob.name():
+                ob_name = ob.name().split(separator)
+                guide =  cls(ob_name[0], suffix=suffix, root_suffix=root_suffix)
+                guides.append(guide)
+        return guides
+
 class FacialControl(object):
     def __init__(self, name, suffix='ctl', offset_suffix='offset', root_suffix='Gp'):
         self._name = name
@@ -75,7 +89,7 @@ class FacialControl(object):
         self._get()
     
     def __repr__(self):
-        return self.node.name()
+        return self.name
 
     def __call__(self, *args, **kwargs):
         self.create(*args, **kwargs)
@@ -136,18 +150,18 @@ class FacialControl(object):
         self.root = ul.get_node(self.root_name)
     
     @classmethod
-    def Controls(cls, name='jaw',offset_suffix='offset', root_suffix='Gp', suffix='ctl', separator='_'):
+    def controls(cls, name,offset_suffix='offset', root_suffix='Gp', suffix='ctl', separator='_'):
         list_all = pm.ls('*%s*%s*'%(name,suffix), type='transform')
-        jaw_controls = []
+        controls = []
         for ob in list_all:
             if root_suffix not in ob.name():
                 ob_name = ob.name().split(separator)
                 control =  cls(ob_name[0], offset_suffix=offset_suffix, suffix=suffix, root_suffix=root_suffix)
-                jaw_controls.append(control)
-        return jaw_controls
+                controls.append(control)
+        return controls
 
 class FacialBone(object):
-    def __init__(self, name, suffix='bon', offset_suffix='offset', ctl_suffix='ctl', gp_suffix='Gp'):
+    def __init__(self, name, suffix='bon', offset_suffix='offset', ctl_suffix='ctl', root_suffix='Gp'):
         self._name = name
         self._suffix = suffix
         self._offset_suffix = offset_suffix
@@ -161,7 +175,7 @@ class FacialBone(object):
         self.control_name = self.name.replace(suffix, ctl_suffix)
         self._get()
 
-    def __str__(self):
+    def __repr__(self):
         return self.name
 
     def __call__(self,new_bone=None, pos=[0,0,0], parent=None, create_control=False):
@@ -236,13 +250,14 @@ class FacialBone(object):
         return self.control
 
     def get_control(self):
-        self.control = FacialControl(self.control_name)
+        self.control = FacialControl(self._name)
         return self.control
 
     def _get(self):
-        self.bone = pm.PyNode(self.name) if pm.objExists(self.name) else None
-        if self.bone:
-            self._set(self.bone)
+        self.bone = ul.get_node(self.name)
+        #if self.bone:
+        #    self._set(self.bone)
+        self.offset = ul.get_node(self.offset_name)
         self.get_control()
         return self.bone
 
@@ -252,6 +267,23 @@ class FacialBone(object):
             pos=self.bone.getTranslation(space='world'),
             reset_pos=True)
 
+    @classmethod
+    def bones(cls, name,offset_suffix='offset', root_suffix='Gp', suffix='bon', separator='_', directions=['Left','Right','Center','Root']):
+        list_all = pm.ls('*%s*%s*'%(name,suffix), type='transform')
+        allbone = []
+        for ob in list_all:
+            if root_suffix not in ob.name():
+                ob_name = ob.name().split(separator)
+                bone =  cls(ob_name[0], offset_suffix=offset_suffix, suffix=suffix, root_suffix=root_suffix)
+                allbone.append(bone)
+        bones = {}
+        bones['All'] = allbone
+        for direction in directions:
+            bones[direction] = []
+            for bone in allbone:
+                if direction in bone.name:
+                    bones[direction].append(bone)
+        return bones
 class FacialEyeRig(object):
     pass
 
