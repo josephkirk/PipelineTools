@@ -1,1 +1,0 @@
-python.ExecuteFile "main.py"
