@@ -18,9 +18,9 @@ class FacialGuide(object):
     def __init__(self, name, guide_mesh=None, suffix='loc', gp_suffix='Gp'):
         self._name = name
         self._suffix = suffix
-        self._group_suffix = gp_suffix
+        self._root_suffix = gp_suffix
         self.name = '_'.join([name, suffix])
-        self.group_name = '_'.join([self.name, gp_suffix])
+        self.root_name = '_'.join([self.name, gp_suffix])
         self.constraint_name = '_'.join([self.name,'pointOnPolyConstraint'])
         self.guide_mesh = ul.get_shape(guide_mesh)
         self._get()
@@ -35,22 +35,20 @@ class FacialGuide(object):
 
     def _create(self, pos=[0, 0, 0], parent=None):
         self.node = pm.spaceLocator(name=self.name)
-        if pm.objExists(self.group_name):
-            self.group = pm.PyNode(self.group_name)
+        if pm.objExists(self.root_name):
+            self.root = pm.PyNode(self.root_name)
         else:
-            self.group = pm.nt.Transform(name=self.group_name)
-        self.node.setParent(self.group)
-        self.group.setTranslation(pos, space='world')
-        self.group.setParent(parent)
+            self.root = pm.nt.Transform(name=self.root_name)
+        self.node.setParent(self.root)
+        self.root.setTranslation(pos, space='world')
+        self.root.setParent(parent)
 
-    def set_constraint(self):
-        if all([self.guide_mesh, self.guide_mesh, self.group]):
-           # print self.node
-            if pm.objExists(self.constraint_name):
-               self.constraint = ul.get_node(self.constraint_name)
-               pm.delete(self.constraint)
-            closest_info = ul.get_closest_info(self.node, self.guide_mesh)
-            closest_uv = ul.get_closest_component(self.node, self.guide_mesh)
+    def set_constraint(self, target = None):
+        if all([self.guide_mesh, self.guide_mesh, self.root]):
+            pm.delete(self.constraint)
+            if target is None:
+                target = self.root
+            closest_uv = ul.get_closest_component(target, self.guide_mesh)
             self.constraint = pm.pointOnPolyConstraint(
                 self.guide_mesh, self.node, mo=False,
                 name=self.constraint_name)
@@ -62,37 +60,46 @@ class FacialGuide(object):
 
     def _get(self):
         self.node = ul.get_node(self.name)
-        self.group = ul.get_node(self.group_name)
+        self.root = ul.get_node(self.root_name)
+        self.constraint = ul.get_node(self.constraint_name)
         return self.node
 
 class FacialControl(object):
-    def __init__(self, name, suffix='ctl', offset_suffix='offset', gp_suffix='Gp'):
+    def __init__(self, name, suffix='ctl', offset_suffix='offset', root_suffix='Gp'):
         self._name = name
         self._suffix = suffix
         self._offset_suffix = offset_suffix
-        self._group_suffix = gp_suffix
-        self.name = '_'.join(name, suffix)
-        self.offset_name = '_'.join([self.name, offset_suffix, gp_suffix])
-        self.root_name = '_'.join([self.name, gp_suffix])
+        self._root_suffix = root_suffix
+        self.rename(name)
+        self.attr_connect_list = ['translate', 'rotate', 'scale']
         self._get()
     
-    def __str__():
-        return self.node
+    def __repr__(self):
+        return self.node.name()
 
-    def __call__(*args, **kwargs):
+    def __call__(self, *args, **kwargs):
         self.create(*args, **kwargs)
         return self.node
 
+    def name(self):
+        return self.name
+
     def rename(self,new_name):
-        self.name = '_'.join(new_name, suffix)
-        self.offset_name = '_'.join([self.name, 'offset', 'GP'])
-        self.root_name = '_'.join([self.name, 'GP'])
-        if self.node:
-            pm.rename(self.node, self.name)
-        if self.offset:
-            pm.rename(self.offset, self.offset_name)
-        if self.root:
-            pm.rename(self.root, self.root_name) 
+        self.name = '_'.join([new_name, self._suffix])
+        self.offset_name = '_'.join([self._name, self._offset_suffix])
+        self.root_name = '_'.join([self._name, self._root_suffix])
+        try:
+            if self.node:
+                pm.rename(self.node, self.name)
+                print self.node
+            if self.offset:
+                pm.rename(self.offset, self.offset_name)
+                print self.offset
+            if self.root:
+                pm.rename(self.root, self.root_name)
+                print self.root
+        except:
+            pass
 
     def create(shape=None, pos=[0,0,0], parent=None, create_offset=True):
         if not self.node:
@@ -112,18 +119,32 @@ class FacialControl(object):
                 self.node.setParent(self.root)
             self.root.setParent(parent)
 
-    def _set(self, new_node, rename=True):
+    def set(self, new_node, rename=True):
         if pm.objExists(new_node):
             self.node = pm.PyNode(new_node)
             if rename:
                 pm.rename(new_node, self.name)
             self._get()
-
+    def get_output(self):
+        results = {}
+        for atr in self.attr_connect_list:
+            results[atr] = self.node.attr(atr).outputs()
+        return results
     def _get(self):
-        self.node = pm.PyNode(self.name) if pm.objExists(self.name) else None
-        self.offset = pm.PyNode(self.offset_name) if pm.objExists(self.offset_name) else None
-        self.root = pm.PyNode(self.root_name) if pm.objExists(self.root_name) else None
-        
+        self.node = ul.get_node(self.name)
+        self.offset = ul.get_node(self.offset_name)
+        self.root = ul.get_node(self.root_name)
+    
+    @classmethod
+    def Controls(cls, name='jaw',offset_suffix='offset', root_suffix='Gp', suffix='ctl', separator='_'):
+        list_all = pm.ls('*%s*%s*'%(name,suffix), type='transform')
+        jaw_controls = []
+        for ob in list_all:
+            if root_suffix not in ob.name():
+                ob_name = ob.name().split(separator)
+                control =  cls(ob_name[0], offset_suffix=offset_suffix, suffix=suffix, root_suffix=root_suffix)
+                jaw_controls.append(control)
+        return jaw_controls
 
 class FacialBone(object):
     def __init__(self, name, suffix='bon', offset_suffix='offset', ctl_suffix='ctl', gp_suffix='Gp'):

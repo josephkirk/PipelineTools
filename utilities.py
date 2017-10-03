@@ -154,15 +154,16 @@ def get_closest_info(ob, mesh_node):
     return results
 
 def get_node(node_name, get_method=False):
-    if pm.objExists(node_name):
+    try:
         node = pm.PyNode(node_name)
         print "%s exists, is type %s" % (node, type(node))
         if get_method:
             print dir(node)
         return node
-    else:
-        pm.warning('node with %s does not exist' % node_name)
-        return
+    except pm.MayaNodeError:
+        pm.warning('node %s does not exist' % node_name)
+    except pm.MayaAttributeError:
+        pm.warning('Attibute %s does not exist' % node_name)
 
 def reset_floating_window():
     '''reset floating window position'''
