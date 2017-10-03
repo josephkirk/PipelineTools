@@ -20,6 +20,15 @@ from functools import wraps
 #reload(ac)
 
 ### decorator
+def timeit(func):
+    """time a function"""
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        t= time()
+        result = func(*args, **kwargs)
+        print(func.__name__,'took: ',time()-t)
+        return result
+    return wrapper
 
 def error_alert(func): 
     """print Error if function fail"""
@@ -105,13 +114,16 @@ def do_function_on(mode='single', type_filter=[], get_selection=True):
     return decorator
 
 ###misc function
+def asserttype(ob, types=[]):
+    if type:
+        assert(any([isinstance(ob, type) for type in types])),"Object %s does not match any in type:%s"%(ob.name(), ",".join(type)) 
 ####misc
 def offcastshadow(wc='*eyeref*'):
     ob_list = pm.ls(wc,s=True)
     for ob in ob_list:
         eye.castsShadows.set(False)
 #@do_function_on('singlelast')
-def get_closest_component(ob, mesh_node, uv=True):
+def get_closest_component(ob, mesh_node, uv=True, pos=False):
     ob_pos = ob.getTranslation(space='world')
     closest_info = get_closest_info(ob,mesh_node)
     closest_vert_pos = closest_info['Closest Vertex'].getPosition(space='world')
@@ -119,11 +131,17 @@ def get_closest_component(ob, mesh_node, uv=True):
     distance_cmp = [ob_pos.distanceTo(cp) for cp in closest_components]
     if distance_cmp[0] < distance_cmp[1]:
         result = closest_info['Closest Vertex']
+        if pos:
+            result = result.getPosition(space='world')
+            uv = False
         if uv:
             vert_uv = pm.polyListComponentConversion(result,fv=True, tuv=True)
             result = pm.polyEditUV(vert_uv,q=True)
     else:
         result = closest_info['Closest Edge']
+        if pos:
+            result = closest_info['Closest Mid Edge']
+            uv = False
         if uv:
             edge_uv = pm.polyListComponentConversion(result,fe=True, tuv=True)
             edge_uv_coor = pm.polyEditUV(edge_uv,q=True)
@@ -163,12 +181,18 @@ def get_closest_info(ob, mesh_node):
     pm.delete([temp_node,temp_loc])
     return results
 
-def get_node(node_name, get_method=False):
+def get_node(node_name, get_method=False, type=None):
     try:
         node = pm.PyNode(node_name)
         print "%s exists, is type %s" % (node, type(node))
         if get_method:
             print dir(node)
+        if type:
+            if isinstance(node, type):
+                return node
+            else:
+                pm.warning('node %s with %s does not exist' %(node_name,type))
+                return
         return node
     except pm.MayaNodeError:
         pm.warning('node %s does not exist' % node_name)
@@ -422,7 +446,7 @@ def set_material(ob, SG):
 
 @do_function_on(mode='single')
 def lock_transform(ob, lock=True, pivotToOrigin=True):
-    for at in ['translate','rotate','scale','visibility']:
+    for at in ['translate','rotate','scale','visibility','tx','ty','tz','rx','ry','rz','sx','sy','sz']:
         ob.attr(at).unlock()
     if pivotToOrigin:
         pm.makeIdentity(ob, apply=True)
