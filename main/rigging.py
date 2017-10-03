@@ -1,13 +1,16 @@
-import utilities as ul
-from etc import riggingMisc as rm
-from customclass import rigging as ac
-reload(ul)
-import string
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 """
 written by Nguyen Phi Hung 2017
 email: josephkirk.art@gmail.com
 All code written by me unless specify
 """
+
+import utilities as ul
+from ..etc import riggingMisc as rm
+from ..customclass import rigging as rc
+import string
 
 ###Rigging Function
 def get_skin_cluster(ob):

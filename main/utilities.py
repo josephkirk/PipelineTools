@@ -1,3 +1,12 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+"""
+written by Nguyen Phi Hung 2017
+email: josephkirk.art@gmail.com
+All code written by me unless specify
+"""
+
 import pymel.core as pm
 import pymel.util as pu
 import pymel.util.path as pp
@@ -6,14 +15,10 @@ import maya.mel as mm
 import shutil
 import os
 import random as rand
-from customclass import asset as ac
+from ..customclass import asset
 from functools import wraps
 #reload(ac)
-"""
-written by Nguyen Phi Hung 2017
-email: josephkirk.art@gmail.com
-All code written by me unless specify
-"""
+
 ### decorator
 
 def error_alert(func): 
@@ -527,7 +532,7 @@ def send_current_file(drive='N', version=1, verbose=True):
 def GetAssetPath(Assetname, versionNum):
     ''' get AssetPath Relate to Character'''
     try:
-        CH = ac.Character(Assetname)
+        CH = asset.Character(Assetname)
     except:
         print "get Asset not possible"
         return

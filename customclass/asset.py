@@ -1,13 +1,20 @@
-import os
-from os import listdir
-from os.path import join, isdir, normpath, isfile, getmtime, abspath, exists
-import pymel.core as pm
-projectRoot = pm.workspace.path
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 """
 written by Nguyen Phi Hung 2017
 email: josephkirk.art@gmail.com
 All code written by me unless specify
 """
+
+import os
+from os import listdir
+from os.path import join, isdir, normpath, isfile, getmtime, abspath, exists
+import pymel.core as pm
+
+#global variable
+projectRoot = pm.workspace.path
+
 #Rigging Class
 
 #Pipeline Class

@@ -1,11 +1,16 @@
-from .. import utilities as ul
-reload(ul)
-import string
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 """
 written by Nguyen Phi Hung 2017
 email: josephkirk.art@gmail.com
 All code written by me unless specify
 """
+
+from ..main import utilities as ul
+reload(ul)
+import string
+
 class FacialGuide(object):
     def __init__(self, name, guide_mesh=None, suffix='loc', root_suffix='Gp'):
         self._name = name

@@ -1,17 +1,22 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+"""
+written by Nguyen Phi Hung 2017
+email: josephkirk.art@gmail.com
+All code written by me unless specify
+"""
+
 import pymel.core as pm
 import pymel.util.path as pp
 import maya.cmds as cm
 import maya.mel as mm
 import os
 import shutil
-from PipelineTools import utilities as ul
+import utilities as ul
 from datetime import date
-reload(ul)
-"""
-written by Nguyen Phi Hung 2017
-email: josephkirk.art@gmail.com
-All code written by me unless specify
-"""
+#reload(ul)
+
 ###Global Var
 def addValue(v, t=None):
     if t:
