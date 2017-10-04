@@ -1,46 +1,154 @@
 import pymel.core as pm
-from PipelineTools.utilities import *
-#reload(*)
-@do_function_on('single')
-def constraint_ctrl_to_loc(n):
+from time import sleep,time
+import PipelineTools.main.utilities as ul
+import riggingMisc as rm
+import maya.mel as mm
+import string
+reload(ul)
+
+def create_ctl():
+    if pm.objExists('ctlGp'):
+        pm.delete('ctlGp')
+    rm.create_ctl()
+    ul.get_node('ctlGp').setParent(ul.get_node('ROOT'))
+    root = {}
+    root['jaw'] = (ul.get_node('jaw_ctlGp'),ul.get_node('jawRoot_bon'))
+    root['teeth'] = (ul.get_node('teethUpper_ctlGp'),ul.get_node('teethUpper_bon'))
+    root['eye'] = (ul.get_node('eye_ctlGp'),ul.get_node('eyeLeftEnd_bon'))
+    for v in string.ascii_uppercase[:3]:
+        root['tongue%s'%v] = (ul.get_node('tongueCenter%s_bon'%v),ul.get_node('tongueCenter%sRoot_ctlGp'%v))
+
+    for key,(ob,target) in root.items():
+        ob_pos = ob.getTranslation('world')
+        target_pos = target.getTranslation('world')
+        dest_pos = target_pos
+        if ob == root['eye'][0]:
+            dest_pos = [ob_pos[0], target_pos[1], ob_pos[2]]
+        ob.setTranslation(dest_pos,space='world')
+    parent_ctl_to_head()
+
+def snap_eye_ctl():
+    for dir in ['Left','Right']:
+        eye_endbone = ul.get_node('eye%sEnd_bon'%dir)
+        eye_ctl = ul.get_node('eye%s_frmGp'%dir)
+        pm.select(eye_ctl,r=True)
+        pm.setToolTo('moveSuperContext')
+        mm.eval('BakeCustomPivot;')
+        eye_endbone_pos = eye_endbone.getTranslation(space='world')
+        eye_ctl_pos = eye_ctl.getTranslation(space='world')
+        eye_ctl.setTranslation((eye_endbone_pos[0],eye_endbone_pos[1],eye_ctl_pos[2]), space='world')     
+
+def create_eye_constraint():
+    for dir in ['Left','Right']:
+        eye_bone = ul.get_node('eye%s_bon'%dir)
+        eye_ctl = ul.get_node('eye%s_ctl'%dir)
+        aim_constraint = pm.aimConstraint(eye_ctl,eye_bone,mo=True,wut='objectrotation',wuo=ul.get_node('eyeRoot_ctl'))
+
+def snap_eye_root_ctl():
+    bbs=[]
+    ob = ul.get_node('eyeRoot_ctl')
+    for dir in ['Left','Right']:
+        eye_ctl = ul.get_node('eye%s_frmGp'%dir)
+        bb= pm.xform(eye_ctl,q=True,bb=True,ws=True)
+        bb = [pm.dt.Point(p) for p in [bb[3:], bb[:3], [bb[3], bb[1], bb[5]], [bb[0], bb[4], bb[5]]]]
+        bbs.extend(bb)
+    bb = [bbs[0],bbs[2],bbs[5],bbs[7]]
+    
+    for id,cvid in enumerate([3,4,1,2]):
+        #print bb[id],ob.cv[cvid]
+        if cvid == 4:
+            ob.setCV(0,bb[id],space='world')
+            ob.setCV(cvid,bb[id],space='world')
+            continue
+        ob.setCV(cvid,bb[id],space='world')
+    obdup = pm.duplicate(ob)
+    for child in obdup[0].listRelatives(type='transform'):
+        pm.delete(child)
+    pm.select(obdup,r=True)
+    ul.lock_transform(lock=False, pivotToOrigin=False)
+    obdup[0].setScale([1.05,1.05,1.05])
+    pm.makeIdentity(obdup[0], apply=True)
+    pm.delete('eyeRoot_ctlShape', s=True)
+    pm.select(ob,add=True)
+    ul.parent_shape()
+    ob.updateCurve()
+
+def connect_eye_attr():
+    for dir in ['Left','Right']:
+        eye_bone = ul.get_node('eye%s_bon'%dir)
+        eye_endbone = ul.get_node('eye%sEnd_bon'%dir)
+        eye_ctl = ul.get_node('eye%s_ctl'%dir)
+        eyelid_bone = ul.get_node('eyeLid%s_bon'%dir)
+        mul1 = pm.nt.MultiplyDivide()
+        mul2 = pm.nt.MultiplyDivide()
+        mul1.attr('operation').set(1)
+        mul1.attr('operation').set(2)
+        eyeRoot = ul.get_node('eyeRoot_ctl')
+        for dir in ["X","Y","Z"]:
+            eyeRoot.EyeLidAim >> mul1.attr('input1%s'%dir)
+            mul1.attr('input2%s'%dir).set(100)
+        mul1.output >> mul2.input2
+        eye_bone.rotate >> mul2.input1
+        mul2.output >> eyelid_bone.rotate
+        eye_ctl.scale >> eye_endbone.scale
+
+def parent_ctl_to_head():
+    face_root_ctl = ul.get_node('facialRig_Gp')
+    eye_root_ctl = ul.get_node('eye_ctlGp')
+    headBone = ul.get_node('CH_Head')
+    pm.xform(face_root_ctl,pivots=[0,0,0],p=True,ws=True)
+    pm.parentConstraint(headBone, face_root_ctl,mo=True)
+    pm.parentConstraint(headBone, eye_root_ctl,mo=True)
+
+def create_eye_rig():
+    snap_eye_ctl()
+    snap_eye_root_ctl()
+    create_eye_constraint()
+    connect_eye_attr()
+
+@ul.do_function_on('single')
+def constraint_ctrl_to_loc(ob):
     offgpname = ob.replace('_ctl','_offset_Gp')
     gpname = ob.replace('_ctl','_Gp')
-    pm.group(n, n=offgpname)
+    pm.group(ob, n=offgpname)
     pm.group(offgpname, n=gpname)
     locname = ob.replace('_ctl','_loc')
     pm.pointConstraint(locname, gpname, o=(0,0,0), w=1)
-#@timeit
-@do_function_on('last')
-def snap_to_near_vertex_midedge(ob_list,target):
-    target_pos_list = [v.getPosition(space='world') for v in target.vtx]
-    midedge_pos_list = [(e.getPoint(0, space='world')+e.getPoint(1, space='world'))/2 for e in target.e]
-    print midedge_pos_list
-    target_pos_list.extend(midedge_pos_list)
-    #def get_closest_vert():
-    for ob in ob_list:
-        ob_pos = ob.getTranslation(space='world')
-        distance = [(ob_pos.distanceTo(target_pos), target_pos) for target_pos in target_pos_list]
-        distance.sort(key=lambda x:x[0])
-        #print ob,distance[0]
-        ob.setTranslation(distance[0][1], space='world')
+
+@ul.do_function_on('singlelast',type_filter='transform')
+def snap_to_near_vertex_midedge(ob, target, constraint=False):
+    print ob, target
+    if constraint:
+        closest_uv = ul.get_closest_component(ob, target)
+        PPconstraint = pm.pointOnPolyConstraint(
+            target, ob, mo=False,
+            name=(ob.name()+'pointOnPolyConstraint1'))
+        PPconstraint.attr(target.name().split('|')[-1]+'U0').set(closest_uv[0])
+        PPconstraint.attr(target.name().split('|')[-1]+'V0').set(closest_uv[1])
+        print ob, 'constraint to', target 
+        return PPconstraint
+    closest_component = ul.get_closest_component(ob, target, uv=False)
+    ob.setTranslation(closest_component, space='world')
+    return closest_component
+    
     #get_closest_vert()
     #return distance_list
 
-@do_function_on('single')
+@ul.do_function_on('single')
 def group_loc(ob):
     gpname = ob + '_Gp'
     pm.group(ob, n=gpname)
 
-@do_function_on('single')
+@ul.do_function_on('single')
 def make_loc_and_ctl_from_bon(ob):
     locname = ob.replace('_bon','_loc')
     loc = pm.spaceLocator(p=(0,0,0), n=locname)
     pc = pm.pointConstraint(ob, loc, o=(0,0,0), w=1)
-    pm.delete(pc[0])
+    pm.delete(pc)
     ctlname = ob.replace('_bon','_ctl')
     sph = pm.sphere(p=(0,0,0), ax=(0,1,0), ssw=0, esw=360, r=0.35, d=3, ut=False, tol=0.01, s=8, nsp=4, ch=False, n=ctlname)
     pc = pm.pointConstraint(ob, sph, o=(0,0,0), w=1)
-    pm.delete(pc[0])
+    pm.delete(pc)
 
 def connect_Bs_control():
     faceBS = 'FaceBaseBS'
@@ -68,8 +176,8 @@ def connect_Bs_control():
     pm.connectAttr(mouthCnt+'.mouth_O', faceBS+'.mouth_O', f=True)
     pm.connectAttr(mouthCnt+'.mouth_shout', faceBS+'.mouth_shout', f=True)
     pm.connectAttr(mouthCnt+'.mouth_open', faceBS+'.mouth_open', f=True)
-    pm.connectAttr(mouthCnt+'.mouth_smileclose', faceBS+'.mouth_smileclose', f=True)
-    pm.connectAttr(mouthCnt+'.mouth_angerclose', faceBS+'.mouth_angerclose', f=True)
+    pm.connectAttr(mouthCnt+'.mouth_smileClose', faceBS+'.mouth_smileclose', f=True)
+    pm.connectAttr(mouthCnt+'.mouth_angerClose', faceBS+'.mouth_angerclose', f=True)
 
 def connect_face_ctl():
     lC = 'lipCenter'
@@ -129,67 +237,6 @@ def connect_face_ctl():
         pm.connectAttr(lR+'A_ctl.%s'%attr, lR+'A_bon.%s'%attr, f=True)
         pm.connectAttr(lR+'B_ctl.%s'%attr, lR+'B_bon.%s'%attr, f=True)
         pm.connectAttr(lR+'C_ctl.%s'%attr, lR+'C_bon.%s'%attr, f=True)
-
-def connect_face_ctl():
-    lC = 'lipCenter'
-    nT = 'noseTop'
-    ebL = 'eyebrowLeft'
-    eL = 'eyeLeft'
-    eSL = 'eyeSubLeft'
-    nL = 'noseLeft'
-    cL = 'cheekLeft'
-    lL = 'lipLeft'
-    ebR = 'eyebrowRight'
-    eR = 'eyeRight'
-    eSR = 'eyeSubRight'
-    nR = 'noseRight'
-    cR = 'cheekRight'
-    lR = 'lipRight'
-    for attr in ['translate', 'rotate', 'scale']:
-        #Center
-        pm.connectAttr(lC+'A_bon.%s'%attr, f=True)
-        pm.connectAttr(lC+'B_bon.%s'%attr, f=True)
-        pm.connectAttr(nT+'_ctl.%s'%attr, nT+'_bon.%s'%attr, f=True)
-        #Left
-        pm.connectAttr(ebL+'A_ctl.%s'%attr, ebL+'A_bon.%s'%attr, f=True)
-        pm.connectAttr(ebL+'B_ctl.%s'%attr, ebL+'B_bon.%s'%attr, f=True)
-        pm.connectAttr(ebL+'C_ctl.%s'%attr, ebL+'C_bon.%s'%attr, f=True)
-        pm.connectAttr(eL+'A_ctl.%s'%attr, eL+'A_bon.%s'%attr, f=True)
-        pm.connectAttr(eL+'B_ctl.%s'%attr, eL+'B_bon.%s'%attr, f=True)
-        pm.connectAttr(eL+'C_ctl.%s'%attr, eL+'C_bon.%s'%attr, f=True)
-        pm.connectAttr(eL+'D_ctl.%s'%attr, eL+'D_bon.%s'%attr, f=True)
-        pm.connectAttr(eSL+'A_ctl.%s'%attr, eSL+'A_bon.%s'%attr, f=True)
-        pm.connectAttr(eSL+'B_ctl.%s'%attr, eSL+'B_bon.%s'%attr, f=True)
-        pm.connectAttr(eSL+'C_ctl.%s'%attr, eSL+'C_bon.%s'%attr, f=True)
-        pm.connectAttr(eSL+'D_ctl.%s'%attr, eSL+'D_bon.%s'%attr, f=True)
-        pm.connectAttr(nL+'A_ctl.%s'%attr, nL+'A_bon.%s'%attr, f=True)
-        pm.connectAttr(cL+'A_ctl.%s'%attr, cL+'A_bon.%s'%attr, f=True)
-        pm.connectAttr(cL+'B_ctl.%s'%attr, cL+'B_bon.%s'%attr, f=True)
-        pm.connectAttr(cL+'C_ctl.%s'%attr, cL+'C_bon.%s'%attr, f=True)
-        pm.connectAttr(lL+'A_ctl.%s'%attr, lL+'A_bon.%s'%attr, f=True)
-        pm.connectAttr(lL+'B_ctl.%s'%attr, lL+'B_bon.%s'%attr, f=True)
-        pm.connectAttr(lL+'C_ctl.%s'%attr, lL+'C_bon.%s'%attr, f=True)
-        #Right
-        pm.connectAttr(ebR+'A_ctl.%s'%attr, ebR+'A_bon.%s'%attr, f=True)
-        pm.connectAttr(ebR+'B_ctl.%s'%attr, ebR+'B_bon.%s'%attr, f=True)
-        pm.connectAttr(ebR+'C_ctl.%s'%attr, ebR+'C_bon.%s'%attr, f=True)
-        pm.connectAttr(eR+'A_ctl.%s'%attr, eR+'A_bon.%s'%attr, f=True)
-        pm.connectAttr(eR+'B_ctl.%s'%attr, eR+'B_bon.%s'%attr, f=True)
-        pm.connectAttr(eR+'C_ctl.%s'%attr, eR+'C_bon.%s'%attr, f=True)
-        pm.connectAttr(eR+'D_ctl.%s'%attr, eR+'D_bon.%s'%attr, f=True)
-        pm.connectAttr(eSR+'A_ctl.%s'%attr, eSR+'A_bon.%s'%attr, f=True)
-        pm.connectAttr(eSR+'B_ctl.%s'%attr, eSR+'B_bon.%s'%attr, f=True)
-        pm.connectAttr(eSR+'C_ctl.%s'%attr, eSR+'C_bon.%s'%attr, f=True)
-        pm.connectAttr(eSR+'D_ctl.%s'%attr, eSR+'D_bon.%s'%attr, f=True)
-        pm.connectAttr(nR+'A_ctl.%s'%attr, nR+'A_bon.%s'%attr, f=True)
-        pm.connectAttr(cR+'A_ctl.%s'%attr, cR+'A_bon.%s'%attr, f=True)
-        pm.connectAttr(cR+'B_ctl.%s'%attr, cR+'B_bon.%s'%attr, f=True)
-        pm.connectAttr(cR+'C_ctl.%s'%attr, cR+'C_bon.%s'%attr, f=True)
-        pm.connectAttr(lR+'A_ctl.%s'%attr, lR+'A_bon.%s'%attr, f=True)
-        pm.connectAttr(lR+'B_ctl.%s'%attr, lR+'B_bon.%s'%attr, f=True)
-        pm.connectAttr(lR+'C_ctl.%s'%attr, lR+'C_bon.%s'%attr, f=True)
-
-
 
 def connect_mouth_ctl():
     jaw = 'jaw'
