@@ -22,21 +22,24 @@ class FacialGuide(object):
         self.name = '_'.join([name, suffix])
         self.root_name = '_'.join([self.name, root_suffix])
         self.constraint_name = '_'.join([self.root_name,'pointOnPolyConstraint1'])
-        self.guide_mesh = ul.get_shape(guide_mesh)
+        self.guide_mesh = guide_mesh
         self._get()
 
     def __repr__(self):
         return self.name
 
     def __call__(self,*args, **kwargs):
-        self._create(*args, **kwargs)
+        self.create(*args, **kwargs)
         return self.node
     
     def set_guide_mesh(self, guide_mesh):
         if pm.objExists(guide_mesh):
+            guide_mesh = ul.get_node(guide_mesh)
             self.guide_mesh = ul.get_shape(guide_mesh)
+        else:
+            'object {} does not contain shape'.format(guide_mesh)
 
-    def _create(self, pos=[0, 0, 0], parent=None):
+    def create(self, pos=[0, 0, 0], parent=None):
         self.node = pm.spaceLocator(name=self.name)
         if pm.objExists(self.root_name):
             self.root = pm.PyNode(self.root_name)
@@ -53,11 +56,11 @@ class FacialGuide(object):
                 target = self.root
             closest_uv = ul.get_closest_component(target, self.guide_mesh)
             self.constraint = pm.pointOnPolyConstraint(
-                self.guide_mesh, self.node, mo=False,
+                self.guide_mesh, self.root, mo=False,
                 name=self.constraint_name)
             self.constraint.attr(self.guide_mesh.getParent().name()+'U0').set(closest_uv[0])
             self.constraint.attr(self.guide_mesh.getParent().name()+'V0').set(closest_uv[1])
-            pm.select(closest_info['Closest Vertex'])
+            #pm.select(closest_info['Closest Vertex'])
         else:
             pm.error('Please set guide mesh')
 
@@ -80,7 +83,6 @@ class FacialGuide(object):
 
 class FacialControl(object):
     def __init__(self, name, suffix='ctl', offset_suffix='offset', root_suffix='Gp'):
-        self._name = name
         self._suffix = suffix
         self._offset_suffix = offset_suffix
         self._root_suffix = root_suffix
@@ -93,13 +95,14 @@ class FacialControl(object):
 
     def __call__(self, *args, **kwargs):
         self.create(*args, **kwargs)
-        return self.node
+        return self
 
     def name(self):
         return self.name
 
     def rename(self,new_name):
-        self.name = '_'.join([new_name, self._suffix])
+        self._name = new_name
+        self.name = '_'.join([self._name, self._suffix])
         self.offset_name = '_'.join([self._name, self._offset_suffix])
         self.root_name = '_'.join([self._name, self._root_suffix])
         try:
@@ -115,30 +118,39 @@ class FacialControl(object):
         except:
             pass
 
-    def create(shape=None, pos=[0,0,0], parent=None, create_offset=True):
+    def create(self, shape=None, pos=[0,0,0], parent=None, create_offset=True):
         if not self.node:
             if shape:
                 self.node = pm.nt.Transform(name=self.name)
-                shape = ul.getNode(shape)
-                parent_shape(shape, self.node)
+                shape = ul.get_node(shape)
+                ul.parent_shape(shape, self.node)
             else:
-                self.node = pm.polySphere(p=(0,0,0), ax=(0,1,0), ssw=0, esw=360, r=0.35, d=3, ut=False, tol=0.01, s=8, nsp=4, ch=False, n=self.name)[0]
+                self.node = pm.sphere(ax=(0,1,0), ssw=0, esw=360, r=0.35, d=3, ut=False, tol=0.01, s=8, nsp=4, ch=False, n=self.name)[0]
+        self.node.setTranslation(pos,'world')
+        self.WorldPosition = self.node.getTranslation('world')
         self.shape = ul.get_shape(self.node)
-        for atr in ['castsShadows,''receiveShadows','holdOut','motionBlur','primaryVisibility','smoothShading','visibleInReflections','visibleInRefractions','doubleSided']:
+        for atr in ['castsShadows','receiveShadows','holdOut','motionBlur','primaryVisibility','smoothShading','visibleInReflections','visibleInRefractions','doubleSided']:
             self.shape.attr(atr).set(0)
         if not self.offset and create_offset:
-            self.offset = pm.nt.Transform(name='_'.join([self.name, 'offset', 'GP']))
-            self.offset.setTranslation(self.node, space='world')
+            self.offset = pm.nt.Transform(name=self.offset_name)
+            self.offset.setTranslation(self.WorldPosition, space='world')
             self.node.setParent(self.offset)
         if not self.root:
-            self.root = pm.nt.Transform(name='_'.join([self.name, 'GP']))
-            self.root.setTranslation(self.node, space='world')
+            self.root = pm.nt.Transform(name=self.root_name)
+            self.root.setTranslation(self.WorldPosition, space='world')
             if self.offset:
                 self.offset.setParent(self.root)
             else:
                 self.node.setParent(self.root)
             self.root.setParent(parent)
+        return self.node
 
+    def create_guide(self, *args, **kwargs):
+        self.guide = FacialGuide(self._name, *args, **kwargs)
+        return self.guide
+    def set_constraint(self):
+        if self.guide and self.root:
+            pm.pointConstraint(self.guide, self.root, o=(0,0,0), w=1)
     def set(self, new_node, rename=True):
         if pm.objExists(new_node):
             self.node = pm.PyNode(new_node)
@@ -154,6 +166,7 @@ class FacialControl(object):
         self.node = ul.get_node(self.name)
         self.offset = ul.get_node(self.offset_name)
         self.root = ul.get_node(self.root_name)
+        self.guide = self.create_guide()
     
     @classmethod
     def controls(cls, name,offset_suffix='offset', root_suffix='Gp', suffix='ctl', separator='_'):
@@ -240,9 +253,11 @@ class FacialBone(object):
         return connect_state
 
     def connect(self):
-        if self.bone and self.control:
+        if self.bone and self.control.node:
             for atr in self.connect_attrs:
-                self.control.attr(atr) >> self.bone.attr(atr)
+                self.control.node.attr(atr) >> self.bone.attr(atr)
+        else:
+            'object {} or {} is not exists'.format(self.bone, self.control.node)
 
     def set_control(self, control_ob, rename=True):
         if pm.objExists(control_ob):
