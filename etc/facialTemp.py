@@ -1,12 +1,115 @@
 import pymel.core as pm
 from time import sleep,time
 import PipelineTools.main.utilities as ul
+import PipelineTools.customclass.rigging as rigclass
 import riggingMisc as rm
 import maya.mel as mm
 import string
-reload(ul)
+for mod in [ul,rigclass,rm]:
+    reload(mod)
+
+def create_miscGP():
+    pass
+
+def import_Facial_Target():
+    pass
+
+def create_fac_ctl_shader():
+    fac_shadeGP = {
+        'green': (
+            [0,0.18,0,0.8],
+            ['eyeLeftA_ctl',
+             'eyeLeftB_ctl',
+             'eyeLeftC_ctl',
+             'eyeLeftD_ctl',
+             'cheekLeftA_ctl',
+             'cheekLeftC_ctl',
+             'lipCenterA_ctl',
+             'lipCenterB_ctl',
+             'eyeRightA_ctl',
+             'eyeRightB_ctl',
+             'eyeRightC_ctl',
+             'eyeRightD_ctl',
+             'cheekRightA_ctl',
+             'cheekRightC_ctl']),
+        'blue': (
+            [0,0,0.4,0.6],
+            ['eyebrowLeftA_ctl',
+             'eyebrowLeftC_ctl',
+             'lipLeftB_ctl',
+             'noseTop_ctl',
+             'eyebrowRightA_ctl',
+             'eyebrowRightC_ctl',
+             'lipRightB_ctl']),
+        'red': (
+            [0.24,0.028,0,0.75],
+            ['eyebrowLeftB_ctl',
+             'eyeSubLeftC_ctl',
+             'eyeSubLeftD_ctl',
+             'lipLeftC_ctl',
+             'eyebrowRightB_ctl',
+             'eyeSubRightC_ctl',
+             'eyeSubRightD_ctl',
+             'lipRightC_ctl']),
+        'cyan':(
+            [0,0.193,0.193,0.8],
+            ['eyeSubLeftA_ctl',
+            'eyeSubLeftB_ctl',
+            'noseLeftA_ctl',
+            'cheekLeftB_ctl',
+            'lipLeftA_ctl',
+            'eyeSubRightA_ctl',
+            'eyeSubRightB_ctl',
+            'noseRightA_ctl',
+            'cheekRightB_ctl',
+            'lipRightA_ctl'])}
+    for shader, (color,members) in fac_shadeGP.items():
+        shdr_name = 'fac_mtl_{}'.format(shader)
+        sg_name = '{}{}'.format(shdr_name,'SG')
+        if pm.objExists(shdr_name) or pm.objExists(sg_name):
+            try:
+                pm.delete(shdr_name)
+                pm.delete(sg_name)
+            except:
+                pass
+        shdr,sg = pm.createSurfaceShader('surfaceShader')
+        pm.rename(shdr,'fac_mtl_{}'.format(shader))
+        pm.rename(sg,'{}{}'.format(shdr.name(),'SG'))
+        shdr.outColor.set(color[:3])
+        shdr.outTransparency.set([color[-1],color[-1],color[-1]])
+        for member in members:
+            member = ul.get_node(member)
+            pm.sets(sg, fe=member)
+
+def create_facialguide_ctl():
+    facialpart_name = {
+        'eye':30,
+        'nose':3,
+        'cheek':6,
+        'lip':8,}
+    facial_bones = {}
+    for part,count in facialpart_name.items():
+        facial_bones[part] = rigclass.FacialBone.bones(part)['All']
+        if len(facial_bones[part]) != count:
+            pm.error('{} missing bones, bone count is {}, right amount is {}. Recheck Scene!'.format(part, len(facial_bones[part]), count),n=True)
+    #pm.select(cl=True)
+    for key, values in facial_bones.items():
+        print key, 'bones:\n'
+        print 'bone count:' , len(values)
+        for value in values:
+            if value.offset:
+                print value.bone, value.offset
+                pm.select(value.bone, add=True)
+        print '#'*20
+
+
+def create_facial_panel():
+    rm.create_facial_panel()
 
 def create_ctl():
+    '''
+    create Facial Control and snap to bone Position
+    '''
     if pm.objExists('ctlGp'):
         pm.delete('ctlGp')
     rm.create_ctl()
@@ -28,6 +131,9 @@ def create_ctl():
     parent_ctl_to_head()
 
 def snap_eye_ctl():
+    '''
+        snap eye Control to end Bone Position
+    '''
     for dir in ['Left','Right']:
         eye_endbone = ul.get_node('eye%sEnd_bon'%dir)
         eye_ctl = ul.get_node('eye%s_frmGp'%dir)
@@ -39,12 +145,18 @@ def snap_eye_ctl():
         eye_ctl.setTranslation((eye_endbone_pos[0],eye_endbone_pos[1],eye_ctl_pos[2]), space='world')     
 
 def create_eye_constraint():
+    '''
+        aim constraint eye bone to control
+    '''
     for dir in ['Left','Right']:
         eye_bone = ul.get_node('eye%s_bon'%dir)
         eye_ctl = ul.get_node('eye%s_ctl'%dir)
         aim_constraint = pm.aimConstraint(eye_ctl,eye_bone,mo=True,wut='objectrotation',wuo=ul.get_node('eyeRoot_ctl'))
 
 def snap_eye_root_ctl():
+    '''
+        resize eyeRoot_ctl to match eye_frmGp
+    '''
     bbs=[]
     ob = ul.get_node('eyeRoot_ctl')
     for dir in ['Left','Right']:
@@ -74,6 +186,9 @@ def snap_eye_root_ctl():
     ob.updateCurve()
 
 def connect_eye_attr():
+    '''
+        connect eye bone rotate to eye lid bone
+    '''
     for dir in ['Left','Right']:
         eye_bone = ul.get_node('eye%s_bon'%dir)
         eye_endbone = ul.get_node('eye%sEnd_bon'%dir)
@@ -93,6 +208,9 @@ def connect_eye_attr():
         eye_ctl.scale >> eye_endbone.scale
 
 def parent_ctl_to_head():
+    '''
+        parent control to head
+    '''
     face_root_ctl = ul.get_node('facialRig_Gp')
     eye_root_ctl = ul.get_node('eye_ctlGp')
     headBone = ul.get_node('CH_Head')
@@ -100,12 +218,26 @@ def parent_ctl_to_head():
     pm.parentConstraint(headBone, face_root_ctl,mo=True)
     pm.parentConstraint(headBone, eye_root_ctl,mo=True)
 
+
+### main code
 def create_eye_rig():
+    '''
+        step to create eye rig
+    '''
     snap_eye_ctl()
     snap_eye_root_ctl()
     create_eye_constraint()
     connect_eye_attr()
 
+def create_facial_ctl():
+    create_ctl()
+    create_eye_rig()
+    parent_ctl_to_head()
+
+def create_facial_bs_ctl():
+    pass
+
+### old code
 @ul.do_function_on('single')
 def constraint_ctrl_to_loc(ob):
     offgpname = ob.replace('_ctl','_offset_Gp')

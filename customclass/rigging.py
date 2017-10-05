@@ -7,9 +7,12 @@ email: josephkirk.art@gmail.com
 All code written by me unless specify
 """
 
+import pymel.core as pm
 from ..main import utilities as ul
-reload(ul)
 import string
+reload(ul)
+
+
 
 class FacialGuide(object):
     def __init__(self, name, guide_mesh=None, suffix='loc', root_suffix='Gp'):
@@ -114,9 +117,15 @@ class FacialControl(object):
 
     def create(shape=None, pos=[0,0,0], parent=None, create_offset=True):
         if not self.node:
-            self.node = pm.nt.Transform(name=self.name)
-        if pm.objExists(shape):
-            parent_shape(shape , self.node)
+            if shape:
+                self.node = pm.nt.Transform(name=self.name)
+                shape = ul.getNode(shape)
+                parent_shape(shape, self.node)
+            else:
+                self.node = pm.polySphere(p=(0,0,0), ax=(0,1,0), ssw=0, esw=360, r=0.35, d=3, ut=False, tol=0.01, s=8, nsp=4, ch=False, n=self.name)[0]
+        self.shape = ul.get_shape(self.node)
+        for atr in ['castsShadows,''receiveShadows','holdOut','motionBlur','primaryVisibility','smoothShading','visibleInReflections','visibleInRefractions','doubleSided']:
+            self.shape.attr(atr).set(0)
         if not self.offset and create_offset:
             self.offset = pm.nt.Transform(name='_'.join([self.name, 'offset', 'GP']))
             self.offset.setTranslation(self.node, space='world')
@@ -267,9 +276,10 @@ class FacialBone(object):
     @classmethod
     def bones(cls, name,offset_suffix='offset', root_suffix='Gp', suffix='bon', separator='_', directions=['Left','Right','Center','Root']):
         list_all = pm.ls('*%s*%s*'%(name,suffix), type='transform')
+        print list_all
         allbone = []
         for ob in list_all:
-            if root_suffix not in ob.name():
+            if root_suffix not in ob.name() and offset_suffix not in ob.name():
                 ob_name = ob.name().split(separator)
                 bone =  cls(ob_name[0], offset_suffix=offset_suffix, suffix=suffix, root_suffix=root_suffix)
                 allbone.append(bone)
@@ -284,38 +294,8 @@ class FacialBone(object):
 class FacialEyeRig(object):
     pass
 
-class FacialBonRig(object):
-    offset_name = 'offset'
-    bone_name = 'bon'
-    alphabet = list(string.ascii_uppercase)
-    def __init__(self):
-        self._joints = {
-            'eye':{'Left':alphabet[:4],
-                   'SubLeft':alphabet[:4]},
-            'eyebrow':{'Left':alphabet[:3]},
-            'nose':{'Top':"", 'Left':alphabet[0]},
-            'cheek':{'Left':alphabet[:3]},
-            'jaw':{'Root':"", 'Top':""},
-            'lip':{'Center':alphabet[:2], 'Left':alphabet[:3]},
-            'teeth':{'Lower':"", 'Upper':""},
-            'tongue':{
-                'Root':"",
-                'Center':([i+'Root' for i in alphabet[:4]]+alphabet[:4]),
-                'Left':alphabet[:4]}}
-        self._get()
-    def _get(self):
-        self.joints = {}
-        for name,variations in self._joints.items():
-            self.joints[name] = {}
-            for variation in variations:
-                offset_bon = '_'.join([name+variation, self.offset_name, self.bone_name])
-                bon_name = '_'.join([name+variation, self.bone_name])
-                try:
-                    self.joints[name]['offset'] = pm.PyNode(offset_bon)
-                    self.joints[name]['joint'] = pm.PyNode(bon_name)
-                except:
-                    print offset_bon,' or', bon_name, ' is not exist'
-                    raise
+class FacialRig(object):
+    pass
 
 class FacialBsRig(object):
     def __init__(self):

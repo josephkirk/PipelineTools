@@ -181,23 +181,27 @@ def get_closest_info(ob, mesh_node):
     pm.delete([temp_node,temp_loc])
     return results
 
-def get_node(node_name, get_method=False, type=None):
+def get_node(node_name, unique_only=True, type_filter=None):
     try:
-        node = pm.PyNode(node_name)
-        print "%s exists, is type %s" % (node, type(node))
-        if get_method:
-            print dir(node)
-        if type:
-            if isinstance(node, type):
-                return node
-            else:
-                pm.warning('node %s with %s does not exist' %(node_name,type))
-                return
+        if unique_only:
+            assert(pm.uniqueObjExists(node_name)),"object name %s is not unique or not exist"%node_name
+            node = pm.PyNode(node_name)
+            if type_filter:
+                assert(isinstance(node, type_filter)),'node %s with %s does not exist' %(node_name,type_filter)
+            print "%s exists, is type %s" % (node, type(node))
+            return node
+        else:
+            node = pm.ls('*%s*'%node_name, type=type_filter) 
+            print "found %d object:" % (len(node))
+            for n in node:
+                print node.name()
         return node
     except pm.MayaNodeError:
         pm.warning('node %s does not exist' % node_name)
     except pm.MayaAttributeError:
         pm.warning('Attibute %s does not exist' % node_name)
+    except AssertionError as why:
+        print why
 
 def reset_floating_window():
     '''reset floating window position'''
