@@ -7,12 +7,39 @@ email: josephkirk.art@gmail.com
 All code written by me unless specify
 """
 
+import pymel.core as pm
 import utilities as ul
 from ..etc import riggingMisc as rm
-from ..customclass import rigging as rc
+from ..etc import facialTemp as ft
+from ..baseclass import rigging as rc
 import string
 
 ###Rigging Function
+
+@ul.timeit
+def create_facial_rig():
+    ft.create_ctl()
+    if not pm.confirmBox(title='Facial Rig Status',message = "Face Control Created", yes='Continue?', yes='Stop?'):
+        return
+    ft.create_eye_rig()
+    if not pm.confirmBox(title='Facial Rig Status',message = "Eyeballs Rig Created", yes='Continue?', yes='Stop?'):
+        return
+    ft.connect_mouth_ctl()
+    if not pm.confirmBox(title='Facial Rig Status',message = "Mouth Control to Bone Connected", yes='Continue?', yes='Stop?'):
+        return
+    ft.parent_ctl_to_head()
+    if not pm.confirmBox(title='Facial Rig Status',message = "Parent Root Group to Head OK", yes='Continue?', yes='Stop?'):
+        return
+    ft.create_facial_bs_ctl()
+    if not pm.confirmBox(title='Facial Rig Status',message = "Create BlendShape control and setup BlendShape", yes='Continue?', yes='Stop?'):
+        return
+    ft.copy_facialskin()
+    pm.informBox(title='Riggin Status', message = "Skin Copied OK")
+
+@ul.do_function_on('single')
+def mirror_joint_multi(ob):
+    pm.mirrorJoint(ob, myz=True,sr=('Left', 'Right'))
+
 def get_skin_cluster(ob):
     '''return skin cluster from ob, if cannot find raise error'''
     ob_shape = ul.get_shape(ob)

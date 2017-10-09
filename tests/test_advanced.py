@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from ..sample import core as sample
+from contest import sample
 
 import unittest
 

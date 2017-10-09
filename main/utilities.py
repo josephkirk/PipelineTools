@@ -15,7 +15,7 @@ import maya.mel as mm
 import shutil
 import os
 import random as rand
-from ..customclass import asset
+from ..baseclass import asset
 from functools import wraps
 #reload(ac)
 
@@ -540,22 +540,64 @@ def getInfo():
             continue
         print ("-"*100+"\n")*2
 
-def send_current_file(drive='N', version=1, verbose=True):
+def send_current_file(scene=True, lastest=True, render=False, tex=True, extras=['psd','uv', 'zbr', 'pattern'], version=1, verbose=True):
     src = pm.sceneName()
+    scene_src = src.dirname()
+    status = []
     todayFolder = pm.date(f='YYMMDD')
     if version>1:
-        todayFolder = "_".join([todayFolder,
-                               ('%02d' % version)])
-    dest = src.replace(drive+':',
-                       '%s:/to/%s' % (drive, todayFolder))
+        todayFolder = "{}_{:02d}".format(todayFolder,int(version))
+    status.append('Send File to {}'.format(todayFolder))
+    scene_dest = pm.util.path(scene_src.replace('Works','to/{}/Works'.format(todayFolder))).truepath()
+    files = scene_src.files('*.mb')
+    files.sort(key=lambda f:f.getmtime())
+    lastestfile = files[-1]
     try:
-        checkDir(dest)
-        pm.sysFile(src, copy=dest)
-        if verbose:
-            print "%s copy to %s" % (src,dest)
-    except (IOError, OSError) as why:
-        print "Copy Error"
-        print why
+        status.append('Scene Sending status:')
+        if scene:
+            if lastest:
+                src = lastestfile
+                status.append('send latest file')
+            dest = scene_dest.__div__(src.basename().replace(src.ext,'_vn%s'%src.ext))
+            checkDir(dest)
+            pm.sysFile(src, copy=dest)
+            status.append("%s copy to %s" % (src,dest))
+        if render:
+            rend_src = src.dirname().__div__('rend')
+            rend_dest = dest.dirname().__div__('rend')
+            status.append(sysCop(rend_src, rend_dest))
+    except (IOError, OSError, shutil.Error) as why:
+        msg = "Scene Copy Error\n{}".format(','.join(why))
+        status.append(msg)
+    if tex or extras:
+        if all([src.dirname().dirname().dirname().basename() != d for d in ['CH','BG','CP']]): 
+            scene_src = scene_src.dirname()
+            scene_dest = scene_dest.dirname()
+            print scene_src
+        tex_src = pm.util.path(scene_src.replace('scenes','sourceimages')).truepath()
+        tex_files = tex_src.files('*.jpg')
+        tex_extra = {}
+        for extra in extras:
+            tex_extra[extra] = tex_src.__div__(extra)
+        tex_dest = pm.util.path(scene_dest.replace('scenes','sourceimages'))
+        status.append('Texture Sending status:')
+        try:
+            if tex:
+                for tex_file in tex_files:
+                    src = tex_file
+                    dest = tex_dest.__div__(tex_file.basename())
+                    checkDir(dest)
+                    pm.sysFile(src, copy=dest)
+                    status.append("%s copy to %s" % (src,dest))
+            if extras:
+                for name, path in tex_extra.items():
+                    status.append('%s Sending status:'%name)
+                    dest = tex_dest.__div__(name)
+                    status.append(sysCop(path,dest))
+        except (IOError, OSError, shutil.Error) as why:
+            msg = "Tex Copy Error:\n{}".format(','.join(why))
+            status.append(msg)
+    pm.informBox(title='Send File Status', message = '\n'.join(status))
 
 def GetAssetPath(Assetname, versionNum):
     ''' get AssetPath Relate to Character'''
@@ -692,40 +734,49 @@ def sendFile(CH,
                     sendDir(key)
 
 def checkDir(pa,force=True):
+    msg = []
     if not os.path.exists(os.path.dirname(pa)):
         os.makedirs(os.path.dirname(pa))
+        msg.append("create directory %s"%pa)
     else:
         if force:
             if os.path.isdir(pa):
                 shutil.rmtree(os.path.dirname(pa))
                 os.makedirs(os.path.dirname(pa))
+                msg.append("forcing remove and create directory %s"%pa)
             elif os.path.isfile(pa):
                 os.remove(pa)
+                msg.append("forcing remove %s"%pa)
         else:
-            print "%s exists" % pa
-    print "checked"
-
+            msg.append("%s exists"%pa)
+    return '\n'.join(msg)
 
 def sysCop(src, dest):
     checkDir(dest)
+    status =[]
     try:
         if os.path.isdir(src):
             shutil.copytree(src,dest)
-            print "copying " + dest
+            msg = "copying " + dest
+            status.append(msg)
             for file in os.listdir(dest):
                 if os.path.isdir(src+"/"+file):
-                    print "%s folder Copied" % file
+                    msg = "%s folder Copied" % file
+                    status.append(msg)
                 else:
-                    print "%s file Copied" % file
+                    msg = "%s file Copied" % file
+                    status.append(msg)
         elif os.path.isfile(src):
             shutil.copy(src,dest)
-            print "%s copied" % dest
+            msg = "%s copied" % dest
+            status.append(msg)
         else:
-            print "%s does not exist" % src
+            msg = "%s does not exist" % src
+            status.append(msg)
     except (IOError,OSError,WindowsError) as why:
-        print src
-        print dest
-        print "Copy error\n",why
+        msg = 'Copy Error\n{} to {}\n{}'.format(src,dest,why)
+        status.append(msg)
+    return ','.join(status)
 
 
 def setTexture():

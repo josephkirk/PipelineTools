@@ -12,8 +12,6 @@ from ..main import utilities as ul
 import string
 reload(ul)
 
-
-
 class FacialGuide(object):
     def __init__(self, name, guide_mesh=None, suffix='loc', root_suffix='Gp'):
         self._name = name
@@ -254,6 +252,9 @@ class FacialBone(object):
 
     def connect(self):
         if self.bone and self.control.node:
+            if self.offset:
+                pm.matchTransform(self.offset,self.bone,pivots=True)    
+            pm.matchTransform(self.control.node,self.bone,pivots=True)
             for atr in self.connect_attrs:
                 self.control.node.attr(atr) >> self.bone.attr(atr)
         else:
@@ -270,8 +271,11 @@ class FacialBone(object):
         self.is_connected()
         return self.control
 
-    def get_control(self):
-        self.control = FacialControl(self._name)
+    def get_control(self, other_name=None):
+        control_name = self._name
+        if other_name and isinstance(other_name,str):
+            control_name = other_name
+        self.control = FacialControl(control_name)
         return self.control
 
     def _get(self):
@@ -338,10 +342,10 @@ class FacialBsRig(object):
     def facebs(self,value=None):
         if value is not None:
             self.facebs_name = value
-        self.facebs = get_blendshape_target(self.facebs_name)
+        self.facebs = ul.get_blendshape_target(self.facebs_name)
         if self.facebs:
             self.facebs_def ={}
-            self.facebs_def[misc] = []
+            self.facebs_def['misc'] = []
             for bs in self.facebs[0]:
                 for bs_name in bs_def:
                     for direction in direction_name:
@@ -356,13 +360,13 @@ class FacialBsRig(object):
                                 self.facebs_def[bs_name] = []
                                 self.facebs_def[bs_name].append(bs)
             else:
-                self.facebs_def[misc].append(bs)
+                self.facebs_def['misc'].append(bs)
         else:
             print "no blendShape with name" % self.facebs_name
         return self.facebs_def
 
     def connect_bs_controller(self):
-        facepart = self.facepart_name
+        facepart = self.facebs()
         bs_control_name = ["_".join([n, self.control_name])
                            for n in facepart[:3]]
         def create_bs_list(part, bs_name_list, add_dir=False):
@@ -394,5 +398,5 @@ class FacialBsRig(object):
         )
         for ctl_name,bs_targets in bs_controller.items():
             for bs_target in bs_targets:
-                print '%s.%s >> %s.%s' %(ctl_name,bs_target,self.facebs(),bs_target)
+                print '%s.%s >> %s.%s' %(ctl_name,bs_target,self.facebs_name,bs_target)
         #print bs_controller
