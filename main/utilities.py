@@ -610,7 +610,7 @@ def send_current_file(scene=True, lastest=True, render=False, tex=True, extras=[
         msg = "Scene Copy Error\n{}".format(','.join(why))
         status.append(msg)
     if tex or extras:
-        if all([src.dirname().dirname().dirname().basename() != d for d in ['CH','BG','CP']]): 
+        if all([src.dirname().dirname().dirname().basename() != d for d in ['CH','BG','CP']]) and src.dirname().dirname().basename()!='CP': 
             scene_src = scene_src.dirname()
             scene_dest = scene_dest.dirname()
             print scene_src
