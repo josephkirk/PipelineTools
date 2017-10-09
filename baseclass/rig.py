@@ -273,7 +273,7 @@ class FacialBone(object):
 
     def get_control(self, other_name=None):
         control_name = self._name
-        if other_name and isinstance(other_name,str):
+        if other_name and any([isinstance(other_name,t) for t in [str,unicode]]):
             control_name = other_name
         self.control = FacialControl(control_name)
         return self.control

@@ -127,7 +127,7 @@ def create_facialguide_ctl():
     pm.select('facial',r=True)
     pm.select('facialRoot_bon',add=True)
     mm.eval('newSkinCluster "-toSelectedBones -bindMethod 1 -normalizeWeights 1 -weightDistribution 1 -mi 1 -dr 2 -rui false,multipleBindPose,1";')
-    skin_cluster = ul.get_skin_cluster(ul.get_node('facial|DM_mdl_head'))
+    skin_cluster = ul.get_skin_cluster(pm.ls('facial|*_mdl_head')[0])
     pm.select(cl=True)
     #######
     guide_mesh = pm.ls('*_mdl_facialGuide_head')
@@ -139,7 +139,7 @@ def create_facialguide_ctl():
         if len(facial_bones[part]) != count:
             for bone in facial_bones[part]:
                 print bone
-            pm.select(facial_bones[part], r=True)
+            #pm.select(facial_bones[part], r=True)
             pm.error('{} have duplicate or missing bones, bone count is {}, right amount is {}. Recheck Scene!'.format(part, len(facial_bones[part]), count),n=True)
     #pm.select(cl=True)
     if pm.objExists('facialGuide_locGp'):
@@ -147,6 +147,11 @@ def create_facialguide_ctl():
     else:
         loc_gp = pm.nt.Transform(name='facialGuide_locGp')
         loc_gp.setParent(ul.get_node('miscGp'))
+    if pm.objExists('facialRig_Gp'):
+            ctl_gp = ul.get_node('facialRig_Gp')
+    else:
+        ctl_gp = pm.nt.Transform(name='facialRig_Gp')
+        ctl_gp.setParent(ul.get_node('ctlGp'))
     for key, values in facial_bones.items():
         print key, 'bones:\n'
         print 'bone count:' , len(values)
@@ -155,7 +160,7 @@ def create_facialguide_ctl():
                 print value.bone, value.offset
                 print value.control
                 if not value.control.node:
-                    value.control.create(pos=value.bone.getTranslation('world'), parent=ul.get_node('ctlGp'))
+                    value.control.create(pos=value.bone.getTranslation('world'), parent=ul.get_node(ctl_gp))
                 else:
                     value.get_control()
                 #print 'create', value.control.node
@@ -192,13 +197,19 @@ def connect_mouth_ctl():
         bones = rigclass.FacialBone.bones(part)['All']
         for bone in bones:
             if bone.offset:
-                if 'Root' in bone.name:
-                    bone.get_control(other_name=bone.name.replace('Root',''))
-                print bone
-                print bone.control
-                print bone.control.node
                 if bone.control.node:
                     bone.connect()
+                    print bone.bone, 'connected to', bone.control
+                else:
+                    if 'Root' in bone.bone.name():
+                        print bone.bone, 'is Root'
+                        newName = bone._name.replace('Root','')
+                        bone.get_control(other_name=newName)
+                        bone.connect()
+                        print bone.bone, 'connected to', bone.control
+                    else:
+                        print bone.bone, bone.control, 'not exists'
+                    
 
 def create_facial_panel():
     rm.create_bs_ctl()
@@ -229,8 +240,11 @@ def import_facialtarget():
             pm.select(key,add=True)
             pm.blendShape(name=value,w=[(0,1),], automatic=True)
         pm.select('facial',r=True)
-        pm.select("*_mdl_face_grp_skinDeform",add=True)
+        pm.select("*_face_grp_skinDeform",add=True)
         pm.blendShape(name='RootBS',w=[(0,1),], automatic=True)
+        pm.select('eyeDeform',r=True)
+        pm.select("*_eye_grp_skinDeform",add=True)
+        pm.blendShape(name='EyeDeformBS',w=[(0,1),], automatic=True)
     connect_Bs_control()
 @ul.error_alert
 def add_jawdeform_skin():
@@ -266,6 +280,15 @@ def add_jawdeform_skin():
             raise
 
 @ul.error_alert
+def add_eyeform_skin():
+    for dir in ['Left','Right']:
+        if all([pm.ls(ob) for ob in ['eye{}_bon'.format(dir), 'eye{}End_bon'.format(dir), 'eyeDeform_{:.1}'.format(dir)]]):
+            pm.select('eye{}_bon'.format(dir), 'eye{}End_bon'.format(dir), 'eyeDeform_{:.1}'.format(dir),r=True)
+            mm.eval('newSkinCluster "-toSelectedBones -bindMethod 1 -normalizeWeights 1 -weightDistribution 1 -mi 1 -dr 2 -rui false,multipleBindPose,1";')
+        else:
+            print 'eye bone and object in direction %s are not exists', dir
+
+@ul.error_alert
 def copy_facialskin():
     curscene = pm.sceneName()
     skin_dir = curscene.dirname().dirname().__div__('facialskin')
@@ -274,6 +297,7 @@ def copy_facialskin():
         pm.createReference(file,namespace=file_name)
         for object in ['head', 'tongue', 'eyelash', 'Matsuge']:
             skin_src_get = pm.ls('{}:*_{}'.format(file_name, object))
+            eye_skin_src_get = pm.ls('{}:*_{}'.format(file_name, object))
             if 'facial' in file_name.lower():
                 skin_target_get = pm.ls('facial|*_mdl_{}'.format(object))
             elif 'jaw' in file_name.lower():
@@ -283,7 +307,25 @@ def copy_facialskin():
                     pm.select(skin_src_get,r=True)
                     pm.select(skin_target_get,add=True)
                     mm.eval('copySkinWeights  -noMirror -surfaceAssociation closestPoint -influenceAssociation closestJoint -normalize;')
-                    print 'skin copy success', skin_src_get, skin_target_get 
+                    print 'skin copy success', skin_src_get, skin_target_get
+        if 'jaw' in file_name.lower():
+            for object in ['eye', 'eyelens', 'eyeref']:
+                for direction in ['L','R']:
+                    skin_src_get = pm.ls('{}:*mdl_{}_{}'.format(file_name, object, direction))
+                    skin_target_get = pm.ls('eyeDeform_{}|*mdl_{}_{}'.format(direction, object, direction))
+                    if skin_src_get and skin_target_get:
+                        if ul.get_skin_cluster(skin_src_get[0]) and ul.get_skin_cluster(skin_target_get[0]):
+                            pm.select(skin_src_get,r=True)
+                            pm.select(skin_target_get,add=True)
+                            mm.eval('copySkinWeights  -noMirror -surfaceAssociation closestPoint -influenceAssociation closestJoint -normalize;')
+                            print 'skin copy success', skin_src_get, skin_target_get
+                    else:
+                        print "Eye skin not copy"
+                        print '{}:*mdl_{}_{}'.format(file_name, object, direction)
+                        print 'eyeDeform|*mdl_{}_{}'.format(object, direction)
+                        print skin_src_get
+                        print skin_target_get
+                        print pm.ls('*_{}_{}'.format(object, direction))
         pm.FileReference(file).remove()
 
 def create_guidebs():
@@ -459,27 +501,35 @@ def create_eye_rig():
 @ul.error_alert
 def create_facial_ctl():
     create_ctl()
-    headsUpMessage("Face Control Created", time=0.2)
+    pm.headsUpMessage("Face Control Created", time=0.2)
     sleep(0.1)
     create_eye_rig()
-    headsUpMessage("Eyes Rig Created", time=0.2)
+    pm.headsUpMessage("Eyes Rig Created", time=0.2)
     sleep(0.1)
     connect_mouth_ctl()
-    headsUpMessage("Mouth Control to Bone Connected", time=0.2)
+    pm.headsUpMessage("Mouth Control to Bone Connected", time=0.2)
     #parent_ctl_to_head()
 
 @ul.error_alert
 def create_facial_bs_ctl():
+    pm.headsUpMessage("Create Facial Deformation Groups", time=0.2)
     setup_facialgp()
-    headsUpMessage("Facial Deformation Groups Create", time=0.2)
+    pm.refresh()
     sleep(0.1)
+    pm.headsUpMessage("Create Facial Control and Guide rig, skin", time=0.2)
     create_facialguide_ctl()
-    headsUpMessage("Create Facial Control and Guide rig, skin", time=0.2)
+    pm.refresh()
     sleep(0.1)
+    pm.headsUpMessage("Add skin to Jaw Deform Group", time=0.2)
     add_jawdeform_skin()
-    headsUpMessage("Add skin to Jaw Deform Group", time=0.2)
+    pm.refresh()
     sleep(0.1)
+    pm.headsUpMessage("Add skin to Jaw Deform Group", time=0.2)
+    add_eyeform_skin()
+    pm.refresh()
+    sleep(0.1)
+    pm.headsUpMessage("create Face Blend Shape Control, import and set up BlenShape", time=0.2)
     create_facial_panel()
-    headsUpMessage("create Face Blend Shape Control, import and set up BlenShape", time=0.2)
+
 
 

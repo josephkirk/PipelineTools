@@ -15,47 +15,44 @@ from ..baseclass import rigging as rc
 import string
 
 ###Rigging Function
+def deform_normal_off():
+    skin_clusters = pm.ls(type='skinCluster')
+    if not skin_clusters:
+        return
+    for skin_cluster in skin_clusters:
+        skin_cluster.attr('deformUserNormals').set(False)
+        print skin_cluster
+        print skin_cluster.attr('deformUserNormals').get()
 
 @ul.timeit
 def create_facial_rig():
     ft.create_ctl()
-    if not pm.confirmBox(title='Facial Rig Status',message = "Face Control Created", yes='Continue?', yes='Stop?'):
+    pm.refresh()
+    if not pm.confirmBox(title='Facial Rig Status',message = "Face Control Created", yes='Continue?', no='Stop?'):
         return
     ft.create_eye_rig()
-    if not pm.confirmBox(title='Facial Rig Status',message = "Eyeballs Rig Created", yes='Continue?', yes='Stop?'):
+    pm.refresh()
+    if not pm.confirmBox(title='Facial Rig Status',message = "Eyeballs Rig Created", yes='Continue?', no='Stop?'):
         return
     ft.connect_mouth_ctl()
-    if not pm.confirmBox(title='Facial Rig Status',message = "Mouth Control to Bone Connected", yes='Continue?', yes='Stop?'):
+    pm.refresh()
+    if not pm.confirmBox(title='Facial Rig Status',message = "Mouth Control to Bone Connected", yes='Continue?', no='Stop?'):
         return
     ft.parent_ctl_to_head()
-    if not pm.confirmBox(title='Facial Rig Status',message = "Parent Root Group to Head OK", yes='Continue?', yes='Stop?'):
+    pm.refresh()
+    if not pm.confirmBox(title='Facial Rig Status',message = "Parent Root Group to Head OK", yes='Continue?', no='Stop?'):
         return
     ft.create_facial_bs_ctl()
-    if not pm.confirmBox(title='Facial Rig Status',message = "Create BlendShape control and setup BlendShape", yes='Continue?', yes='Stop?'):
+    pm.refresh()
+    if not pm.confirmBox(title='Facial Rig Status',message = "Create BlendShape control and setup BlendShape ok", yes='Continue?', no='Stop?'):
         return
     ft.copy_facialskin()
+    pm.refresh()
     pm.informBox(title='Riggin Status', message = "Skin Copied OK")
 
 @ul.do_function_on('single')
 def mirror_joint_multi(ob):
     pm.mirrorJoint(ob, myz=True,sr=('Left', 'Right'))
-
-def get_skin_cluster(ob):
-    '''return skin cluster from ob, if cannot find raise error'''
-    ob_shape = ul.get_shape(ob)
-    try:
-        shape_connections = ob_shape.listConnections(type=['skinCluster', 'objectSet'])
-        for connection in shape_connections:
-            if 'skinCluster' in connection.name():
-                if type(connection) == pm.nt.SkinCluster:
-                    return connection
-                try_get_skinCluster = connection.listConnections(type='skinCluster')
-                if try_get_skinCluster:
-                    return try_get_skinCluster[0]
-                else:
-                    pm.error('Object have no skin bind')
-    except:
-        pm.error('Cannot get skinCluster from object')
 
 def get_blendshape_target(
     bsname,
@@ -128,7 +125,7 @@ def get_blendshape_target(
 @ul.do_function_on(mode='singlelast')
 def skin_weight_filter(ob, joint,min=0.0, max=0.1, select=False):
     '''return vertex with weight less than theshold'''
-    skin_cluster = get_skin_cluster(ob)
+    skin_cluster = ul.get_skin_cluster(ob)
     ob_shape = ul.get_shape(ob)
     filter_weight = []
     for vtx in ob_shape.vtx:
@@ -146,9 +143,9 @@ def switch_skin_type(ob,type='classis'):
         'Classis':0,
         'Dual':1,
         'Blend':2}
-    if not get_skin_cluster(ob) and type not in type_dict.keys():
+    if not ul.get_skin_cluster(ob) and type not in type_dict.keys():
         return
-    skin_cluster = get_skin_cluster(ob)
+    skin_cluster = ul.get_skin_cluster(ob)
     skin_cluster.setSkinMethod(type_dict[type])
     deform_normal_state = 0 if type_dict[type] is 2 else 1
     skin_cluster.attr('deformUserNormals').set(deform_normal_state)
@@ -177,14 +174,14 @@ def skin_weight_setter(component_list, joints_list, skin_value=1.0, normalized=T
 
     if any([type(component) is pm.nt.Transform for component in component_list]):
         for component in component_list:
-            skin_cluster = get_skin_cluster(component)
+            skin_cluster = ul.get_skin_cluster(component)
             pm.select(component, r=True)
             pm.skinPercent(skin_cluster, transformValue=get_skin_weight())
             print component_list
         pm.select(component_list,joints_list)
     else:
         verts_list = ul.convert_component(component_list)
-        skin_cluster = get_skin_cluster(verts_list[0])
+        skin_cluster = ul.get_skin_cluster(verts_list[0])
         if all([skin_cluster, verts_list, joints_list]):
             pm.select(verts_list)
             pm.skinPercent(skin_cluster, transformValue=get_skin_weight())
@@ -198,7 +195,7 @@ def skin_weight_setter(component_list, joints_list, skin_value=1.0, normalized=T
 def dual_weight_setter(component_list, weight_value=0.0, query=False):
     verts_list = ul.convert_component(component_list)
     shape = verts_list[0].node()
-    skin_cluster = get_skin_cluster(verts_list[0])
+    skin_cluster = ul.get_skin_cluster(verts_list[0])
     if query:
         weight_list = []
         for vert in verts_list:
@@ -255,25 +252,6 @@ def insert_joint(joint, num_joint=2):
                 pm.rename(bone, "%s#"%joint_name[0])
 
 @ul.do_function_on(mode='double')
-def parent_shape(src, target, delete_src=True):
-    '''parent shape from source to target'''
-    pm.parent(src.getShape(), target, r=True, s=True)
-    if delete_src:
-        pm.delete(src)
-
-@ul.do_function_on(mode='single')
-def un_parent_shape(ob):
-    '''unParent all shape and create new trasnform for each shape'''
-    shapeList = ob.listRelatives(type=pm.nt.Shape)
-    if shapeList:
-        for shape in shapeList:
-            newTr = pm.nt.Transform(name=(shape.name()[:shape.name().find('Shape')]))
-            newTr.setMatrix(ob.getMatrix(ws=True), ws=True)
-            pm.parent(shape, newTr, r=True, s=True)
-    if type(ob) != pm.nt.Joint:
-        pm.delete(ob)
-
-@ul.do_function_on(mode='double')
 def snap_simple(ob1, ob2, worldspace=False, hierachy=False, preserve_child=False):
     '''snap Transform for 2 object'''
     ob1_childs = ob1.listRelatives(type=['joint', 'transform'], ad=1)
@@ -326,23 +304,6 @@ def copy_skin_single(source_skin,dest_skin):
     pm.copySkinWeights(ss=skin.name(),ds=dest_skin.name(),
                        nm=True,nr=True,sm=True,sa='closestPoint',ia=['closestJoint','name'])
     dest_skin.setSkinMethod(skin.getSkinMethod())
-
-@ul.do_function_on(mode='double')
-def parent_shape(src,target):
-    if src.getShape():
-        pm.parent(src.getShape(), target, r=True, s=True)
-        pm.delete(src)
-
-@ul.do_function_on(mode='single')
-def un_parent_shape(ob):
-    shapeList = ob.listRelatives(type=pm.nt.Shape)
-    if shapeList:
-        for shape in shapeList:
-            newTr = pm.nt.Transform(name=(shape.name()[:shape.name().find('Shape')]))
-            newTr.setMatrix(ob.getMatrix(ws=True),ws=True)
-            pm.parent(shape,newTr,r=True,s=True)
-    if type(ob) != pm.nt.Joint:
-        pm.delete(ob)
 
 @ul.do_function_on(mode='last')
 def connect_joint(bones,boneRoot,**kwargs):

@@ -17,6 +17,7 @@ import os
 import random as rand
 from ..baseclass import asset
 from functools import wraps
+from time import sleep, time
 #reload(ac)
 
 ### decorator
@@ -181,27 +182,47 @@ def get_closest_info(ob, mesh_node):
     pm.delete([temp_node,temp_loc])
     return results
 
-def get_node(node_name, unique_only=True, type_filter=None):
+def get_node(node_name, unique_only=True, type_filter=None, verpose=False):
+    msg=[]
     try:
         if unique_only:
             assert(pm.uniqueObjExists(node_name)),"object name %s is not unique or not exist"%node_name
             node = pm.PyNode(node_name)
             if type_filter:
                 assert(isinstance(node, type_filter)),'node %s with %s does not exist' %(node_name,type_filter)
-            print "%s exists, is type %s" % (node, type(node))
+            msg.append("%s exists, is type %s" % (node, type(node)))
             return node
         else:
             node = pm.ls('*%s*'%node_name, type=type_filter) 
-            print "found %d object:" % (len(node))
+            msg.append("found %d object:" % (len(node)))
             for n in node:
-                print node.name()
+                msg.append(node.name())
         return node
     except pm.MayaNodeError:
-        pm.warning('node %s does not exist' % node_name)
+        msg.append('node %s does not exist' % node_name)
     except pm.MayaAttributeError:
-        pm.warning('Attibute %s does not exist' % node_name)
+        msg.append('Attibute %s does not exist' % node_name)
     except AssertionError as why:
-        print why
+        msg.append(why)
+    if verpose:
+        print '/n'.join(msg)
+
+def get_skin_cluster(ob):
+    '''return skin cluster from ob, if cannot find raise error'''
+    ob_shape = get_shape(ob)
+    try:
+        shape_connections = ob_shape.listConnections(type=['skinCluster', 'objectSet'])
+        for connection in shape_connections:
+            if 'skinCluster' in connection.name():
+                if type(connection) == pm.nt.SkinCluster:
+                    return connection
+                try_get_skinCluster = connection.listConnections(type='skinCluster')
+                if try_get_skinCluster:
+                    return try_get_skinCluster[0]
+                else:
+                    pm.error('Object have no skin bind')
+    except:
+        pm.error('Cannot get skinCluster from object')
 
 def reset_floating_window():
     '''reset floating window position'''
@@ -410,6 +431,25 @@ def exportCam():
         pm.select(newcam, r=True)
         cc = 'FBXExport -f "%s" -s' % filePath
         mm.eval(cc)
+
+@do_function_on(mode='double')
+def parent_shape(src, target, delete_src=True):
+    '''parent shape from source to target'''
+    pm.parent(src.getShape(), target, r=True, s=True)
+    if delete_src:
+        pm.delete(src)
+
+@do_function_on(mode='single')
+def un_parent_shape(ob):
+    '''unParent all shape and create new trasnform for each shape'''
+    shapeList = ob.listRelatives(type=pm.nt.Shape)
+    if shapeList:
+        for shape in shapeList:
+            newTr = pm.nt.Transform(name=(shape.name()[:shape.name().find('Shape')]))
+            newTr.setMatrix(ob.getMatrix(ws=True), ws=True)
+            pm.parent(shape, newTr, r=True, s=True)
+    if type(ob) != pm.nt.Joint:
+        pm.delete(ob)
 
 @do_function_on(mode='single')
 def mirror_transform(obs, axis="x",xform=[0,4]):
