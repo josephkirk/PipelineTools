@@ -38,14 +38,14 @@ def create_facial_rig():
     pm.refresh()
     if not pm.confirmBox(title='Facial Rig Status',message = "Mouth Control to Bone Connected", yes='Continue?', no='Stop?'):
         return
-    ft.parent_ctl_to_head()
-    pm.refresh()
-    if not pm.confirmBox(title='Facial Rig Status',message = "Parent Root Group to Head OK", yes='Continue?', no='Stop?'):
-        return
     ft.create_facial_bs_ctl()
     pm.refresh()
     if not pm.confirmBox(title='Facial Rig Status',message = "Create BlendShape control and setup BlendShape ok", yes='Continue?', no='Stop?'):
         return
+    # ft.parent_ctl_to_head()
+    # pm.refresh()
+    # if not pm.confirmBox(title='Facial Rig Status',message = "Parent Root Group to Head OK", yes='Continue?', no='Stop?'):
+    #     return
     ft.copy_facialskin()
     pm.refresh()
     pm.informBox(title='Riggin Status', message = "Skin Copied OK")
@@ -81,6 +81,7 @@ def get_blendshape_target(
     if blendshape is None:
         return
     target_list = []
+    pm.select(cl=True)
     for id,target in enumerate(blendshape.weight):
         target_name = pm.aliasAttr(target,q=True)
         if reset_value is True or rebuild is True:

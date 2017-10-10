@@ -281,6 +281,11 @@ def get_shape(ob):
             print('object have no shape')
 
 ###function
+@do_function_on('singlelast')
+def snap_nearest(ob, mesh_node):
+    closest_component_pos = get_closest_component(ob, mesh_node, uv=False, pos=True)
+    ob.setTranslation(closest_component_pos,'world')
+
 @do_function_on(mode='single',type_filter=['float3'])
 def convert_edge_to_curve(edge):
     pm.polySelect(edge.node(), el=edge.currentItemIndex())

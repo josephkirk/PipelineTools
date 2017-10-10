@@ -1,12 +1,14 @@
-Sample Module Repository
+PipelineTools Module Repository
 ========================
 
-This simple project is an example repo for Python projects.
+Pipeline Tools is a collection of maya script and tool to help with Production of Jetstudio
 
-`Learn more <http://www.kennethreitz.org/essays/repository-structure-and-python>`_.
-
----------------
-
-If you want to learn more about ``setup.py`` files, check out `this repository <https://github.com/kennethreitz/setup.py>`_.
-
-✨🍰✨
++to run facial rig
+import PipelineTools.main.rigging as rig
+import PipelineTools.etc.facialTemp as ft
+import pymel.core as pm
+for mod in [ul,ui,rig,ft]:
+    reload(mod)
+curfile = pm.sceneName()
+pm.openFile(curfile,f=True)
+rig.create_facial_rig()

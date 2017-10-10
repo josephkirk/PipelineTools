@@ -45,9 +45,13 @@ def setup_facialgp():
             for child in childs:
                 if item == 'eyeDeform':
                     pm.rename(child, '{}_{}'.format(item,child.name()[-1]))
+                    for subchild in child.getChildren():
+                        pm.rename(subchild, subchild.name().replace('_mdl_', '_mdl_{}_'.format(item)))
                 else:
                     pm.rename(child, child.name().replace('_mdl_', '_mdl_{}_'.format(item)))
             dupgp.setParent(facialdeform)
+            if item == 'facialGuide':
+                pm.parentConstraint('CH_Head', 'facialGuide', mo=True)
 
 def create_fac_ctl_shader():
     fac_shadeGP = {
@@ -219,6 +223,7 @@ def create_facial_panel():
     headBone_pos = headBone.getTranslation('world')
     facial_panelGp.setTranslation([panel_pos[0],headBone_pos[1],panel_pos[2]],'world')
     import_facialtarget()
+    pm.parentConstraint('CH_Head', 'facial_panelGp', mo=True)
 
 def import_facialtarget():
     scenedir = pm.sceneName().dirname()
@@ -257,27 +262,30 @@ def add_jawdeform_skin():
     pm.select(cl=True)
     for parts,meshes in facial_parts.items():
         bones=[]
-        for part in parts.split(','):
-            if part:
-                print part
-                if part != 'tongue':
-                    get_bones = [bone for bone in rigclass.FacialBone.bones(part)['All'] if bone.bone and 'End' not in bone.name]
-                else:
-                    get_bones = [bone for bone in rigclass.FacialBone.bones(part)['All'] if bone.bone and 'Root' not in bone.name]
-                    get_bones.append(ul.get_node('tongueRoot_bon'))
-                if get_bones:
-                    bones.append(get_bones)
-        skin_mesh = []
-        for mesh in meshes:
-            skin_mesh.append(pm.ls('*_jawDeform_{}'.format(mesh)))
-        if skin_mesh and bones:
-            print skin_mesh, bones
-            pm.select(skin_mesh,r=True)
-            pm.select(bones,add=True)
-            mm.eval('newSkinCluster "-toSelectedBones -bindMethod 1 -normalizeWeights 1 -weightDistribution 1 -mi 1 -dr 2 -rui false,multipleBindPose,1";')
-        else:
-            "can not add skin for %s"%parts
-            raise
+        try:
+            for part in parts.split(','):
+                if part:
+                    print part
+                    if part != 'tongue':
+                        get_bones = [bone for bone in rigclass.FacialBone.bones(part)['All'] if bone.bone and 'End' not in bone.name]
+                    else:
+                        get_bones = [bone for bone in rigclass.FacialBone.bones(part)['All'] if bone.bone and 'Root' not in bone.name]
+                        get_bones.append(ul.get_node('tongueRoot_bon'))
+                    if get_bones:
+                        bones.append(get_bones)
+            skin_mesh = []
+            for mesh in meshes:
+                skin_mesh.append(pm.ls('*_jawDeform_{}'.format(mesh)))
+            if skin_mesh and bones:
+                print skin_mesh, bones
+                pm.select(skin_mesh,r=True)
+                pm.select(bones,add=True)
+                mm.eval('newSkinCluster "-toSelectedBones -bindMethod 1 -normalizeWeights 1 -weightDistribution 1 -mi 1 -dr 2 -rui false,multipleBindPose,1";')
+            else:
+                "can not add skin for %s"%parts
+                raise
+        except:
+            print 'cannot add skin for', part, meshes
 
 @ul.error_alert
 def add_eyeform_skin():
@@ -306,23 +314,23 @@ def copy_facialskin():
                 if ul.get_skin_cluster(skin_src_get[0]) and ul.get_skin_cluster(skin_target_get[0]):
                     pm.select(skin_src_get,r=True)
                     pm.select(skin_target_get,add=True)
-                    mm.eval('copySkinWeights  -noMirror -surfaceAssociation closestPoint -influenceAssociation closestJoint -normalize;')
+                    mm.eval('copySkinWeights  -noMirror -surfaceAssociation closestPoint -influenceAssociation closestJoint -influenceAssociation label -normalize;')
                     print 'skin copy success', skin_src_get, skin_target_get
         if 'jaw' in file_name.lower():
             for object in ['eye', 'eyelens', 'eyeref']:
                 for direction in ['L','R']:
                     skin_src_get = pm.ls('{}:*mdl_{}_{}'.format(file_name, object, direction))
-                    skin_target_get = pm.ls('eyeDeform_{}|*mdl_{}_{}'.format(direction, object, direction))
+                    skin_target_get = pm.ls('*_mdl_eyeDeform_{}_{}'.format( object, direction))
                     if skin_src_get and skin_target_get:
                         if ul.get_skin_cluster(skin_src_get[0]) and ul.get_skin_cluster(skin_target_get[0]):
                             pm.select(skin_src_get,r=True)
                             pm.select(skin_target_get,add=True)
-                            mm.eval('copySkinWeights  -noMirror -surfaceAssociation closestPoint -influenceAssociation closestJoint -normalize;')
+                            mm.eval('copySkinWeights  -noMirror -surfaceAssociation closestPoint -influenceAssociation label -normalize;')
                             print 'skin copy success', skin_src_get, skin_target_get
                     else:
                         print "Eye skin not copy"
                         print '{}:*mdl_{}_{}'.format(file_name, object, direction)
-                        print 'eyeDeform|*mdl_{}_{}'.format(object, direction)
+                        print '*_mdl_eyeDeform_{}_{}'.format(object, direction)
                         print skin_src_get
                         print skin_target_get
                         print pm.ls('*_{}_{}'.format(object, direction))
@@ -367,7 +375,8 @@ def create_ctl():
         ob.setTranslation(dest_pos,space='world')
         #if ob != root['eye'][0]:
         #    pm.matchTransform(ob,target,pivot=True)
-    parent_ctl_to_head()
+    pm.parentConstraint('CH_Head', 'facialRig_Gp', mo=True)
+    pm.parentConstraint('CH_Head', 'eye_ctlGp', mo=True)
 
 def snap_eye_ctl():
     '''
@@ -450,14 +459,14 @@ def parent_ctl_to_head():
     '''
         parent control to head
     '''
-    face_root_bon = ul.get_node('facialRoot_bon')
-    face_root_ctl = ul.get_node('facialRig_Gp')
-    eye_root_ctl = ul.get_node('eye_ctlGp')
+    ctls = []
+    ctls.append('facialGuide')
+    ctls.append('facial_panelGp')
+    ctls.append('facialRig_Gp')
+    ctls.append('ctlGp|eye_ctlGp')
     headBone = ul.get_node('CH_Head')
-    pm.xform(face_root_ctl,pivots=[0,0,0],p=True,ws=True)
-    pm.parentConstraint(headBone, face_root_bon,mo=True)
-    pm.parentConstraint(headBone, face_root_ctl,mo=True)
-    pm.parentConstraint(headBone, eye_root_ctl,mo=True)
+    for ctl in ctls:
+        pm.parentConstraint(headBone, ctl, mo=True)
 
 def connect_Bs_control():
     faceBS = 'FaceBaseBS'
