@@ -276,42 +276,43 @@ def snap_simple(ob1, ob2, worldspace=False, hierachy=False, preserve_child=False
         if preserve_child:
             for ob1_child, ob1_child_old_matrix in zip(ob1_childs, ob1_child_old_matrixes):
                 ob1_child.setMatrix(ob1_child_old_matrix, ws=True)
-
+# pm.copySkinWeights(ss=skin.name(), ds=dest_skin.name(),
+#                    noMirror=True, normalize=True,
+#                    surfaceAssociation='closestPoint',
+#                    influenceAssociation='closestJoint')
+# dest_skin.setSkinMethod(skin.getSkinMethod())
 @ul.do_function_on(mode='double')
 def copy_skin_multi(source_skin_grp, dest_skin_grp):
     '''copy skin for 2 identical group hierachy'''
     source_skins = source_skin_grp.listRelatives(type='transform', ad=1)
     dest_skins = dest_skin_grp.listRelatives(type='transform', ad=1)
     if len(dest_skins) == len(source_skins):
-        print '---Copying skin from %s to %s---'%(source_skin_grp, dest_skin_grp)
+        print '---{}---'.format('Copying skin from %s to %s'%(source_skin_grp, dest_skin_grp))
         for skinTR, dest_skinTR in zip(source_skins, dest_skins):
-            if skinTR.name().split(':')[-1] != dest_skinTR.name().split(':')[-1]:
-                print skinTR.name().split(':')[-1], dest_skinTR.name().split(':')[-1]
-            else:
-                try:
-                    skin = skinTR.getShape().listConnections(type='skinCluster')[0]
-                    dest_skin = dest_skinTR.getShape().listConnections(type='skinCluster')[0]
-                    pm.copySkinWeights(ss=skin.name(), ds=dest_skin.name(),
-                                       noMirror=True, normalize=True,
-                                       surfaceAssociation='closestPoint',
-                                       influenceAssociation='closestJoint')
-                    dest_skin.setSkinMethod(skin.getSkinMethod())
-                    print skinTR, 'copied to', dest_skinTR, '\n'
-                except:
-                    print '%s cannot copy skin to %s'%(skinTR.name(), dest_skinTR.name()), '\n'
+            copy_skin_single(skinTR, dest_skinTR)
         print '---Copy Skin Finish---'
     else:
         print 'source and target are not the same'
 @ul.error_alert
-@ul.do_function_on(mode='double')
-def copy_skin_single(source_skin,dest_skin):
+def copy_skin_single(source_skin, dest_skin, addskin=True):
     '''copy skin for 2 object, target object do not need to have skin Cluster'''
-    skin = source_skin.getShape().listConnections(type='skinCluster')[0]
-    dest_skin = dest_skin.getShape().listConnections(type='skinCluster')[0]
-    print skin,dest_skin
-    pm.copySkinWeights(ss=skin.name(),ds=dest_skin.name(),
-                       nm=True,nr=True,sm=True,sa='closestPoint',ia=['closestJoint','name'])
-    dest_skin.setSkinMethod(skin.getSkinMethod())
+    try:
+        skin = ul.get_skin_cluster(source_skin)
+        skin_dest = ul.get_skin_cluster(dest_skin)
+        if addskin:
+            if skin and not skin_dest:
+                skin_joints = skin.getInfluence()
+                print skin_joints
+        pm.copySkinWeights(ss=skin.name(),ds=skin_dest.name(),
+                           nm=True,nr=True,sm=True,sa='closestPoint',ia=['closestJoint','label'])
+        skin_dest.setSkinMethod(skin.getSkinMethod())
+        print '{} successfully copy to {}'.format(source_skin, skin_dest), '\n', "_"*30
+    except AttributeError:
+        print '%s cannot copy skin to %s'%(source_skin.name(), dest_skin.name())
+        print "-"*30
+        for ob in [source_skin, dest_skin]:
+            print '{:_>20} connect to skinCluster: {}'.format(ob, ul.get_skin_cluster(ob))
+        print "_"*30
 
 @ul.do_function_on(mode='last')
 def connect_joint(bones,boneRoot,**kwargs):

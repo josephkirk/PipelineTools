@@ -1,11 +1,12 @@
 import pymel.core as pm
 from time import sleep,time
 import PipelineTools.main.utilities as ul
+import PipelineTools.main.rigging as rig
 import PipelineTools.baseclass.rig as rigclass
 import riggingMisc as rm
 import maya.mel as mm
 import string
-for mod in [ul,rigclass,rm]:
+for mod in [ul, rigclass, rig, rm]:
     reload(mod)
 @ul.error_alert
 def setup_facialgp():
@@ -215,16 +216,6 @@ def connect_mouth_ctl():
                         print bone.bone, bone.control, 'not exists'
                     
 @ul.error_alert
-def create_facial_panel():
-    rm.create_bs_ctl()
-    facial_panelGp = ul.get_node('facial_panelGp')
-    panel_pos = facial_panelGp.getTranslation('world')
-    headBone = ul.get_node('CH_Head')
-    headBone_pos = headBone.getTranslation('world')
-    facial_panelGp.setTranslation([panel_pos[0],headBone_pos[1],panel_pos[2]],'world')
-    import_facialtarget()
-    pm.parentConstraint('CH_Head', 'facial_panelGp', mo=True)
-@ul.error_alert
 def import_facialtarget():
     scenedir = pm.sceneName().dirname()
     dir =  scenedir.parent
@@ -246,10 +237,10 @@ def import_facialtarget():
             pm.blendShape(name=value,w=[(0,1),], automatic=True)
         pm.select('facial',r=True)
         pm.select("*_face_grp_skinDeform",add=True)
-        pm.blendShape(name='RootBS',w=[(0,1),], automatic=True)
+        pm.blendShape(name='RootBS',w=[(0,1),], automatic=True, after=True)
         pm.select('eyeDeform',r=True)
         pm.select("*_eye_grp_skinDeform",add=True)
-        pm.blendShape(name='EyeDeformBS',w=[(0,1),], automatic=True)
+        pm.blendShape(name='EyeDeformBS',w=[(0,1),], automatic=True, after=True)
     connect_Bs_control()
 @ul.error_alert
 def add_jawdeform_skin():
@@ -303,38 +294,52 @@ def copy_facialskin():
     for file in skin_dir.files('*.mb*'):
         file_name = file.basename().replace(file.ext,'')
         pm.createReference(file,namespace=file_name)
-        for object in ['head', 'tongue', 'eyelash', 'Matsuge']:
-            skin_src_get = pm.ls('{}:*_{}'.format(file_name, object))
-            eye_skin_src_get = pm.ls('{}:*_{}'.format(file_name, object))
-            if 'facial' in file_name.lower():
-                skin_target_get = pm.ls('facial|*_mdl_{}'.format(object))
-            elif 'jaw' in file_name.lower():
-                skin_target_get = pm.ls('jawDeform|*_jawDeform_{}'.format(object))
-            if skin_src_get and skin_target_get:
-                if ul.get_skin_cluster(skin_src_get[0]) and ul.get_skin_cluster(skin_target_get[0]):
-                    pm.select(skin_src_get,r=True)
-                    pm.select(skin_target_get,add=True)
-                    mm.eval('copySkinWeights  -noMirror -surfaceAssociation closestPoint -influenceAssociation closestJoint -influenceAssociation label -normalize;')
-                    print 'skin copy success', skin_src_get, skin_target_get
-        if 'jaw' in file_name.lower():
-            for object in ['eye', 'eyelens', 'eyeref']:
-                for direction in ['L','R']:
-                    skin_src_get = pm.ls('{}:*mdl_{}_{}'.format(file_name, object, direction))
-                    skin_target_get = pm.ls('*_mdl_eyeDeform_{}_{}'.format( object, direction))
-                    if skin_src_get and skin_target_get:
-                        if ul.get_skin_cluster(skin_src_get[0]) and ul.get_skin_cluster(skin_target_get[0]):
-                            pm.select(skin_src_get,r=True)
-                            pm.select(skin_target_get,add=True)
-                            mm.eval('copySkinWeights  -noMirror -surfaceAssociation closestPoint -influenceAssociation label -normalize;')
-                            print 'skin copy success', skin_src_get, skin_target_get
-                    else:
-                        print "Eye skin not copy"
-                        print '{}:*mdl_{}_{}'.format(file_name, object, direction)
-                        print '*_mdl_eyeDeform_{}_{}'.format(object, direction)
-                        print skin_src_get
-                        print skin_target_get
-                        print pm.ls('*_{}_{}'.format(object, direction))
+        print 'Referencing', file_name
+        deformGp_list = ['facial', 'jaw', 'eye']
+        for deformGp_name in deformGp_list:
+            if deformGp_name in file_name.lower():
+                target_deformGp_name = 'face_deformationSystem|{}*'.format(deformGp_name)
+                src_deformGp_name = '{}:{}*'.format(file_name,deformGp_name)
+                target_gp = pm.ls(target_deformGp_name)[0] if pm.ls(target_deformGp_name) else None
+                src_gp = pm.ls(src_deformGp_name)[0] if pm.ls(src_deformGp_name) else None
+                if target_gp and src_gp:
+                    print src_gp, target_gp
+                    rig.copy_skin_multi(src_gp, target_gp)
+                else:
+                    print target_deformGp_name, src_deformGp_name, 'not found'
         pm.FileReference(file).remove()
+        # for object in ['head', 'tongue', 'eyelash', 'Matsuge']:
+        #     skin_src_get = pm.ls('{}:*_{}'.format(file_name, object))
+        #     eye_skin_src_get = pm.ls('{}:*_{}'.format(file_name, object))
+        #     if 'facial' in file_name.lower():
+        #         skin_target_get = pm.ls('facial|*_mdl_{}'.format(object))
+        #     elif 'jaw' in file_name.lower():
+        #         skin_target_get = pm.ls('jawDeform|*_jawDeform_{}'.format(object))
+        #     if skin_src_get and skin_target_get:
+        #         if ul.get_skin_cluster(skin_src_get[0]) and ul.get_skin_cluster(skin_target_get[0]):
+        #             pm.select(skin_src_get,r=True)
+        #             pm.select(skin_target_get,add=True)
+        #             mm.eval('copySkinWeights  -noMirror -surfaceAssociation closestPoint -influenceAssociation closestJoint -influenceAssociation label -normalize;')
+        #             print 'skin copy success', skin_src_get, skin_target_get
+        # if 'jaw' in file_name.lower():
+        #     for object in ['eye', 'eyelens', 'eyeref']:
+        #         for direction in ['L','R']:
+        #             skin_src_get = pm.ls('{}:*mdl_{}_{}'.format(file_name, object, direction))
+        #             skin_target_get = pm.ls('*_mdl_eyeDeform_{}_{}'.format( object, direction))
+        #             if skin_src_get and skin_target_get:
+        #                 if ul.get_skin_cluster(skin_src_get[0]) and ul.get_skin_cluster(skin_target_get[0]):
+        #                     pm.select(skin_src_get,r=True)
+        #                     pm.select(skin_target_get,add=True)
+        #                     mm.eval('copySkinWeights  -noMirror -surfaceAssociation closestPoint -influenceAssociation label -normalize;')
+        #                     print 'skin copy success', skin_src_get, skin_target_get
+        #             else:
+        #                 print "Eye skin not copy"
+        #                 print '{}:*mdl_{}_{}'.format(file_name, object, direction)
+        #                 print '*_mdl_eyeDeform_{}_{}'.format(object, direction)
+        #                 print skin_src_get
+        #                 print skin_target_get
+        #                 print pm.ls('*_{}_{}'.format(object, direction))
+        # pm.FileReference(file).remove()
 @ul.error_alert
 def create_guidebs():
     pm.select('orig',r=True)
@@ -428,17 +433,18 @@ def snap_eye_root_ctl():
             ob.setCV(cvid,bb[id],space='world')
             continue
         ob.setCV(cvid,bb[id],space='world')
+    ob.updateCurve()
     obdup = pm.duplicate(ob)
     for child in obdup[0].listRelatives(type='transform'):
         pm.delete(child)
     pm.select(obdup,r=True)
     ul.lock_transform(lock=False, pivotToOrigin=False)
     obdup[0].setScale([1.05,1.05,1.05])
-    pm.makeIdentity(obdup[0], apply=True)
-    pm.delete('eyeRoot_ctlShape', s=True)
+    #pm.makeIdentity(obdup[0], apply=True)
+    #pm.delete('eyeRoot_ctlShape', s=True)
     pm.select(ob,add=True)
     ul.parent_shape()
-    ob.updateCurve()
+    
 @ul.error_alert
 def connect_eye_attr():
     '''
@@ -504,6 +510,28 @@ def connect_Bs_control():
     pm.connectAttr(mouthCnt+'.mouth_smileClose', faceBS+'.mouth_smileclose', f=True)
     pm.connectAttr(mouthCnt+'.mouth_angerClose', faceBS+'.mouth_angerclose', f=True)
 ### main code
+@ul.error_alert
+def create_facial_panel(offset=6.5):
+    rm.create_bs_ctl()
+    pm.headsUpMessage("Create Facial BlendShape Control", time=0.2)
+    pm.refresh()
+    sleep(0.1)
+    facial_panelGp = ul.get_node('facial_panelGp')
+    panel_pos = facial_panelGp.getTranslation('world')
+    headBone = ul.get_node('CH_Head')
+    headBone_pos = headBone.getTranslation('world')
+    facial_panelGp.setTranslation([panel_pos[0], headBone_pos[1]+offset , panel_pos[2]], 'world')
+    pm.headsUpMessage("Snap Control to Head", time=0.2)
+    pm.refresh()
+    sleep(0.1)
+    import_facialtarget()
+    pm.headsUpMessage("Import BlendShape and connect to control", time=0.2)
+    pm.refresh()
+    sleep(0.1)
+    pm.parentConstraint('CH_Head', 'facial_panelGp', mo=True)
+    pm.headsUpMessage("Parent Constraint facial_panelGp to head bone", time=0.2)
+    pm.refresh()
+    sleep(0.1)
 def create_eye_rig():
     '''
         step to create eye rig

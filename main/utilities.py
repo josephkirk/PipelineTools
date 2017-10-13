@@ -39,8 +39,13 @@ def error_alert(func):
             result = func(*args, **kwargs)
             return result
         except (IOError, OSError) as why:
-            print func.__name__, "create error:"
-            print why
+            msg = func.__name__+ "create error:\n" + why
+            print msg
+            return msg
+        except:
+            msg = func.__name__+ "error"
+            raise
+            pass
     return wrapper
 
 def do_function_on(mode='single', type_filter=[], get_selection=True): 
@@ -51,66 +56,71 @@ def do_function_on(mode='single', type_filter=[], get_selection=True):
         def wrapper(*args, **kwargs):
             sel = []
             if get_selection:
-                sel = pm.selected()
+                sel.extend(pm.selected())
             #pm.select(cl=True)
             for arg in args:
-                if type(arg) == list:
-                    sel.append(arg)
-                else:
+                if any([isinstance(arg,t) for t in [list, tuple, set]]):
+                    arg = list(arg)
                     sel.extend(arg)
+                else:
+                    sel.append(arg)
             #print args_list
             object_list = []
-            for ob in pm.ls(sel, type=type_filter, os=True):
+            for ob in sel:
+                try:
+                    ob = pm.ls(ob, type=type_filter)[0]
+                except:
+                    continue 
                 if ob not in object_list:
                     object_list.append(ob)
-            if object_list:
-                results = []
-                if mode is 'single': # do function for every object in object_list
-                    for ob in object_list:
-                        result = func(ob, **kwargs)
-                        results.append(result)
-                elif mode is 'double': # do function for first in object_list to affect last
-                    if len(object_list)>1:
-                        result = func(sel[0], sel[-1], **kwargs)
-                        results.append(result)
-                    else:
-                        pm.warning('Select two objects')
-                elif mode is 'sets': # do function directly to object_list
-                    result = func(object_list, **kwargs)
-                    results.append(result)
-                elif 'last' in mode: # set last object in object_list to affect others
-                    if len(object_list)>1:
-                        op_list = object_list[:-1]
-                        target = object_list[-1]
-                        if mode is 'singlelast':
-                            for op in op_list:
-                                result = func(op, target, **kwargs)
-                                results.append(result)
-                        else:
-                            result = func(op_list, target, **kwargs)
-                            results.append(result)
-                    else:
-                        pm.warning('Select affect objects then target object')
-                elif mode is 'doubleType':
-                    if len(object_list) > 1:
-                        object_type2 = pm.ls(object_list,
-                                             type=type_filter[-1],
-                                             orderedSelection=True)
-                        if object_type2:
-                            object_type1 = [
-                                object for object in pm.ls(object_list, type=type_filter[:-1])
-                                if type(object) != type(object_type2[0])]
-                            result = func(object_type1, object_type2, **kwargs)
-                            results.append(result)
-                        else:
-                            pm.warning('Object type "%s" is not in selection or argument'
-                                       %type_filter[-1])
-                    else:
-                        pm.warning('Select more than 2 object of 2 kind ',
-                                   'and input those kind into type_filter keyword')
-                return results
-            else:
+            if not object_list:
                 pm.error('no object to operate on')
+                return
+            results = []
+            if mode is 'single': # do function for every object in object_list
+                for ob in object_list:
+                    result = func(ob, **kwargs)
+                    results.append(result)
+            elif mode is 'double': # do function for first in object_list to affect last
+                if len(object_list)>1:
+                    result = func(sel[0], sel[-1], **kwargs)
+                    results.append(result)
+                else:
+                    pm.warning('Select two objects')
+            elif mode is 'sets': # do function directly to object_list
+                result = func(object_list, **kwargs)
+                results.append(result)
+            elif 'last' in mode: # set last object in object_list to affect others
+                if len(object_list)>1:
+                    op_list = object_list[:-1]
+                    target = object_list[-1]
+                    if mode is 'singlelast':
+                        for op in op_list:
+                            result = func(op, target, **kwargs)
+                            results.append(result)
+                    else:
+                        result = func(op_list, target, **kwargs)
+                        results.append(result)
+                else:
+                    pm.warning('Select affect objects then target object')
+            elif mode is 'doubleType':
+                if len(object_list) > 1:
+                    object_type2 = pm.ls(object_list,
+                                            type=type_filter[-1],
+                                            orderedSelection=True)
+                    if object_type2:
+                        object_type1 = [
+                            object for object in pm.ls(object_list, type=type_filter[:-1])
+                            if type(object) != type(object_type2[0])]
+                        result = func(object_type1, object_type2, **kwargs)
+                        results.append(result)
+                    else:
+                        pm.warning('Object type "%s" is not in selection or argument'
+                                    %type_filter[-1])
+                else:
+                    pm.warning('Select more than 2 object of 2 kind ',
+                                'and input those kind into type_filter keyword')
+            return results
         return wrapper
     return decorator
 
@@ -214,7 +224,7 @@ def get_skin_cluster(ob):
         shape_connections = ob_shape.listConnections(type=['skinCluster', 'objectSet'])
         for connection in shape_connections:
             if 'skinCluster' in connection.name():
-                if type(connection) == pm.nt.SkinCluster:
+                if isinstance(connection, pm.nt.SkinCluster):
                     return connection
                 try_get_skinCluster = connection.listConnections(type='skinCluster')
                 if try_get_skinCluster:
