@@ -7,7 +7,7 @@ import maya.mel as mm
 import string
 for mod in [ul,rigclass,rm]:
     reload(mod)
-
+@ul.error_alert
 def setup_facialgp():
     miscgp = ul.get_node('miscGp')
     if not miscgp:
@@ -52,7 +52,7 @@ def setup_facialgp():
             dupgp.setParent(facialdeform)
             if item == 'facialGuide':
                 pm.parentConstraint('CH_Head', 'facialGuide', mo=True)
-
+@ul.error_alert
 def create_fac_ctl_shader():
     fac_shadeGP = {
         'green': (
@@ -119,7 +119,7 @@ def create_fac_ctl_shader():
         for member in members:
             member = ul.get_node(member)
             pm.sets(sg, fe=member)
-
+@ul.error_alert
 def create_facialguide_ctl():
     facialpart_name = {
         'eye':32,
@@ -194,7 +194,7 @@ def create_facialguide_ctl():
                 #pm.select(value.bone, add=True)
         print '#'*20
     create_fac_ctl_shader()
-
+@ul.error_alert
 def connect_mouth_ctl():
     mouth_part = ['jaw','teeth','tongue']
     for part in mouth_part:
@@ -214,7 +214,7 @@ def connect_mouth_ctl():
                     else:
                         print bone.bone, bone.control, 'not exists'
                     
-
+@ul.error_alert
 def create_facial_panel():
     rm.create_bs_ctl()
     facial_panelGp = ul.get_node('facial_panelGp')
@@ -224,7 +224,7 @@ def create_facial_panel():
     facial_panelGp.setTranslation([panel_pos[0],headBone_pos[1],panel_pos[2]],'world')
     import_facialtarget()
     pm.parentConstraint('CH_Head', 'facial_panelGp', mo=True)
-
+@ul.error_alert
 def import_facialtarget():
     scenedir = pm.sceneName().dirname()
     dir =  scenedir.parent
@@ -335,22 +335,22 @@ def copy_facialskin():
                         print skin_target_get
                         print pm.ls('*_{}_{}'.format(object, direction))
         pm.FileReference(file).remove()
-
+@ul.error_alert
 def create_guidebs():
     pm.select('orig',r=True)
     pm.select('facialGuide',add=True)
     pm.blendShape(name='FaceGuideBS', automatic=True)
-
+@ul.error_alert
 def create_deformbs():
     pm.select('orig',r=True)
     pm.select('facial',add=True)
     pm.blendShape(name='FaceDeformBS', automatic=True)
-
+@ul.error_alert
 def create_rootbs():
     pm.select('facial',r=True)
     pm.select("*_mdl_face_grp_skinDeform")
     pm.blendShape(name='RootBS',w=[(0,1),], automatic=True)
-
+@ul.error_alert
 def create_ctl():
     '''
     create Facial Control and snap to bone Position
@@ -361,23 +361,30 @@ def create_ctl():
     ul.get_node('ctlGp').setParent(ul.get_node('ROOT'))
     root = {}
     root['jaw'] = (ul.get_node('jaw_ctlGp'),ul.get_node('jawRoot_bon'))
-    root['teeth'] = (ul.get_node('teethUpper_ctlGp'),ul.get_node('teethUpper_bon'))
+    root['teethUpper'] = (ul.get_node('teethUpper_ctlGp'),ul.get_node('teethUpper_bon'))
     root['eye'] = (ul.get_node('eye_ctlGp'),ul.get_node('eyeLeftEnd_bon'))
-    for v in string.ascii_uppercase[:3]:
-        root['tongue%s'%v] = (ul.get_node('tongueCenter%s_bon'%v),ul.get_node('tongueCenter%sRoot_ctlGp'%v))
-
+    for v in string.ascii_uppercase[:4]:
+        root['tongue%s'%v] = (ul.get_node('tongueCenter%sRoot_ctlGp'%v),ul.get_node('tongueCenter%s_bon'%v))
+    root['teethLower'] = (ul.get_node('teethLower_ctlGp'),ul.get_node('teethLower_bon'))
     for key,(ob,target) in root.items():
+        #print key, ob, target
         ob_pos = ob.getTranslation('world')
         target_pos = target.getTranslation('world')
         dest_pos = target_pos
-        if ob == root['eye'][0]:
+        if key == 'eye':
             dest_pos = [ob_pos[0], target_pos[1], ob_pos[2]]
         ob.setTranslation(dest_pos,space='world')
-        #if ob != root['eye'][0]:
-        #    pm.matchTransform(ob,target,pivot=True)
+        print 'set {} Position to {} postion'.format(ob, target)
+        #ob.setPivots(dest_pos, worldSpace=True)
+        if key != 'eye':
+           pm.matchTransform(ob, target, pivots=True)
+           pm.matchTransform(ob.getChildren()[0], target, pivots=True)
+           print 'match', ob, target, ob.getChildren()[0], 'to', target
     pm.parentConstraint('CH_Head', 'facialRig_Gp', mo=True)
+    print 'Parent constraint facialRig_Gp to head'
     pm.parentConstraint('CH_Head', 'eye_ctlGp', mo=True)
-
+    print 'Parent constraint eye_ctlGp to head'
+@ul.error_alert
 def snap_eye_ctl():
     '''
         snap eye Control to end Bone Position
@@ -391,7 +398,7 @@ def snap_eye_ctl():
         eye_endbone_pos = eye_endbone.getTranslation(space='world')
         eye_ctl_pos = eye_ctl.getTranslation(space='world')
         eye_ctl.setTranslation((eye_endbone_pos[0],eye_endbone_pos[1],eye_ctl_pos[2]), space='world')     
-
+@ul.error_alert
 def create_eye_constraint():
     '''
         aim constraint eye bone to control
@@ -400,7 +407,7 @@ def create_eye_constraint():
         eye_bone = ul.get_node('eye%s_bon'%dir)
         eye_ctl = ul.get_node('eye%s_ctl'%dir)
         aim_constraint = pm.aimConstraint(eye_ctl,eye_bone,mo=True,wut='objectrotation',wuo=ul.get_node('eyeRoot_ctl'))
-
+@ul.error_alert
 def snap_eye_root_ctl():
     '''
         resize eyeRoot_ctl to match eye_frmGp
@@ -432,7 +439,7 @@ def snap_eye_root_ctl():
     pm.select(ob,add=True)
     ul.parent_shape()
     ob.updateCurve()
-
+@ul.error_alert
 def connect_eye_attr():
     '''
         connect eye bone rotate to eye lid bone
@@ -454,7 +461,7 @@ def connect_eye_attr():
         eye_bone.rotate >> mul2.input1
         mul2.output >> eyelid_bone.rotate
         eye_ctl.scale >> eye_endbone.scale
-
+@ul.error_alert
 def parent_ctl_to_head():
     '''
         parent control to head
@@ -467,7 +474,7 @@ def parent_ctl_to_head():
     headBone = ul.get_node('CH_Head')
     for ctl in ctls:
         pm.parentConstraint(headBone, ctl, mo=True)
-
+@ul.error_alert
 def connect_Bs_control():
     faceBS = 'FaceBaseBS'
     browCnt = 'brow_ctl'
@@ -497,48 +504,53 @@ def connect_Bs_control():
     pm.connectAttr(mouthCnt+'.mouth_smileClose', faceBS+'.mouth_smileclose', f=True)
     pm.connectAttr(mouthCnt+'.mouth_angerClose', faceBS+'.mouth_angerclose', f=True)
 ### main code
-@ul.error_alert
 def create_eye_rig():
     '''
         step to create eye rig
     '''
-    snap_eye_ctl()
-    snap_eye_root_ctl()
-    create_eye_constraint()
-    connect_eye_attr()
+    msg = []
+    msg.append(snap_eye_ctl())
+    msg.append(snap_eye_root_ctl())
+    msg.append(create_eye_constraint())
+    msg.append(connect_eye_attr())
+    return msg
 
-@ul.error_alert
+#@ul.error_alert
 def create_facial_ctl():
-    create_ctl()
+    msg = []
+    msg.append(create_ctl())
     pm.headsUpMessage("Face Control Created", time=0.2)
     sleep(0.1)
-    create_eye_rig()
+    msg.append(create_eye_rig())
     pm.headsUpMessage("Eyes Rig Created", time=0.2)
     sleep(0.1)
-    connect_mouth_ctl()
+    msg.append(connect_mouth_ctl())
     pm.headsUpMessage("Mouth Control to Bone Connected", time=0.2)
+    return msg
     #parent_ctl_to_head()
 
-@ul.error_alert
+#@ul.error_alert
 def create_facial_bs_ctl():
+    msg=[]
     pm.headsUpMessage("Create Facial Deformation Groups", time=0.2)
-    setup_facialgp()
+    msg.append(setup_facialgp())
     pm.refresh()
     sleep(0.1)
     pm.headsUpMessage("Create Facial Control and Guide rig, skin", time=0.2)
-    create_facialguide_ctl()
+    msg.append(create_facialguide_ctl())
     pm.refresh()
     sleep(0.1)
     pm.headsUpMessage("Add skin to Jaw Deform Group", time=0.2)
-    add_jawdeform_skin()
+    msg.append(add_jawdeform_skin())
     pm.refresh()
     sleep(0.1)
     pm.headsUpMessage("Add skin to Jaw Deform Group", time=0.2)
-    add_eyeform_skin()
+    msg.append(add_eyeform_skin())
     pm.refresh()
     sleep(0.1)
     pm.headsUpMessage("create Face Blend Shape Control, import and set up BlenShape", time=0.2)
-    create_facial_panel()
+    msg.append(create_facial_panel())
+    return msg
 
 
 

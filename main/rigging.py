@@ -26,29 +26,36 @@ def deform_normal_off():
 
 @ul.timeit
 def create_facial_rig():
-    ft.create_ctl()
+    errmsg = []
+    msg = ft.create_ctl()
+    errmsg.append(msg)
     pm.refresh()
-    if not pm.confirmBox(title='Facial Rig Status',message = "Face Control Created", yes='Continue?', no='Stop?'):
+    if not pm.confirmBox(title='Facial Rig Status',message = "Face Control Created\nError:\n%s"%msg, yes='Continue?', no='Stop?'):
         return
-    ft.create_eye_rig()
+    msg = ft.create_eye_rig()
+    errmsg.append(msg)
     pm.refresh()
-    if not pm.confirmBox(title='Facial Rig Status',message = "Eyeballs Rig Created", yes='Continue?', no='Stop?'):
+    if not pm.confirmBox(title='Facial Rig Status',message = "Eyeballs Rig Created\nError:\n%s"%msg, yes='Continue?', no='Stop?'):
         return
-    ft.connect_mouth_ctl()
+    msg = ft.connect_mouth_ctl()
+    errmsg.append(msg)
     pm.refresh()
-    if not pm.confirmBox(title='Facial Rig Status',message = "Mouth Control to Bone Connected", yes='Continue?', no='Stop?'):
+    if not pm.confirmBox(title='Facial Rig Status',message = "Mouth Control to Bone Connected\nError:\n%s"%msg, yes='Continue?', no='Stop?'):
         return
-    ft.create_facial_bs_ctl()
+    msg = ft.create_facial_bs_ctl()
+    errmsg.append(msg)
     pm.refresh()
-    if not pm.confirmBox(title='Facial Rig Status',message = "Create BlendShape control and setup BlendShape ok", yes='Continue?', no='Stop?'):
+    if not pm.confirmBox(title='Facial Rig Status',message = "Create BlendShape control and setup BlendShape \nError:\n%s"%msg, yes='Continue?', no='Stop?'):
         return
     # ft.parent_ctl_to_head()
     # pm.refresh()
     # if not pm.confirmBox(title='Facial Rig Status',message = "Parent Root Group to Head OK", yes='Continue?', no='Stop?'):
     #     return
-    ft.copy_facialskin()
+    msg = ft.copy_facialskin()
     pm.refresh()
-    pm.informBox(title='Riggin Status', message = "Skin Copied OK")
+    if not pm.confirmBox(title='Facial Rig Status',message = "Facial Copy \nError:\n%s"%msg, yes='Continue?', no='Stop?'):
+        return
+    pm.informBox(title='Riggin Status', message = "Face Rig Complete")
 
 @ul.do_function_on('single')
 def mirror_joint_multi(ob):

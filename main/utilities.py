@@ -438,11 +438,17 @@ def exportCam():
         mm.eval(cc)
 
 @do_function_on(mode='double')
-def parent_shape(src, target, delete_src=True):
+def parent_shape(src, target, delete_src=True, delete_oldShape=True):
     '''parent shape from source to target'''
+    #pm.parent(src, world=True)
+    pm.makeIdentity(src, apply=True)
+    pm.delete(src.listRelatives(type='transform'))
+    pm.refresh()
     pm.parent(src.getShape(), target, r=True, s=True)
     if delete_src:
         pm.delete(src)
+    if delete_oldShape:
+        pm.delete(get_shape(target), shape=True)
 
 @do_function_on(mode='single')
 def un_parent_shape(ob):
