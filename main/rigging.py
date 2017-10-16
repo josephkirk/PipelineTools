@@ -9,8 +9,6 @@ All code written by me unless specify
 
 import pymel.core as pm
 import utilities as ul
-from ..etc import riggingMisc as rm
-from ..etc import facialTemp as ft
 from ..baseclass import rigging as rc
 import string
 
@@ -23,39 +21,6 @@ def deform_normal_off():
         skin_cluster.attr('deformUserNormals').set(False)
         print skin_cluster
         print skin_cluster.attr('deformUserNormals').get()
-
-@ul.timeit
-def create_facial_rig():
-    errmsg = []
-    msg = ft.create_ctl()
-    errmsg.append(msg)
-    pm.refresh()
-    if not pm.confirmBox(title='Facial Rig Status',message = "Face Control Created\nError:\n%s"%msg, yes='Continue?', no='Stop?'):
-        return
-    msg = ft.create_eye_rig()
-    errmsg.append(msg)
-    pm.refresh()
-    if not pm.confirmBox(title='Facial Rig Status',message = "Eyeballs Rig Created\nError:\n%s"%msg, yes='Continue?', no='Stop?'):
-        return
-    msg = ft.connect_mouth_ctl()
-    errmsg.append(msg)
-    pm.refresh()
-    if not pm.confirmBox(title='Facial Rig Status',message = "Mouth Control to Bone Connected\nError:\n%s"%msg, yes='Continue?', no='Stop?'):
-        return
-    msg = ft.create_facial_bs_ctl()
-    errmsg.append(msg)
-    pm.refresh()
-    if not pm.confirmBox(title='Facial Rig Status',message = "Create BlendShape control and setup BlendShape \nError:\n%s"%msg, yes='Continue?', no='Stop?'):
-        return
-    # ft.parent_ctl_to_head()
-    # pm.refresh()
-    # if not pm.confirmBox(title='Facial Rig Status',message = "Parent Root Group to Head OK", yes='Continue?', no='Stop?'):
-    #     return
-    msg = ft.copy_facialskin()
-    pm.refresh()
-    if not pm.confirmBox(title='Facial Rig Status',message = "Facial Copy \nError:\n%s"%msg, yes='Continue?', no='Stop?'):
-        return
-    pm.informBox(title='Riggin Status', message = "Face Rig Complete")
 
 @ul.do_function_on('single')
 def mirror_joint_multi(ob):
@@ -282,30 +247,56 @@ def snap_simple(ob1, ob2, worldspace=False, hierachy=False, preserve_child=False
 #                    influenceAssociation='closestJoint')
 # dest_skin.setSkinMethod(skin.getSkinMethod())
 @ul.do_function_on(mode='double')
-def copy_skin_multi(source_skin_grp, dest_skin_grp):
+def copy_skin_multi(source_skin_grp, dest_skin_grp, **kwargs):
     '''copy skin for 2 identical group hierachy'''
     source_skins = source_skin_grp.listRelatives(type='transform', ad=1)
     dest_skins = dest_skin_grp.listRelatives(type='transform', ad=1)
     if len(dest_skins) == len(source_skins):
         print '---{}---'.format('Copying skin from %s to %s'%(source_skin_grp, dest_skin_grp))
         for skinTR, dest_skinTR in zip(source_skins, dest_skins):
-            copy_skin_single(skinTR, dest_skinTR)
+            copy_skin_single(skinTR, dest_skinTR, **kwargs)
         print '---Copy Skin Finish---'
     else:
         print 'source and target are not the same'
 @ul.error_alert
-def copy_skin_single(source_skin, dest_skin, addskin=True):
+def copy_skin_single(source_skin, dest_skin, **kwargs):
     '''copy skin for 2 object, target object do not need to have skin Cluster'''
+    ### keyword add
+    kwargs['nm'] = True
+    kwargs['nr'] = True
+    kwargs['sm'] = True
+    kwargs['sa'] = 'closestPoint'
+    kwargs['ia'] = ['closestJoint', 'label']
+    addskin = kwargs['addskin'] if kwargs.has_key('addskin') else True
     try:
         skin = ul.get_skin_cluster(source_skin)
+        kwargs['ss'] = skin.name()
+        if not skin:
+            raise AttributeError()
+        skin_joints = skin.getInfluence()
+        print source_skin,'connected to', skin
+        print source_skin,'influenced by', skin_joints
         skin_dest = ul.get_skin_cluster(dest_skin)
-        if addskin:
-            if skin and not skin_dest:
-                skin_joints = skin.getInfluence()
-                print skin_joints
-        pm.copySkinWeights(ss=skin.name(),ds=skin_dest.name(),
-                           nm=True,nr=True,sm=True,sa='closestPoint',ia=['closestJoint','label'])
-        skin_dest.setSkinMethod(skin.getSkinMethod())
+        if not skin_dest:
+            dest_skin_joints = []
+            for bone in skin_joints:
+                label_joint(bone)
+                found_bones = pm.ls(bone.otherType.get(), type='joint')
+                if len(found_bones)>1:
+                    for found_bone in found_bones:
+                        if found_bone != bone:
+                            dest_skin_joints.append(found_bone)
+                            break
+            dest_skin_joints.append(dest_skin)
+            skin_dest = pm.skinCluster(*dest_skin_joints,tsb=True)
+            dest_skin_joints = dest_skin_joints[:-1]
+        else:
+            dest_skin_joints = skin_dest.getInfluence()
+        print dest_skin,'connected to', skin_dest
+        print dest_skin,'influenced by', dest_skin_joints
+        kwargs['ds'] = skin_dest.name()
+        #pm.copySkinWeights(**kwargs)
+        #skin_dest.setSkinMethod(skin.getSkinMethod())
         print '{} successfully copy to {}'.format(source_skin, skin_dest), '\n', "_"*30
     except AttributeError:
         print '%s cannot copy skin to %s'%(source_skin.name(), dest_skin.name())
@@ -318,6 +309,27 @@ def copy_skin_single(source_skin, dest_skin, addskin=True):
 def connect_joint(bones,boneRoot,**kwargs):
     for bone in bones:
         pm.connectJoint(bone, boneRoot, **kwargs)
+@ul.error_alert
+@ul.do_function_on(mode='hierachy')
+def label_joint(
+    ob,
+    direction_label = {
+        'Left':(1, ['left', 'Left', 'L_', '_L']),
+        'Right':(2, ['right', 'Right', 'R_', '_R'])}):
+    try:
+        ob.attr('type').set(18)
+        for dir, (sideid, name_wc) in direction_label.items():
+            for wc in name_wc:
+                if wc in ob.name():
+                    wildcard = wc
+                    break
+            else:
+                wildcard = ''
+                sideid = 0
+            ob.otherType.set(ob.name().replace(wildcard,''))
+            ob.side.set(sideid)
+    except AttributeError as why:
+        print ob, why
 
 @ul.do_function_on(mode='single')
 def create_roll_joint(oldJoint):

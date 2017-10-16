@@ -81,6 +81,13 @@ def do_function_on(mode='single', type_filter=[], get_selection=True):
                 for ob in object_list:
                     result = func(ob, **kwargs)
                     results.append(result)
+            elif mode is 'hierachy':
+                for ob in object_list:
+                    ob_list = [ob]
+                    ob_list.extend(ob.getChildren(allDescendents=True))
+                    for obchild in ob_list:
+                        result = func(obchild, **kwargs)
+                        results.append(result)
             elif mode is 'double': # do function for first in object_list to affect last
                 if len(object_list)>1:
                     result = func(sel[0], sel[-1], **kwargs)
@@ -103,7 +110,7 @@ def do_function_on(mode='single', type_filter=[], get_selection=True):
                         results.append(result)
                 else:
                     pm.warning('Select affect objects then target object')
-            elif mode is 'doubleType':
+            elif mode is 'doubleType': # like 'last' mode but last object must be a different type from other
                 if len(object_list) > 1:
                     object_type2 = pm.ls(object_list,
                                             type=type_filter[-1],
@@ -120,6 +127,8 @@ def do_function_on(mode='single', type_filter=[], get_selection=True):
                 else:
                     pm.warning('Select more than 2 object of 2 kind ',
                                 'and input those kind into type_filter keyword')
+            else:
+                pm.error('no mode name %s'%str(mode))
             return results
         return wrapper
     return decorator
@@ -230,9 +239,11 @@ def get_skin_cluster(ob):
                 if try_get_skinCluster:
                     return try_get_skinCluster[0]
                 else:
-                    pm.error('Object have no skin bind')
+                    msg = '{} have no skin bind'.format(ob)
+                    return pm.error(msg)
     except:
-        pm.error('Cannot get skinCluster from object')
+        msg = 'Cannot get skinCluster from {}'.format(ob)
+        return pm.error(msg)
 
 def reset_floating_window():
     '''reset floating window position'''
