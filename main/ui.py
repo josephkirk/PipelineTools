@@ -112,8 +112,10 @@ class SendCurrentFile(object):
                                     self.elements['extras'][label] = checkBox(label=label,value=False)
                                 self.elements['extras']['psd'].setValue(True)
                         with frameLayout(label='"to" folder number'):
-                            with rowColumnLayout():
-                                text(label='number:')
+                            with rowColumnLayout(numberOfColumns=2):
+                                text(label='Suffix:')
+                                self.elements['suffix'] = textField(text='_vn')
+                                text(label='Number:')
                                 self.elements['version'] = intField(value=1, min=1)
                         button(label="Send", c=Callback(self.send))
         #self.window().setResizeToFitChildren(True)
@@ -126,7 +128,10 @@ class SendCurrentFile(object):
                     if subvalue.getValue():
                         self.results[key].append(subkey)
             else:
-                self.results[key] = value.getValue()
+                try:
+                    self.results[key] = value.getValue()
+                except:
+                    self.results[key] = value.getText()
         return self.results
     def send(self, *args, **kwargs):
         kwargs = self.get_value()
