@@ -612,7 +612,7 @@ def getInfo():
             continue
         print ("-"*100+"\n")*2
 
-def send_current_file(scene=True, lastest=True, render=False, tex=True, extras=['psd','uv', 'zbr', 'pattern'], version=1, verbose=True):
+def send_current_file(scene=True,suffix='_vn', lastest=True, render=False, tex=True, extras=['psd','uv', 'zbr', 'pattern'], version=1, verbose=True):
     src = pm.sceneName()
     scene_src = src.dirname()
     status = []
@@ -630,7 +630,7 @@ def send_current_file(scene=True, lastest=True, render=False, tex=True, extras=[
             if lastest:
                 src = lastestfile
                 status.append('send latest file')
-            dest = scene_dest.__div__(src.basename().replace(src.ext,'_vn%s'%src.ext))
+            dest = scene_dest.__div__(src.basename().replace(src.ext,'{}{}'.format(suffix, src.ext)))
             checkDir(dest)
             pm.sysFile(src, copy=dest)
             status.append("%s copy to %s" % (src,dest))
