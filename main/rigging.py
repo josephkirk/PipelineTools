@@ -9,7 +9,7 @@ All code written by me unless specify
 
 import pymel.core as pm
 import utilities as ul
-from ..baseclass import rigging as rc
+from ..baseclass import rig as rc
 import string
 
 ###Rigging Function
@@ -313,21 +313,29 @@ def connect_joint(bones,boneRoot,**kwargs):
 @ul.do_function_on(mode='hierachy')
 def label_joint(
     ob,
+    remove_prefixes = ['CH_'],
     direction_label = {
         'Left':(1, ['left', 'Left', 'L_', '_L']),
         'Right':(2, ['right', 'Right', 'R_', '_R'])}):
     try:
         ob.attr('type').set(18)
-        for dir, (sideid, name_wc) in direction_label.items():
+        wildcard = ''
+        sideid = 0
+        for dir, (side_id, name_wc) in direction_label.items():
             for wc in name_wc:
                 if wc in ob.name():
                     wildcard = wc
+                    sideid = side_id
                     break
-            else:
-                wildcard = ''
-                sideid = 0
-            ob.otherType.set(ob.name().replace(wildcard,''))
-            ob.side.set(sideid)
+            break
+        print wildcard
+        label_name = ob.name().replace(wildcard,'')
+        if remove_prefixes:
+            for prefix in remove_prefixes:
+                label_name = label_name.replace(prefix,'')
+        ob.otherType.set(label_name)
+        ob.side.set(sideid)
+        print 'set {} joint label to {}'.format(ob,label_name)
     except AttributeError as why:
         print ob, why
 
