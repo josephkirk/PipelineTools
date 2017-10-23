@@ -330,6 +330,8 @@ def label_joint(
             break
         print wildcard
         label_name = ob.name().replace(wildcard,'')
+        if '|' in label_name:
+            label_name = label_name.split('|')[-1]
         if remove_prefixes:
             for prefix in remove_prefixes:
                 label_name = label_name.replace(prefix,'')
