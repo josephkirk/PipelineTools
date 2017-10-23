@@ -444,7 +444,7 @@ def snap_eye_root_ctl():
     #pm.delete('eyeRoot_ctlShape', s=True)
     pm.select(ob,add=True)
     ul.parent_shape()
-    
+
 @ul.error_alert
 def connect_eye_attr():
     '''
@@ -466,7 +466,9 @@ def connect_eye_attr():
         mul1.output >> mul2.input2
         eye_bone.rotate >> mul2.input1
         mul2.output >> eyelid_bone.rotate
-        eye_ctl.scale >> eye_endbone.scale
+        for satr in ['sx','sy','sz']:
+            eye_endbone.attr(satr).set(eye_ctl.scaleX)
+
 @ul.error_alert
 def parent_ctl_to_head():
     '''
