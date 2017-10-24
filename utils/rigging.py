@@ -323,11 +323,13 @@ def label_joint(
         sideid = 0
         for dir, (side_id, name_wc) in direction_label.items():
             for wc in name_wc:
+                print wc, ob.name()
                 if wc in ob.name():
                     wildcard = wc
                     sideid = side_id
                     break
-            break
+            if wildcard:
+                break
         print wildcard
         label_name = ob.name().replace(wildcard,'')
         if '|' in label_name:
