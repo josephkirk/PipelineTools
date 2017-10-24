@@ -1,7 +1,5 @@
-from PipelineTools.main import utilities
-from PipelineTools.main import rigging
+from PipelineTools.utils import utilities
+from PipelineTools.utils import rigging
 from PipelineTools.main import main
-from PipelineTools.customclass import rigging as rigclass
-from PipelineTools.customclass import asset
-
+from PipelineTools import baseclass
 print 'all modules ok'
