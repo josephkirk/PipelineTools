@@ -8,7 +8,7 @@ All code written by me unless specify
 """
 
 import pymel.core as pm
-from ..utils import utilities as ul
+from ..utils import general as ul
 import string
 reload(ul)
 
