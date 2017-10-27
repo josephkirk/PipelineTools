@@ -1,17 +1,9 @@
-from PipelineTools.dependency.Red9_core import Red9_Meta as r9Meta
+from PipelineTools.packages import metadata
 import maya.cmds as cmds
 import os
 #print os.getpid()
 import pymel.core as pm
-try:
-    networks = pm.ls(type=pm.nt.Network)
-    networks.extend(pm.selected())
-    for networknode in networks: 
-        pm.lockNode(networknode, lock=False)
-        pm.delete(networknode)
-except:
-    pass
-class FacialRig(r9Meta.MetaRig):
+class FacialRig(metadata.MetaRig):
     '''
     Example custom mRig class inheriting from MetaRig
     '''
@@ -43,10 +35,19 @@ class FacialRig(r9Meta.MetaRig):
         self.addAttr('TongueCtl','')
         self.addAttr('JawCtl','')
 #r9Meta.registerMClassInheritanceMapping()
-myRigmetaGp = pm.nt.Transform(name='facialGP')
-myRigmeta = FacialRig(myRigmetaGp.name())
-myRigmeta.CharacterName='KG'
-#myRigmeta.addRigCtrl(pm.selected()[0],'new')
-#pm.select(myRigmeta)
-print myRigmeta
-#pm.delete(myRigmeta)
+if __name__ == 'main':
+    try:
+        networks = pm.ls(type=pm.nt.Network)
+        networks.extend(pm.selected())
+        for networknode in networks: 
+            pm.lockNode(networknode, lock=False)
+            pm.delete(networknode)
+    except:
+        pass
+    myRigmetaGp = pm.nt.Transform(name='facialGP')
+    myRigmeta = FacialRig(myRigmetaGp.name())
+    myRigmeta.CharacterName='KG'
+    #myRigmeta.addRigCtrl(pm.selected()[0],'new')
+    #pm.select(myRigmeta)
+    print myRigmeta
+    #pm.delete(myRigmeta)

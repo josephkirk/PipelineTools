@@ -13,8 +13,8 @@ import maya.cmds as cm
 import maya.mel as mm
 import os
 import shutil
-from ..utils import utilities as ul
-from ..utils import rigging as rig
+from ..core.utils import general as ul
+from ..core.utils import rigging as rig
 from datetime import date
 reload(ul)
 
