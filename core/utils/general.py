@@ -16,7 +16,7 @@ import shutil
 import os
 import random as rand
 from ..baseclass import asset
-from functools import wraps
+from functools import wraps, partial
 from time import sleep, time
 #reload(ac)
 
@@ -33,40 +33,47 @@ def timeit(func):
         return result
     return wrapper
 
-def error_alert(func): 
-    """print Error if function fail"""
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        try:
-            result = func(*args, **kwargs)
-            return result
-        except (IOError, OSError) as why:
-            msg = func.__name__+ "create error:\n" + why
-            print msg
-            return msg
-        except:
-            msg = func.__name__+ "error"
-            raise
-            pass
-    return wrapper
+def error_alert(message=''):
+    def decorator(func):
+        """print Error if function fail"""
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            try:
+                result = func(*args, **kwargs)
+                return result
+            except (IOError, OSError, pm.MayaNodeError, pm.MayaAttributeError) as why:
+                msg = [func.__name__+ "create Error:"]
+                for cause in why:
+                    msg.append(why)    
+                msg = '\n'.join(msg)
+                pm.displayError(msg)
+                return msg
+            except:
+                msg = '{} create Error:\n{}'.format(func.__name__,message)
+                pm.displayError(msg)
+                return msg
+        return wrapper
+    return decorator
 
-def do_function_on(mode='single', type_filter=[], get_selection=True): 
+def do_function_on(mode='single', type_filter=[], get_selection=True, return_list=True): 
     def decorator(func):
         """wrap a function to operate on select object or object name string according to mode
                 mode: single, double, set, singlelast, last, doubleType"""
         @wraps(func)
         def wrapper(*args, **kwargs):
+            ########
+            #Extend Arguments with selection object
+            ########
             sel = []
             if get_selection:
                 sel.extend(pm.selected())
-            #pm.select(cl=True)
+            pm.select(cl=True)
             for arg in args:
                 if any([isinstance(arg,t) for t in [list, tuple, set]]):
                     arg = list(arg)
                     sel.extend(arg)
                 else:
                     sel.append(arg)
-            #print args_list
             object_list = []
             for ob in sel:
                 try:
@@ -76,62 +83,70 @@ def do_function_on(mode='single', type_filter=[], get_selection=True):
                 if ob not in object_list:
                     object_list.append(ob)
             if not object_list:
-                pm.error('no object to operate on')
+                pm.displayError('no object to operate on')
                 return
-            results = []
-            if mode is 'single': # do function for every object in object_list
+
+            ##########
+            #Define function mode
+            ##########
+            def do_single(): # do function for every object in object_list
                 for ob in object_list:
-                    result = func(ob, **kwargs)
-                    results.append(result)
-            elif mode is 'hierachy':
+                    yield func(ob, **kwargs)
+
+            def do_hierachy(): # do function for every object and childs in object_list
                 for ob in object_list:
                     ob_list = [ob]
                     ob_list.extend(ob.getChildren(allDescendents=True))
                     for obchild in ob_list:
-                        result = func(obchild, **kwargs)
-                        results.append(result)
-            elif mode is 'double': # do function for first in object_list to affect last
+                        yield func(obchild, **kwargs)
+
+            def do_double(): # do function for first in object_list to affect last
                 if len(object_list)>1:
-                    result = func(sel[0], sel[-1], **kwargs)
-                    results.append(result)
-                else:
-                    pm.warning('Select two objects')
-            elif mode is 'sets': # do function directly to object_list
-                result = func(object_list, **kwargs)
-                results.append(result)
-            elif 'last' in mode: # set last object in object_list to affect others
+                    yield func(sel[0], sel[-1], **kwargs)
+
+            def do_set(): # do function directly to object_list
+                return func(object_list, **kwargs)
+
+            def do_last(singlelast=False): # set last object in object_list to affect others
                 if len(object_list)>1:
                     op_list = object_list[:-1]
                     target = object_list[-1]
-                    if mode is 'singlelast':
+                    if singlelast is True:
                         for op in op_list:
-                            result = func(op, target, **kwargs)
-                            results.append(result)
+                            yield func(op, target, **kwargs)
                     else:
-                        result = func(op_list, target, **kwargs)
-                        results.append(result)
-                else:
-                    pm.warning('Select affect objects then target object')
-            elif mode is 'doubleType': # like 'last' mode but last object must be a different type from other
+                        yield func(op_list, target, **kwargs)
+
+            def do_double_type(): # like 'last' mode but last object must be a different type from other
                 if len(object_list) > 1:
-                    object_type2 = pm.ls(object_list,
-                                            type=type_filter[-1],
-                                            orderedSelection=True)
+                    object_type2 = pm.ls(
+                        object_list,
+                        type=type_filter[-1],
+                        orderedSelection=True)
                     if object_type2:
                         object_type1 = [
                             object for object in pm.ls(object_list, type=type_filter[:-1])
                             if type(object) != type(object_type2[0])]
-                        result = func(object_type1, object_type2, **kwargs)
-                        results.append(result)
-                    else:
-                        pm.warning('Object type "%s" is not in selection or argument'
-                                    %type_filter[-1])
-                else:
-                    pm.warning('Select more than 2 object of 2 kind ',
-                                'and input those kind into type_filter keyword')
+                        yield func(object_type1, object_type2, **kwargs)
+            ########
+            #Define function mode dict
+            ########
+            function_mode = {
+                'single':do_single,
+                'hierachy':do_hierachy,
+                'double': do_double,
+                'last': do_last,
+                'singlelast': partial(do_last, True),
+                'doubletype': do_double_type
+            }
+            ########
+            #Return function result
+            ########
+            result = function_mode[mode]()
+            if return_list:
+                return list(result)
             else:
-                pm.error('no mode name %s'%str(mode))
-            return results
+                return result
         return wrapper
     return decorator
 

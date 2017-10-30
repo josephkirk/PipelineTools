@@ -11,7 +11,10 @@ import pymel.core as pm
 from ..utils import general as ul
 import string
 reload(ul)
-
+class HairControl(object):
+    pass
+class SecondaryControl(object):
+    pass
 class FacialGuide(object):
     def __init__(self, name, guide_mesh=None, suffix='loc', root_suffix='Gp'):
         self._name = name
@@ -142,7 +145,8 @@ class FacialControl(object):
                 self.node.setParent(self.root)
             self.root.setParent(parent)
         return self.node
-
+    def delete(self):
+        pass
     def create_guide(self, *args, **kwargs):
         self.guide = FacialGuide(self._name, *args, **kwargs)
         return self.guide
@@ -234,7 +238,8 @@ class FacialBone(object):
         return self.offset_bone
 
     def create_control(self, shape=None, parent=None):
-        pass
+        self.get_control()
+        self.control.create()
 
     def is_connected(self):
         if self.control:

@@ -140,7 +140,7 @@ def create_facialguide_ctl():
         pm.error('missing _mdl_facialGuide_head')
     guide_mesh = guide_mesh[0]
     for part,count in facialpart_name.items():
-        facial_bones[part] = rigclass.FacialBone.bones(part)['All']
+        facial_bones[part] = rigclass.FacialBone.getBones(part)['All']
         if len(facial_bones[part]) != count:
             for bone in facial_bones[part]:
                 print bone
@@ -199,7 +199,7 @@ def create_facialguide_ctl():
 def connect_mouth_ctl():
     mouth_part = ['jaw','teeth','tongue']
     for part in mouth_part:
-        bones = rigclass.FacialBone.bones(part)['All']
+        bones = rigclass.FacialBone.getBones(part)['All']
         for bone in bones:
             if bone.offset:
                 if bone.control.node:
@@ -258,9 +258,9 @@ def add_jawdeform_skin():
                 if part:
                     print part
                     if part != 'tongue':
-                        get_bones = [bone for bone in rigclass.FacialBone.bones(part)['All'] if bone.bone and 'End' not in bone.name]
+                        get_bones = [bone for bone in rigclass.FacialBone.getBones(part)['All'] if bone.bone and 'End' not in bone.name]
                     else:
-                        get_bones = [bone for bone in rigclass.FacialBone.bones(part)['All'] if bone.bone and 'Root' not in bone.name]
+                        get_bones = [bone for bone in rigclass.FacialBone.getBones(part)['All'] if bone.bone and 'Root' not in bone.name]
                         get_bones.append(ul.get_node('tongueRoot_bon'))
                     if get_bones:
                         bones.append(get_bones)
