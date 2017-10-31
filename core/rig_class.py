@@ -8,9 +8,11 @@ All code written by me unless specify
 """
 
 import pymel.core as pm
-from ..utils import general as ul
+import general_utils as ul
 import string
-reload(ul)
+from PipelineTools.packages.Red9.core import Red9_Meta as meta
+#reload(ul)
+print meta
 class HairControl(object):
     pass
 class SecondaryControl(object):

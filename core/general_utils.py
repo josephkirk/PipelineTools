@@ -15,7 +15,7 @@ import maya.mel as mm
 import shutil
 import os
 import random as rand
-from ..baseclass import asset
+import asset_class as asset
 from functools import wraps, partial
 from time import sleep, time
 #reload(ac)
@@ -64,6 +64,7 @@ def do_function_on(mode='single', type_filter=[], get_selection=True, return_lis
             ########
             #Extend Arguments with selection object
             ########
+            print args
             sel = []
             if get_selection:
                 sel.extend(pm.selected())

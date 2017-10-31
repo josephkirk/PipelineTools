@@ -11,7 +11,6 @@ import os
 from os import listdir
 from os.path import join, isdir, normpath, isfile, getmtime, abspath, exists
 import pymel.core as pm
-
 #global variable
 projectRoot = pm.workspace.path
 

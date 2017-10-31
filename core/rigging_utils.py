@@ -8,8 +8,8 @@ All code written by me unless specify
 """
 
 import pymel.core as pm
-import general as ul
-from ..baseclass import rig as rc
+import general_utils as ul
+import rig_class as rc
 import string
 
 ###Rigging Function
