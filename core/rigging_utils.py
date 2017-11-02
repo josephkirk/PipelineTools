@@ -13,6 +13,10 @@ import rig_class as rc
 import string
 
 ###Rigging Function
+def toggleChannelHistory(state=False):
+    for ob in pm.ls():
+        ob.isHistoricallyInteresting.set(state)
+
 def deform_normal_off():
     skin_clusters = pm.ls(type='skinCluster')
     if not skin_clusters:

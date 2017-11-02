@@ -10,6 +10,7 @@ import os
 import pymel.core as pm
 import general_utils as ul
 import string
+from pymel.util.enum import Enum
 from PipelineTools.packages.Red9.core import Red9_Meta as meta
 #reload(ul)
 print meta
@@ -243,7 +244,7 @@ class FacialControl(object):
 
     def set_constraint(self):
         if self.guide and self.root:
-            pm.pointConstraint(self.guide, self.root, o=(0,0,0), w=1)
+            self.constraint = pm.pointConstraint(self.guide, self.root, o=(0,0,0), w=1)
 
     def set(self, new_node, rename=True):
         if pm.objExists(new_node):
@@ -391,23 +392,31 @@ class FacialBone(object):
             reset_pos=True)
 
     @classmethod
-    def bones(cls, name,offset_suffix='offset', root_suffix='Gp', suffix='bon', separator='_', directions=['Left','Right','Center','Root']):
-        list_all = pm.ls('*%s*%s*'%(name,suffix), type='transform')
-        print list_all
-        allbone = []
-        for ob in list_all:
-            if root_suffix not in ob.name() and offset_suffix not in ob.name():
-                ob_name = ob.name().split(separator)
-                bone =  cls(ob_name[0], offset_suffix=offset_suffix, suffix=suffix, root_suffix=root_suffix)
-                allbone.append(bone)
-        bones = {}
-        bones['All'] = allbone
-        for direction in directions:
-            bones[direction] = []
-            for bone in allbone:
-                if direction in bone.name:
-                    bones[direction].append(bone)
-        return bones
+    def bones(
+        cls,
+        names = ['eye','cheek','nose','lip'],
+        offset_suffix='offset', root_suffix='Gp',
+        suffix='bon', separator='_',
+        directions=['Left','Right','Center','Root']):
+        '''get all Bone'''
+        # class facialbones(Enum):
+        for name in names:
+            list_all = pm.ls('*%s*%s*'%(name,suffix), type='transform')
+            # print list_all
+            allbone = []
+            for ob in list_all:
+                if root_suffix not in ob.name() and offset_suffix not in ob.name():
+                    ob_name = ob.name().split(separator)
+                    bone =  cls(ob_name[0], offset_suffix=offset_suffix, suffix=suffix, root_suffix=root_suffix)
+                    allbone.append(bone)
+            bones = {}
+            bones['All'] = allbone
+            for direction in directions:
+                bones[direction] = []
+                for bone in allbone:
+                    if direction in bone.name:
+                        bones[direction].append(bone)
+            yield bones
 class FacialEyeRig(object):
     pass
 
