@@ -6,17 +6,103 @@ written by Nguyen Phi Hung 2017
 email: josephkirk.art@gmail.com
 All code written by me unless specify
 """
-
+import os
 import pymel.core as pm
 import general_utils as ul
 import string
 from PipelineTools.packages.Red9.core import Red9_Meta as meta
 #reload(ul)
 print meta
-class HairControl(object):
+class HairRigMeta(meta.MetaRig):
     pass
-class SecondaryControl(object):
+
+class SecondaryRigMeta(meta.MetaRig):
     pass
+class CHRig(object):
+    def __init__(self, name='', hikName='CH'):
+        self.node = meta.MetaHIKCharacterNode(hikName)
+        self.node.setascurrentcharacter()
+        self.node.select()
+        self.hikProperty = self.node.getHIKPropertyStateNode()
+        self.hikControl = self.node.getHIKControlSetNode()
+        # self.character.lockState = False
+        # pm.lockNode(hikName,lock=False)
+        self.node.addAttr('CharacterName', name)
+        self.node.addAttr('BuildBy','{} {}'.format(os.environ.get('COMPUTERNAME'), os.environ.get('USERNAME')))
+        self.node.addAttr('Branch',os.environ.get('USERDOMAIN'))
+        self.node.addAttr('BuildDate',pm.date())
+        self.node.addAttr('FacialRig', attrType='messageSimple')
+        self.node.addAttr('HairRig', attrType='messageSimple')
+        self.node.addAttr('SecondaryRig', attrType='messageSimple')
+
+class FacialRigMeta(meta.MetaRig):
+    '''
+    Facial Rig MetaNode
+    to get this node use pt.rc.meta.getMetaNodes(mClass='FacialRigMeta')
+    '''
+    def __init__(self,*args,**kws):
+        super(FacialRigMeta, self).__init__(*args, **kws) 
+        self.lockState = False
+        self.mSystemRoot = False
+        
+    def __bindData__(self):
+        '''
+        build Attribute
+        '''
+        ###### MetaNode information Attributes
+        self.addAttr('RigType','FacialRig', l=True)
+        self.addAttr('CharacterName','')
+        self.addAttr('BuildBy','{} {}'.format(os.environ.get('COMPUTERNAME'), os.environ.get('USERNAME')), l=True)
+        self.addAttr('Branch',os.environ.get('USERDOMAIN'), l=True)
+        self.addAttr('BuildDate',pm.date(), l=True)
+        ###### Model information Attributes
+        self.addAttr('FaceGp', attrType='messageSimple')
+        self.addAttr('EyeGp', attrType='messageSimple')
+        self.addAttr('FaceRigGp', attrType='messageSimple')
+        self.addAttr('FaceDeformGp', attrType='message')
+        self.addAttr('FacialTargetPath', "")
+        ###### Bone Information Attributes
+        self.addAttr('HeadBone', attrType='messageSimple')
+        self.addAttr('FacialBone', attrType='messageSimple')
+        self.addAttr('EyeBone', attrType='messageSimple')
+        ###### Control Hook
+        # self.addAttr('BlendshapeCtl', attrType='messageSimple')
+        # self.addAttr('FacialCtl', attrType='message')
+        # self.addAttr('EyeCtl', attrType='messageSimple')
+        # self.addAttr('TongueCtl', attrType='messageSimple')
+        # self.addAttr('JawCtl', attrType='messageSimple')
+
+    def connectToPrimary():
+        pass
+
+    def getBlendShapeSystem(self):
+        BS = self.addSupportMetaNode('BlendshapeCtl', nodeName='facial_panel')
+        BS.connectChild('facial_panel','BSPanel')
+        BS.connectChild('brow_ctl','BrowBSControl')
+        BS.connectChild('eye_ctl','EyeBSControl')
+        BS.connectChild('mouth_ctl','EyeBSControl')
+
+    def getProperty(self):
+        #### connect FaceRigGp to facialGp
+        if pm.objExists('facialGp'):
+            self.FaceRigGp = 'facialGp'
+        #### connect facialGroup
+        facialGps = []
+        for gp in ['facial','facialGuide','jawDeform','eyeDeform','orig']:
+            if pm.objExists(gp):
+                facialGps.append(gp)
+        self.FaceDeformGp = facialGps
+        #### get facialTarget External
+        scenedir = pm.sceneName().dirname()
+        dir = scenedir.parent
+        bsdir = pm.util.common.path(dir+'/facialtarget/facialtarget.mb')
+        if bsdir.isfile():
+            self.FacialTargetPath = bsdir.replace(pm.workspace.path+'/', '')
+
+    def build(self):
+        pass
+
+
 class FacialGuide(object):
     def __init__(self, name, guide_mesh=None, suffix='loc', root_suffix='Gp'):
         self._name = name
@@ -147,25 +233,31 @@ class FacialControl(object):
                 self.node.setParent(self.root)
             self.root.setParent(parent)
         return self.node
+
     def delete(self):
         pass
+
     def create_guide(self, *args, **kwargs):
         self.guide = FacialGuide(self._name, *args, **kwargs)
         return self.guide
+
     def set_constraint(self):
         if self.guide and self.root:
             pm.pointConstraint(self.guide, self.root, o=(0,0,0), w=1)
+
     def set(self, new_node, rename=True):
         if pm.objExists(new_node):
             self.node = pm.PyNode(new_node)
             if rename:
                 pm.rename(new_node, self.name)
             self._get()
+
     def get_output(self):
         results = {}
         for atr in self.attr_connect_list:
             results[atr] = self.node.attr(atr).outputs()
         return results
+
     def _get(self):
         self.node = ul.get_node(self.name)
         self.offset = ul.get_node(self.offset_name)
@@ -262,8 +354,7 @@ class FacialBone(object):
             if self.offset:
                 pm.matchTransform(self.offset,self.bone,pivots=True)    
             pm.matchTransform(self.control.node,self.bone,pivots=True)
-            for atr in self.connect_attrs:
-                self.control.node.attr(atr) >> self.bone.attr(atr)
+            self.control.node.translate >> self.bone.translate
         else:
             'object {} or {} is not exists'.format(self.bone, self.control.node)
 
@@ -407,3 +498,5 @@ class FacialBsRig(object):
             for bs_target in bs_targets:
                 print '%s.%s >> %s.%s' %(ctl_name,bs_target,self.facebs_name,bs_target)
         #print bs_controller
+meta.registerMClassInheritanceMapping()
+# meta.registerMClassNodeMapping(nodeTypes='transform')
