@@ -16,6 +16,7 @@ import shutil
 import os
 import random as rand
 import asset_class as asset
+from pymel.util.enum import Enum
 from functools import wraps, partial
 from time import sleep, time
 #reload(ac)
@@ -64,7 +65,6 @@ def do_function_on(mode='single', type_filter=[], get_selection=True, return_lis
             ########
             #Extend Arguments with selection object
             ########
-            print args
             sel = []
             if get_selection:
                 sel.extend(pm.selected())
@@ -86,7 +86,7 @@ def do_function_on(mode='single', type_filter=[], get_selection=True, return_lis
             if not object_list:
                 pm.displayError('no object to operate on')
                 return
-
+            print object_list
             ##########
             #Define function mode
             ##########

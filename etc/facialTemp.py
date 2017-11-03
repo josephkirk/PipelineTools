@@ -534,6 +534,7 @@ def create_facial_panel(offset=6.5):
     pm.headsUpMessage("Parent Constraint facial_panelGp to head bone", time=0.2)
     pm.refresh()
     sleep(0.1)
+
 def create_eye_rig():
     '''
         step to create eye rig
