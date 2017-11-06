@@ -27,8 +27,7 @@ def createOffsetJoint(jointRoot,child=False, suffix='offset_bon'):
         offsetJoint = pm.duplicate(joint, name=newname, po=True)[0]
         offsetJoint.drawStyle.set(2)
         oldParent = joint.getParent()
-        print oldParent
-        offsetJoint.setParent(oldParent)
+        #pm.parent(offsetJoint, oldParent)
         joint.setParent(offsetJoint)
         #pm.makeIdentity(joint,apply=True)
         # yield offsetJoint
