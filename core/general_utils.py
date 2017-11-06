@@ -152,6 +152,14 @@ def do_function_on(mode='single', type_filter=[], get_selection=True, return_lis
     return decorator
 
 ###misc function
+def listJoin(*args):
+    newList = []
+    for arg in args:
+        if type(arg) is not list:
+            arg = list(arg)
+        newList.extend(arg)
+    return newList
+
 def asserttype(ob, types=[]):
     if type:
         assert(any([isinstance(ob, type) for type in types])),"Object %s does not match any in type:%s"%(ob.name(), ",".join(type)) 
