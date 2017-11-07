@@ -19,6 +19,11 @@ import asset_class as asset
 from pymel.util.enum import Enum
 from functools import wraps, partial
 from time import sleep, time
+import logging
+logging.basicConfig()
+log = logging.getLogger(__name__)
+log.setLevel(logging.INFO)
+
 #reload(ac)
 
 #global var
@@ -30,94 +35,117 @@ def timeit(func):
     def wrapper(*args, **kwargs):
         t= time()
         result = func(*args, **kwargs)
-        print(func.__name__,'took: ',time()-t)
+        log.debug(func.__name__,'took: ',time()-t)
         return result
     return wrapper
 
-def error_alert(message=''):
-    def decorator(func):
-        """print Error if function fail"""
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            try:
-                result = func(*args, **kwargs)
-                return result
-            except (IOError, OSError, pm.MayaNodeError, pm.MayaAttributeError) as why:
-                msg = [func.__name__+ "create Error:"]
-                for cause in why:
-                    msg.append(why)    
-                msg = '\n'.join(msg)
-                pm.displayError(msg)
-                return msg
-            except:
-                msg = '{} create Error:\n{}'.format(func.__name__,message)
-                pm.displayError(msg)
-                return msg
-        return wrapper
-    return decorator
+def error_alert(func):
+    """print Error if function fail"""
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            t=time()
+            result = func(*args, **kwargs)
+            log.info('{} OK and return {}, took: {}'.format(func.__name__, result, time()-t))
+            return result
+        except (IOError, OSError, pm.MayaNodeError, pm.MayaAttributeError, AssertionError, TypeError,AttributeError) as why:
+            msg = []
+            msg.append(''.join([
+                func.__name__,':',
+                '\nargs:\n',','.join([str(a) for a in args]),
+                '\nkwargs:\n',','.join(['{}={}'.format(key,value) for key,value in kwargs.items()]),
+                'create Error:']))
+            for cause in why:
+                msg.append(str(why))    
+            msg = '\n'.join(msg)
+            log.error(msg)
+    return wrapper
 
-def do_function_on(mode='single', type_filter=[], get_selection=True, return_list=True): 
+
+def do_function_on(mode='single', type_filter=[], return_list=True):
     def decorator(func):
         """wrap a function to operate on select object or object name string according to mode
                 mode: single, double, set, singlelast, last, doubleType"""
         @wraps(func)
         def wrapper(*args, **kwargs):
+            if ((kwargs.has_key('clearSelect') and kwargs['clearSelect'] == True) or
+                (kwargs.has_key('cl') and kwargs['cl'] == True)):
+                pm.select(cl=True)
+                try:
+                    del kwargs['clearSelect']
+                except:
+                    pass
+                try:
+                    del kwargs['cl']
+                except:
+                    pass
+            nargs = []
+            for arg in args:
+                if any([isinstance(arg,t) for t in [list, tuple, set]]):
+                    nargs.extend(list(arg))
+                else:
+                    nargs.append(arg)
+            args=nargs
             ########
             #Extend Arguments with selection object
             ########
-            sel = []
-            if get_selection:
-                sel.extend(pm.selected())
-            pm.select(cl=True)
+            sel=[]
             for arg in args:
-                if any([isinstance(arg,t) for t in [list, tuple, set]]):
-                    arg = list(arg)
-                    sel.extend(arg)
-                else:
+                if isinstance(arg,str):
+                    arg = get_node(arg)
+                if isinstance(arg,pm.PyNode):
                     sel.append(arg)
+                    args.pop()
+            sel.extend(pm.selected())
             object_list = []
             for ob in sel:
                 try:
-                    ob = pm.ls(ob, type=type_filter)[0]
+                    if type_filter:
+                        assert any([isinstance(ob,typ) for type in type_filter]), '{} not match type {}'.format(ob,str(type_filter))
                 except:
+                    log.debug('{} not match type {}'.format(ob,str(type_filter)))
                     continue 
                 if ob not in object_list:
-                    object_list.append(ob)
+                    object_list.append(ob) ### search if arg is valid object
             if not object_list:
-                pm.displayError('no object to operate on')
+                log.error('no object select')
                 return
-            print object_list
+            #print object_list
+            #print arg
             ##########
             #Define function mode
             ##########
+            #@error_alert
             def do_single(): # do function for every object in object_list
+                #print object_list
                 for ob in object_list:
-                    yield func(ob, **kwargs)
-
+                    print ob
+                    yield func(ob,*args, **kwargs)
+            #@error_alert
             def do_hierachy(): # do function for every object and childs in object_list
                 for ob in object_list:
                     ob_list = [ob]
                     ob_list.extend(ob.getChildren(allDescendents=True))
                     for obchild in ob_list:
-                        yield func(obchild, **kwargs)
-
+                        yield func(obchild,*args, **kwargs)
+            #@error_alert
             def do_double(): # do function for first in object_list to affect last
                 if len(object_list)>1:
-                    yield func(sel[0], sel[-1], **kwargs)
-
+                    yield func(sel[0], sel[-1],*args, **kwargs)
+            #@error_alert
             def do_set(): # do function directly to object_list
-                return func(object_list, **kwargs)
-
+                return func(object_list,*args, **kwargs)
+            #@error_alert
             def do_last(singlelast=False): # set last object in object_list to affect others
                 if len(object_list)>1:
                     op_list = object_list[:-1]
                     target = object_list[-1]
                     if singlelast is True:
                         for op in op_list:
-                            yield func(op, target, **kwargs)
+                            yield func(op, target,*args, **kwargs)
                     else:
-                        yield func(op_list, target, **kwargs)
-
+                        yield func(op_list, target,*args, **kwargs)
+            #@error_alert
             def do_double_type(): # like 'last' mode but last object must be a different type from other
                 if len(object_list) > 1:
                     object_type2 = pm.ls(
@@ -128,12 +156,13 @@ def do_function_on(mode='single', type_filter=[], get_selection=True, return_lis
                         object_type1 = [
                             object for object in pm.ls(object_list, type=type_filter[:-1])
                             if type(object) != type(object_type2[0])]
-                        yield func(object_type1, object_type2, **kwargs)
+                        yield func(object_type1, object_type2,*args, **kwargs)
             ########
             #Define function mode dict
             ########
             function_mode = {
                 'single':do_single,
+                'set':do_set,
                 'hierachy':do_hierachy,
                 'double': do_double,
                 'last': do_last,
@@ -144,132 +173,35 @@ def do_function_on(mode='single', type_filter=[], get_selection=True, return_lis
             #Return function result
             ########
             result = function_mode[mode]()
-            if return_list:
-                return list(result)
+            if return_list and result:
+                return [r for r in list(result) if r!=None]
             else:
                 return result
         return wrapper
     return decorator
 
 ###misc function
-def listJoin(*args):
+def list_join(*args):
     newList = []
     for arg in args:
         if type(arg) is not list:
             arg = list(arg)
         newList.extend(arg)
     return newList
+@error_alert
+def assert_key(key,message, **kws):
+    assert kws.has_key, message
 
-def asserttype(ob, types=[]):
-    if type:
-        assert(any([isinstance(ob, type) for type in types])),"Object %s does not match any in type:%s"%(ob.name(), ",".join(type)) 
+@error_alert
+def assert_type(ob, typelist=[]):
+    assert(any([isinstance(ob, typ) for typ in typelist])),"Object %s does not match any in type:%s"%(ob, ",".join([str(t) for t in typelist]))
+    #return ''.join([ob,'match one of:',','.join(types)])
+
 ####misc
 def offcastshadow(wc='*eyeref*'):
     ob_list = pm.ls(wc,s=True)
     for ob in ob_list:
         eye.castsShadows.set(False)
-#@do_function_on('singlelast')
-def get_closest_component(ob, mesh_node, uv=True, pos=False):
-    ob_pos = ob.getTranslation(space='world')
-    closest_info = get_closest_info(ob,mesh_node)
-    closest_vert_pos = closest_info['Closest Vertex'].getPosition(space='world')
-    closest_components = [closest_vert_pos, closest_info['Closest Mid Edge']]
-    distance_cmp = [ob_pos.distanceTo(cp) for cp in closest_components]
-    if distance_cmp[0] < distance_cmp[1]:
-        result = closest_info['Closest Vertex']
-        if pos:
-            result = result.getPosition(space='world')
-            uv = False
-        if uv:
-            vert_uv = pm.polyListComponentConversion(result,fv=True, tuv=True)
-            result = pm.polyEditUV(vert_uv,q=True)
-    else:
-        result = closest_info['Closest Edge']
-        if pos:
-            result = closest_info['Closest Mid Edge']
-            uv = False
-        if uv:
-            edge_uv = pm.polyListComponentConversion(result,fe=True, tuv=True)
-            edge_uv_coor = pm.polyEditUV(edge_uv,q=True)
-            mid_edge_uv = ((edge_uv_coor[0] + edge_uv_coor[2])/2,(edge_uv_coor[1] + edge_uv_coor[3])/2)
-            result = mid_edge_uv
-    return result
-
-def get_closest_info(ob, mesh_node):
-    if not isinstance(ob, pm.nt.Transform):
-        return
-    ob_pos = ob.getTranslation(space='world')
-    mesh_node = get_shape(pm.PyNode(mesh_node))
-    temp_node = pm.nt.ClosestPointOnMesh()
-    temp_loc = pm.spaceLocator(p=ob_pos)
-    mesh_node.worldMesh[0] >> temp_node.inMesh
-    temp_loc.worldPosition[0] >> temp_node.inPosition
-    temp_loc.worldMatrix[0] >> temp_node.inputMatrix
-    #temp_node.inPosition.set(ob_pos)
-    results = {}
-    results['Closest Vertex'] = mesh_node.vtx[temp_node.closestVertexIndex.get()]
-    results['Closest Face'] = mesh_node.f[temp_node.closestFaceIndex.get()]
-    edges = results['Closest Face'].getEdges()
-    mid_point_list = [
-        (mesh_node.e[edge],
-        (mesh_node.e[edge].getPoint(0, space='world')+mesh_node.e[edge].getPoint(1, space='world'))/2)
-        for edge in edges]
-    
-    distance = [(mid_point[0], mid_point[1], ob_pos.distanceTo(mid_point[1])) for mid_point in mid_point_list]
-    distance.sort(key=lambda d:d[2])
-    results['Closest Edge'] = distance[0][0]
-    results['Closest Mid Edge'] = distance[0][1]
-    results['Closest Point'] = mesh_node.getClosestPoint(pm.dt.Point(ob_pos), space='world')[0]
-    #closest_uv = mesh_node.getUVAtPoint(results['Closest Point'], space='world', uvSet=mesh_node.getCurrentUVSetName())
-    #print closest_uv
-    #results['Closest UV'] = closest_uv
-    results['Closest UV'] = (temp_node.parameterU.get(), temp_node.parameterV.get())
-    pm.delete([temp_node,temp_loc])
-    return results
-
-def get_node(node_name, unique_only=True, type_filter=None, verpose=False):
-    msg=[]
-    try:
-        if unique_only:
-            assert(pm.uniqueObjExists(node_name)),"object name %s is not unique or not exist"%node_name
-            node = pm.PyNode(node_name)
-            if type_filter:
-                assert(isinstance(node, type_filter)),'node %s with %s does not exist' %(node_name,type_filter)
-            msg.append("%s exists, is type %s" % (node, type(node)))
-            return node
-        else:
-            node = pm.ls('*%s*'%node_name, type=type_filter) 
-            msg.append("found %d object:" % (len(node)))
-            for n in node:
-                msg.append(node.name())
-        return node
-    except pm.MayaNodeError:
-        msg.append('node %s does not exist' % node_name)
-    except pm.MayaAttributeError:
-        msg.append('Attibute %s does not exist' % node_name)
-    except AssertionError as why:
-        msg.append(why)
-    if verpose:
-        print '/n'.join(msg)
-
-def get_skin_cluster(ob):
-    '''return skin cluster from ob, if cannot find raise error'''
-    ob_shape = get_shape(ob)
-    try:
-        shape_connections = ob_shape.listConnections(type=['skinCluster', 'objectSet'])
-        for connection in shape_connections:
-            if 'skinCluster' in connection.name():
-                if isinstance(connection, pm.nt.SkinCluster):
-                    return connection
-                try_get_skinCluster = connection.listConnections(type='skinCluster')
-                if try_get_skinCluster:
-                    return try_get_skinCluster[0]
-                else:
-                    msg = '{} have no skin bind'.format(ob)
-                    return pm.error(msg)
-    except:
-        msg = 'Cannot get skinCluster from {}'.format(ob)
-        return pm.error(msg)
 
 def clean_userprefs(path_to_userprefs=prefpath, searchlines=[1000, 3000]):
     '''
@@ -391,6 +323,112 @@ def reset_floating_window():
 
 def add_suffix(ob, suff="_skinDeform"):
     pm.rename(ob, ob.name()+str(suff))
+
+#### utility function
+@error_alert
+def get_closest_component(ob, mesh_node, uv=True, pos=False):
+    ob_pos = ob.getTranslation(space='world')
+    closest_info = get_closest_info(ob,mesh_node)
+    closest_vert_pos = closest_info['Closest Vertex'].getPosition(space='world')
+    closest_components = [closest_vert_pos, closest_info['Closest Mid Edge']]
+    distance_cmp = [ob_pos.distanceTo(cp) for cp in closest_components]
+    if distance_cmp[0] < distance_cmp[1]:
+        result = closest_info['Closest Vertex']
+        if pos:
+            result = result.getPosition(space='world')
+            uv = False
+        if uv:
+            vert_uv = pm.polyListComponentConversion(result,fv=True, tuv=True)
+            result = pm.polyEditUV(vert_uv,q=True)
+    else:
+        result = closest_info['Closest Edge']
+        if pos:
+            result = closest_info['Closest Mid Edge']
+            uv = False
+        if uv:
+            edge_uv = pm.polyListComponentConversion(result,fe=True, tuv=True)
+            edge_uv_coor = pm.polyEditUV(edge_uv,q=True)
+            mid_edge_uv = ((edge_uv_coor[0] + edge_uv_coor[2])/2,(edge_uv_coor[1] + edge_uv_coor[3])/2)
+            result = mid_edge_uv
+    return result
+@error_alert
+def get_closest_info(ob, mesh_node):
+    if not isinstance(ob, pm.nt.Transform):
+        return
+    ob_pos = ob.getTranslation(space='world')
+    mesh_node = get_shape(pm.PyNode(mesh_node))
+    temp_node = pm.nt.ClosestPointOnMesh()
+    temp_loc = pm.spaceLocator(p=ob_pos)
+    mesh_node.worldMesh[0] >> temp_node.inMesh
+    temp_loc.worldPosition[0] >> temp_node.inPosition
+    temp_loc.worldMatrix[0] >> temp_node.inputMatrix
+    #temp_node.inPosition.set(ob_pos)
+    results = {}
+    results['Closest Vertex'] = mesh_node.vtx[temp_node.closestVertexIndex.get()]
+    results['Closest Face'] = mesh_node.f[temp_node.closestFaceIndex.get()]
+    edges = results['Closest Face'].getEdges()
+    mid_point_list = [
+        (mesh_node.e[edge],
+        (mesh_node.e[edge].getPoint(0, space='world')+mesh_node.e[edge].getPoint(1, space='world'))/2)
+        for edge in edges]
+    
+    distance = [(mid_point[0], mid_point[1], ob_pos.distanceTo(mid_point[1])) for mid_point in mid_point_list]
+    distance.sort(key=lambda d:d[2])
+    results['Closest Edge'] = distance[0][0]
+    results['Closest Mid Edge'] = distance[0][1]
+    results['Closest Point'] = mesh_node.getClosestPoint(pm.dt.Point(ob_pos), space='world')[0]
+    #closest_uv = mesh_node.getUVAtPoint(results['Closest Point'], space='world', uvSet=mesh_node.getCurrentUVSetName())
+    #print closest_uv
+    #results['Closest UV'] = closest_uv
+    results['Closest UV'] = (temp_node.parameterU.get(), temp_node.parameterV.get())
+    pm.delete([temp_node,temp_loc])
+    return results
+
+@error_alert
+def get_node(node_name, unique_only=True, type_filter=None, verpose=False):
+    msg=[]
+    try:
+        if unique_only:
+            assert(pm.uniqueObjExists(node_name)),"object name %s is not unique or not exist"%node_name
+            node = pm.PyNode(node_name)
+            if type_filter:
+                assert(isinstance(node, type_filter)),'node %s with %s does not exist' %(node_name,type_filter)
+            msg.append("%s exists, is type %s" % (node, type(node)))
+            return node
+        else:
+            node = pm.ls('*%s*'%node_name, type=type_filter) 
+            msg.append("found %d object:" % (len(node)))
+            for n in node:
+                msg.append(node.name())
+        return node
+    except pm.MayaNodeError:
+        msg.append('node %s does not exist' % node_name)
+    except pm.MayaAttributeError:
+        msg.append('Attibute %s does not exist' % node_name)
+    except AssertionError as why:
+        msg.append(why)
+    if verpose:
+        print '/n'.join(msg)
+
+@error_alert
+def get_skin_cluster(ob):
+    '''return skin cluster from ob, if cannot find raise error'''
+    ob_shape = get_shape(ob)
+    try:
+        shape_connections = ob_shape.listConnections(type=['skinCluster', 'objectSet'])
+        for connection in shape_connections:
+            if 'skinCluster' in connection.name():
+                if isinstance(connection, pm.nt.SkinCluster):
+                    return connection
+                try_get_skinCluster = connection.listConnections(type='skinCluster')
+                if try_get_skinCluster:
+                    return try_get_skinCluster[0]
+                else:
+                    msg = '{} have no skin bind'.format(ob)
+                    return pm.error(msg)
+    except:
+        msg = 'Cannot get skinCluster from {}'.format(ob)
+        return pm.error(msg)
 
 def convert_component(components_list, toVertex=True, toEdge=False, toFace=False): 
     test_type = [o for o in components_list if type(o) is pm.nt.Transform]
@@ -593,6 +631,7 @@ def exportCam():
         cc = 'FBXExport -f "%s" -s' % filePath
         mm.eval(cc)
 
+@error_alert
 @do_function_on(mode='double')
 def parent_shape(src, target, delete_src=True, delete_oldShape=True):
     '''parent shape from source to target'''
@@ -601,6 +640,7 @@ def parent_shape(src, target, delete_src=True, delete_oldShape=True):
     pm.delete(src.listRelatives(type='transform'))
     pm.refresh()
     pm.parent(src.getShape(), target, r=True, s=True)
+    print target
     if delete_src:
         pm.delete(src)
     if delete_oldShape:
@@ -732,19 +772,12 @@ def rotateUV():
         pm.polyEditUV(rot=1,a=180,pu=0.5,pv=0.5)
     pm.select(sel,r=1)
 
-def getInfo():
-    sel= pm.selected()[0]
-    if not sel:
-        return
-    print type(sel)
-    for a in dir(sel):
-        print str(a)+": "
-        try:
-            print eval('sel.%s.__module__\n' % a)
-            #print eval('sel.%s.__method__\n' % a)
-            print eval('sel.%s.__doc__\n' % a)
-        except:
-            continue
+@do_function_on()
+@error_alert
+def getInfo(ob):
+    print ob.name()
+    for mod in dir(ob):
+        print mod
         print ("-"*100+"\n")*2
 
 def send_current_file(scene=True,suffix='_vn', lastest=True, render=False, tex=True, extras=['psd','uv', 'zbr', 'pattern'], version=1, verbose=True):

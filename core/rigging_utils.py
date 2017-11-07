@@ -57,6 +57,8 @@ def connectTransform(ob, target, **kws):
     }
     for atr,value in attrdict.items():
         if kws.has_key(atr):
+            if kws(atr) is False:
+                continue
             for attr in value:
                 ob.attr(attr) >> target.attr(attr)
 

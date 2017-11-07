@@ -19,7 +19,7 @@ import logging
 logging.basicConfig()
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
-#reload(ul)
+reload(ul)
 #print meta
 log.info('Rig Class Initilize')
 class HairRigMeta(meta.MetaRig):
@@ -755,6 +755,7 @@ class ControlObject(object):
             if not self.controls.has_key(func.__name__):
                 self.controls[func.__name__] = []
             self.controls[func.__name__].append(control)
+            #if kws.has_key['setaxis']
             self.setColor(control=control)
             log.info('Control of type:{} name {} created along {}'.format(func.__name__, control.name(), self.axis))
             if groupControl is True:
@@ -839,11 +840,6 @@ class ControlObject(object):
         axisData['mYZ'] = axisData['YZ'] + axisData['-YZ']
         axisData['mrYZ'] = axisData['rYZ'] + axisData['-rYZ']
         axisData['all'] = axisData['XY']+axisData['XZ']+axisData['rXZ']+axisData['-XY']+axisData['-XZ']+axisData['-rXZ'] 
-        if sphere:
-            axisData['all'] = []
-            for ax in axisData:
-                if ax is not 'all':
-                    axisData['all'].extend(axisData[ax])
         newname = name
         try:
             assert (axisData.has_key(axis)), "Wrong Axis '%s'.\nAvailable axis: %s"%(axis, ','.join(axisData))
@@ -1015,7 +1011,7 @@ class ControlObject(object):
         if deleteGp:
             pm.delete(self.controlGps)
 
-    def changeShape(self,ctl,ctlType,**kws):
+    def changeShape(self,ctl,ctlType='Circle',change=True,**kws):
         controlType = {
             'Pin':self.Pin,
             'Circle':self.Circle,
@@ -1024,10 +1020,10 @@ class ControlObject(object):
             'Sphere':self.Sphere,
             'NSphere':self.NSphere
         }
+        print ctlType
         kws['group'] = False
         temp = controlType[ctlType](**kws)
-        pm.select(cl=True)
-        ul.parent_shape(temp,ctl)
+        ul.parent_shape(temp,ctl,delete_oldShape=change,cl=True)
             #ru.connectTransform(control,joint,**atrConnect)
         #return controller
     def createFreeJointControl(self,bones,**kws):
