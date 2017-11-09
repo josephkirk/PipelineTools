@@ -181,6 +181,11 @@ def do_function_on(mode='single', type_filter=[], return_list=True):
     return decorator
 
 ###misc function
+def reloadTexture(udim=True):
+    mm.eval('AEReloadAllTextures;')
+    if udim:
+        mm.eval('generateAllUvTilePreviews;')
+
 def list_join(*args):
     newList = []
     for arg in args:
@@ -188,6 +193,7 @@ def list_join(*args):
             arg = list(arg)
         newList.extend(arg)
     return newList
+
 @error_alert
 def assert_key(key,message, **kws):
     assert kws.has_key, message
@@ -197,7 +203,7 @@ def assert_type(ob, typelist=[]):
     assert(any([isinstance(ob, typ) for typ in typelist])),"Object %s does not match any in type:%s"%(ob, ",".join([str(t) for t in typelist]))
     #return ''.join([ob,'match one of:',','.join(types)])
 
-####misc
+####misc function 
 def offcastshadow(wc='*eyeref*'):
     ob_list = pm.ls(wc,s=True)
     for ob in ob_list:
