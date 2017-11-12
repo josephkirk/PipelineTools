@@ -21,28 +21,30 @@ log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 reload(ul)
 #print meta
-log.info('Rig Class Initilize')
-class HairRigMeta(meta.MetaRig):
-    pass
-
-class SecondaryRigMeta(meta.MetaRig):
-    pass
-class CHRig(object):
+#log.info('Rig Class Initilize')
+class CHRig(meta.MetaHIKCharacterNode):
     def __init__(self, name='', hikName='CH'):
-        self.node = meta.MetaHIKCharacterNode(hikName)
-        self.node.setascurrentcharacter()
-        self.node.select()
-        self.hikProperty = self.node.getHIKPropertyStateNode()
-        self.hikControl = self.node.getHIKControlSetNode()
+        super(FacialRigMeta, self).__init__(*args, **kws)
+        self.setascurrentcharacter()
+        self.select()
+        self.hikProperty = self.getHIKPropertyStateNode()
+        self.hikControl = self.getHIKControlSetNode()
         # self.character.lockState = False
         # pm.lockNode(hikName,lock=False)
-        self.node.addAttr('CharacterName', name)
-        self.node.addAttr('BuildBy','{} {}'.format(os.environ.get('COMPUTERNAME'), os.environ.get('USERNAME')))
-        self.node.addAttr('Branch',os.environ.get('USERDOMAIN'))
-        self.node.addAttr('BuildDate',pm.date())
-        self.node.addAttr('FacialRig', attrType='messageSimple')
-        self.node.addAttr('HairRig', attrType='messageSimple')
-        self.node.addAttr('SecondaryRig', attrType='messageSimple')
+        self.addAttr('CharacterName', name)
+        self.addAttr('BuildBy','{} {}'.format(os.environ.get('COMPUTERNAME'), os.environ.get('USERNAME')))
+        self.addAttr('Branch',os.environ.get('USERDOMAIN'))
+        self.addAttr('BuildDate',pm.date())
+        self.addAttr('FacialRig', attrType='messageSimple')
+        self.addAttr('HairRig', attrType='messageSimple')
+        self.addAttr('SecondaryRig', attrType='messageSimple')
+        log.info('%s Initilize'%self.__str__)
+
+    def getFacialRig(self):
+        pass
+
+    def getSecondaryRig(self):
+        pass
 
 class FacialRigMeta(meta.MetaRig):
     '''

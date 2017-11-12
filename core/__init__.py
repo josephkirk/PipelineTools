@@ -13,3 +13,7 @@ ac = asset_class
 rc = rig_class
 ul = general_utils
 ru = rigging_utils
+mt = rc.meta
+mtc = rc.meta.MetaClass
+mtr = rc.meta.MetaRig
+mthc = rc.meta.MetaHIKCharacterNode
