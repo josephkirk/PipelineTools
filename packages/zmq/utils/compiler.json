@@ -4,7 +4,7 @@
   ], 
   "runtime_library_dirs": [], 
   "library_dirs": [
-    "build\\temp.win32-2.7\\Release\\buildutils"
+    "build\\temp.win-amd64-2.7\\Release\\buildutils"
   ], 
   "define_macros": [], 
   "include_dirs": [

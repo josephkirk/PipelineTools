@@ -1,4 +1,5 @@
 import sys
+import pymel.core as pm
 from PySide2 import QtWidgets, QtCore
 """
 written by Nguyen Phi Hung 2017
@@ -37,7 +38,8 @@ def create_window():
 if __name__ =='__main__': # if run directly, do these code
     def onconvert(textList):
         for text in textList:
-            print 'Convert clicked! textBox:', text 
+            print 'createSphere ', text
+            pm.polySphere(name=text)
     app = QtWidgets.QApplication([])
     win = create_window()
     win.convertClicked.connect(onconvert)

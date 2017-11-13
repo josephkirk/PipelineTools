@@ -14,7 +14,7 @@ import string
 import math
 from pymel.util.enum import Enum
 from PipelineTools.packages.Red9.core import Red9_Meta as meta
-
+from PySide2 import QtWidgets, QtCore
 import logging
 logging.basicConfig()
 log = logging.getLogger(__name__)
@@ -24,7 +24,7 @@ reload(ul)
 #log.info('Rig Class Initilize')
 class CHRig(meta.MetaHIKCharacterNode):
     def __init__(self, name='', hikName='CH'):
-        super(FacialRigMeta, self).__init__(*args, **kws)
+        super(FacialRigMeta, self).__init__(hikname, **kws)
         self.setascurrentcharacter()
         self.select()
         self.hikProperty = self.getHIKPropertyStateNode()
@@ -647,7 +647,9 @@ class ControlObject(object):
             'mid':8,
             'high':24
         }
-        self.axis = axis
+        self._axisList = ['XY','XZ','YZ']
+        self._axisList.extend([a[::-1] for a in self._axisList]) ## add reverse asxis
+        self._axisList.extend(['-%s'%a for a in self._axisList]) ## add minus axis
         self._colorData = {
             'white':pm.dt.Color.white,
             'red':pm.dt.Color.red,
@@ -660,15 +662,39 @@ class ControlObject(object):
             'pink':[1,0,0.5,0],
             'jade':[0,1,0.5,0]
         }
+        self.axis = axis
         self.offset = offset
         self.step = res
         self.color = color
         self.controls = {}
         self.controls['all'] = []
         self.controlGps = []
+        self._controlType = {
+            'Pin':self.Pin,
+            'Circle':self.Circle,
+            'Octa':self.Octa,
+            'Cylinder':self.Cylinder,
+            'Sphere':self.Sphere,
+            'NSphere':self.NSphere
+        }
+        self._uiElement = {}
         log.info('Control Object class name:{} initialize'.format(name))
         log.debug('\n'.join(['{}:{}'.format(key,value) for key,value in self.__dict__.items()]))
     ####Define Property
+    @property
+    def radius(self):
+        return self._radius
+    @radius.setter
+    def radius(self, newradius):
+        assert any([isinstance(newradius,typ) for typ in [float,int]]), "radius must be of type float"
+        self._radius = newradius
+    @property
+    def length(self):
+        return self._length
+    @length.setter
+    def length(self, newlength):
+        assert any([isinstance(newlength,typ) for typ in [float,int]]), "length must be of type float"
+        self._length = newlength
     @property
     def offset(self):
         return self._offset
@@ -685,8 +711,16 @@ class ControlObject(object):
             assert (self._colorData.has_key(newcolor)), "color data don't have '%s' color.\nAvailable color:%s"%(newcolor,','.join(self._colorData))
             self._color = self._colorData[newcolor]
         if any([isinstance(newcolor,typ) for typ in [list,set,tuple]]):
-            assert (len(newcolor)>3), 'color must be a float4 of type list,set or tuple'
+            assert (len(newcolor)>=3), 'color must be a float4 or float3 of type list,set or tuple'
             self._color = pm.dt.Color(newcolor)
+    @property
+    def axis(self):
+        return self._axis
+    @axis.setter
+    def axis(self, newaxis):
+        if isinstance(newaxis,str) or isinstance(newaxis,unicode):
+            assert (newaxis in self._axisList), "axis data don't have '%s' axis.\nAvailable axis:%s"%(newaxis,','.join(self._axisData))
+            self._axis = newaxis
     @property
     def step(self):
         return self._step
@@ -698,13 +732,7 @@ class ControlObject(object):
     #def res(self):
     
     #decorator
-    def __dotoAllControl__(func):
-        ''''''
-        @ul.wraps(func)
-        def wrapper(self,*args, **kws):
-            result=func(*args, **kws)
-            return result
-        return wrapper
+    #@ul.error_alert
     def __setProperty__(func):
         '''Wraper that make keywords argument of control type function
         to tweak class Attribute'''
@@ -757,9 +785,10 @@ class ControlObject(object):
             if not self.controls.has_key(func.__name__):
                 self.controls[func.__name__] = []
             self.controls[func.__name__].append(control)
-            #if kws.has_key['setaxis']
-            self.setColor(control=control)
-            log.info('Control of type:{} name {} created along {}'.format(func.__name__, control.name(), self.axis))
+            if kws.has_key('setAxis') and kws['setAxis'] is True:
+                self.setAxis(control)
+            self.setColor(control,self.color)
+            log.info('Control of type:{} name {} created along {}'.format(func.__name__, control.name(), self._axis))
             if groupControl is True:
                 Gp = self.group(control)
                 self.controlGps.append(Gp)
@@ -824,24 +853,24 @@ class ControlObject(object):
             return pointMatrix
         axisData = {}
         axisData['XY'] = [[x,y,offset[2]] for x,y in pointMatrix]
-        axisData['rXY'] = [[y,x,offset[2]] for x,y in pointMatrix]
+        axisData['YX'] = [[y,x,offset[2]] for x,y in pointMatrix]
         axisData['-XY'] = [[-x,-y,offset[2]] for x,y in pointMatrix]
-        axisData['-rXY'] = [[-y,-x,offset[2]] for x,y in pointMatrix]
+        axisData['-YX'] = [[-y,-x,offset[2]] for x,y in pointMatrix]
         axisData['XZ'] = [[x,offset[2],y] for x,y in pointMatrix]
-        axisData['rXZ'] = [[y,offset[2],x] for x,y in pointMatrix]
+        axisData['ZX'] = [[y,offset[2],x] for x,y in pointMatrix]
         axisData['-XZ'] = [[-x,offset[2],-y] for x,y in pointMatrix]
-        axisData['-rXZ'] = [[-y,offset[2],-x] for x,y in pointMatrix]
+        axisData['-ZX'] = [[-y,offset[2],-x] for x,y in pointMatrix]
         axisData['YZ'] = [[offset[2],x,y] for x,y in pointMatrix]
-        axisData['rYZ'] = [[offset[2],y,x] for x,y in pointMatrix]
+        axisData['ZY'] = [[offset[2],y,x] for x,y in pointMatrix]
         axisData['-YZ'] = [[offset[2],-x,-y] for x,y in pointMatrix]
-        axisData['-rYZ'] = [[offset[2],-y,-x] for x,y in pointMatrix]
+        axisData['-ZY'] = [[offset[2],-y,-x] for x,y in pointMatrix]
         axisData['mXY'] = axisData['XY'] + axisData['-XY']
-        axisData['mrXY'] = axisData['rXY'] + axisData['-rXY']
+        axisData['mYX'] = axisData['YX'] + axisData['-YX']
         axisData['mXZ'] = axisData['XZ'] + axisData['-XZ']
-        axisData['mrXZ'] = axisData['rXZ'] + axisData['-rXZ']
+        axisData['mZX'] = axisData['ZX'] + axisData['-ZX']
         axisData['mYZ'] = axisData['YZ'] + axisData['-YZ']
-        axisData['mrYZ'] = axisData['rYZ'] + axisData['-rYZ']
-        axisData['all'] = axisData['XY']+axisData['XZ']+axisData['rXZ']+axisData['-XY']+axisData['-XZ']+axisData['-rXZ'] 
+        axisData['mZY'] = axisData['ZY'] + axisData['-ZY']
+        axisData['all'] = axisData['XY']+axisData['XZ']+axisData['ZX']+axisData['-XY']+axisData['-XZ']+axisData['-ZX'] 
         newname = name
         try:
             assert (axisData.has_key(axis)), "Wrong Axis '%s'.\nAvailable axis: %s"%(axis, ','.join(axisData))
@@ -890,11 +919,11 @@ class ControlObject(object):
 
     @__setProperty__
     def Pin(self,mode={'mirror':False,'sphere':False}):
-        newAxis = self.axis
+        newAxis = self._axis
         if mode['mirror']:
-            newAxis = 'm'+self.axis
+            newAxis = 'm'+self._axis
         else:
-            newAxis = self.axis.replace('m','')
+            newAxis = self._axis.replace('m','')
         crv = self.createPinCircle(
             self.name,
             axis=newAxis,
@@ -909,7 +938,7 @@ class ControlObject(object):
     def Circle(self,mode={}):
         crv = self.createPinCircle(
             self.name,
-            axis=self.axis,
+            axis=self._axis,
             radius=self.radius,
             step=self.step,
             sphere=False,
@@ -921,7 +950,7 @@ class ControlObject(object):
     def Cylinder(self,mode={}):
         crv = self.createPinCircle(
             self.name,
-            axis=self.axis,
+            axis=self._axis,
             radius=self.radius,
             step=self.step,
             cylinder=True,
@@ -963,7 +992,7 @@ class ControlObject(object):
     def Sphere(self,mode={}):
         crv = self.createPinCircle(
             self.name,
-            axis=self.axis,
+            axis=self._axis,
             radius=self.radius,
             step=self.step,
             sphere=True,
@@ -978,21 +1007,18 @@ class ControlObject(object):
                 msg.append('--'+ctl)
         log.info('\n'.join(msg))
         return self.controls
-    def setAxis(self, control=None, axis=''):
-        if axis:
-            self.axis = axis
-        #print self.axis
-        if self.axisData.has_key(self.axis):
-            control.setRotation(self.axisData[self.axis])
-            #print control.getRotation()
-            pm.makeIdentity(control, apply=True)
-            if not control:
-                for control in self.controls:
-                    self.setAxis(control)
-        else:
-            print 'set Axis along %s not possible'%self.axis
 
-    def setColor(self, control=None):
+    def setAxis(self, control, axis='XY'):
+        self.axis = axis
+        control.setRotation(self._axisData[self._axis])
+        #print control.getRotation()
+        pm.makeIdentity(control, apply=True)
+        if not control:
+            for control in self.controls:
+                self.setAxis(control)
+
+    def setColor(self, control,newColor):
+        self.color = newColor
         try:
             control.overrideEnabled.set(True)
             control.overrideRGBColors.set(True)
@@ -1005,7 +1031,7 @@ class ControlObject(object):
         except AttributeError as why:
             log.error(why)
 
-    def deleteControl(self,id=None, deleteGp=False):
+    def deleteControl(self, id=None, deleteGp=False):
         if id and id<len(self.controls):
             pm.delete(self.controls[id])
             return self.control[id]
@@ -1013,21 +1039,17 @@ class ControlObject(object):
         if deleteGp:
             pm.delete(self.controlGps)
 
-    def changeShape(self,ctl,ctlType='Circle',change=True,**kws):
-        controlType = {
-            'Pin':self.Pin,
-            'Circle':self.Circle,
-            'Octa':self.Octa,
-            'Cylinder':self.Cylinder,
-            'Sphere':self.Sphere,
-            'NSphere':self.NSphere
-        }
-        print ctlType
-        kws['group'] = False
-        temp = controlType[ctlType](**kws)
-        ul.parent_shape(temp,ctl,delete_oldShape=change,cl=True)
-            #ru.connectTransform(control,joint,**atrConnect)
-        #return controller
+    def createControl(self, ctlType, **kws):
+        assert self._controlType.has_key(ctlType), 'Control Type %s is not valid'%ctlType
+        newCtl = self._controlType[ctlType](**kws)
+        return newCtl
+
+    def changeControlShape(self, selectControl, ctlType, **kws):
+        temp = self.createControl(ctlType,**kws)
+        print temp,selectControl
+        ul.parent_shape(temp, selectControl)
+        return selectControl
+
     def createFreeJointControl(self,bones,**kws):
         for bone in bones:
             bonepos = bone.getTranslation('world')
@@ -1058,6 +1080,125 @@ class ControlObject(object):
             # pm.makeIdentity(ctl,apply=True)
             for atr in ['translate', 'rotate', 'scale']:
                 ctl.attr(atr) >> bone.attr(atr)
+    #### Ui contain
+    #@classmethod
+    def show(self):
+        self._showUI()
+
+    # def _setUIValue(self, uiName, *args,**kwargs):
+    #     print args, kwargs
+    #     self._uiElement[uiName] = args[0]
+    #     log.info('%s set to %s'%(uiName, str(args[0])))
+
+    def _getUIValue(self, *args):
+        self.color = self._uiElement['ctlColor'].getRgbValue()
+        print self._uiElement['ctlAxis'].getValue()
+        self.axis = self._uiElement['ctlAxis'].getValue()
+        self.radius = self._uiElement['ctlRadius'].getValue()[0]
+        self.length = self._uiElement['ctlLength'].getValue()[0]
+        self.step = self._uiElement['ctlRes'].getValue()
+
+    def _do(self, *args):
+        self._getUIValue()
+        ctlType= self._uiElement['ctlType'].getValue()
+        kws = {}
+        for name,value in zip(['group', 'setAxis','mirror'],
+                              self._uiElement['ctlOption'].getValueArray3()):
+            kws[name] = value
+        print kws,ctlType
+        self.createControl(ctlType,**kws)
+
+    def _do2(self, *args):
+        self._getUIValue()
+        ctlType= self._uiElement['ctlType'].getValue()
+        kws = {}
+        for name,value in zip(['group', 'setAxis','mirror'],
+                              self._uiElement['ctlOption'].getValueArray3()):
+            kws[name] = value
+        print kws,ctlType
+        for sel in pm.selected():
+            self.changeControlShape(sel,ctlType,**kws)
+
+    def _showUI(self, parent=None):
+        self._uiName = 'CreateControlUI'
+        self._windowSize = (250, 10)
+        if pm.window(self._uiName+'Window', ex=True):
+            pm.deleteUI(self._uiName+'Window', window=True)
+            pm.windowPref(self._uiName+'Window', remove=True )
+        if parent is not None and isinstance(parent, pm.uitypes.Window):
+            self._window = parent
+        else:
+            self._window = pm.window(
+                self._uiName+'Window', title=self._uiName,
+                rtf=True, widthHeight=self._windowSize, sizeable=False)
+        self._uiTemplate = pm.uiTemplate('CreateControlUITemplace', force=True)
+        self._uiTemplate.define(pm.button , width=5, height=40, align='left')
+        self._uiTemplate.define(pm.columnLayout,adjustableColumn=1,w=10)
+        self._uiTemplate.define(pm.frameLayout, borderVisible=True, labelVisible=True,width=self._windowSize[0])
+        self._uiTemplate.define(
+            pm.rowColumnLayout,
+            rs=[(1,5),],
+            adj=True, numberOfColumns=2,
+            cal = [(1,'left'),],
+            columnWidth=[(1, 100), (2, 100)])
+        with self._window:
+            with self._uiTemplate:
+                with pm.frameLayout(label='Create Control'):
+                    with pm.rowColumnLayout():
+                        self._uiElement['ctlName'] = pm.textFieldGrp(
+                            cl2=('left','right'),
+                            co2=(0,0),
+                            cw2=(40,100),
+                            label='Name:',text='New Control')
+                        self._uiElement['ctlType'] = pm.optionMenu(label = 'Type:')
+                        with self._uiElement['ctlType']:
+                            for ct in self._controlType:
+                                pm.menuItem(label=ct)
+                    with pm.rowColumnLayout(
+                        numberOfColumns=3,
+                        columnWidth=[(1, 10),]):
+                        self._uiElement['ctlLength'] = pm.floatFieldGrp(
+                            cl2=('left','right'),
+                            co2=(0,0),
+                            cw2=(40,30),
+                            numberOfFields=1,
+                            label='Length:',
+                            value1=3.0)
+                        self._uiElement['ctlRadius'] = pm.floatFieldGrp(
+                            cl2=('left','right'),
+                            co2=(0,0),
+                            cw2=(40,30),
+                            numberOfFields=1,
+                            label='Radius:',
+                            value1=0.5)
+                        self._uiElement['ctlRes'] = pm.optionMenu(label = 'Step:')
+                        with self._uiElement['ctlRes']:
+                            for ct in self._resolutions:
+                                pm.menuItem(label=ct)
+                    with pm.rowColumnLayout():
+                        self._uiElement['ctlColor'] = pm.colorSliderGrp(
+                            label='Color:',
+                            rgb=(0, 0, 1),
+                            co3=(0,0,0),
+                            cw3=(30,60,60),
+                            cl3=('left','center','right'))
+                        self._uiElement['ctlAxis'] = pm.optionMenu(label = 'Axis:')
+                        with self._uiElement['ctlAxis']:
+                            for ct in self._axisList:
+                                pm.menuItem(label=ct)
+                    self._uiElement['ctlOption'] = pm.checkBoxGrp(
+                        cl4=('left','center','center','center'),
+                        co4=(0,10,10,10),
+                        cw4=(45,60,80,60),
+                        numberOfCheckBoxes=3,
+                        label='Options:',
+                        labelArray3=['Group', 'Reset Axis', 'Mirror'] )
+                    pm.button(label='Create',c=self._do)
+                    with pm.popupMenu(b=3):
+                        pm.menuItem(label='Change Current Select',c=self._do2)
+                        pm.menuItem(label='Create Free Control')
+                        pm.menuItem(label='Create Parent Control')
+
 
 meta.registerMClassInheritanceMapping()
 # meta.registerMClassNodeMapping(nodeTypes='transform')

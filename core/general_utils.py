@@ -17,6 +17,9 @@ import os
 import random as rand
 import asset_class as asset
 from pymel.util.enum import Enum
+import maya.OpenMayaUI as OpenMayaUI
+from PySide2 import QtCore, QtWidgets
+from pymel.core.uitypes import pysideWrapInstance as wrapInstance
 from functools import wraps, partial
 from time import sleep, time
 import logging
@@ -71,6 +74,7 @@ def do_function_on(mode='single', type_filter=[], return_list=True):
             if ((kwargs.has_key('clearSelect') and kwargs['clearSelect'] == True) or
                 (kwargs.has_key('cl') and kwargs['cl'] == True)):
                 pm.select(cl=True)
+                print 'clearSelect'
                 try:
                     del kwargs['clearSelect']
                 except:
@@ -203,11 +207,20 @@ def assert_type(ob, typelist=[]):
     assert(any([isinstance(ob, typ) for typ in typelist])),"Object %s does not match any in type:%s"%(ob, ",".join([str(t) for t in typelist]))
     #return ''.join([ob,'match one of:',','.join(types)])
 
-####misc function 
+####global misc function 
 def offcastshadow(wc='*eyeref*'):
     ob_list = pm.ls(wc,s=True)
     for ob in ob_list:
         eye.castsShadows.set(False)
+
+def get_maya_window():
+    '''Return QMainWindow for the main maya window'''
+    winptr = OpenMayaUI.MQtUtil.mainWindow()
+    if winptr is None:
+        raise RuntimeError('No Maya window found.')
+    window = wrapInstance(winptr)
+    assert isinstance(window, QtWidgets.QMainWindow)
+    return window
 
 def clean_userprefs(path_to_userprefs=prefpath, searchlines=[1000, 3000]):
     '''
@@ -637,16 +650,15 @@ def exportCam():
         cc = 'FBXExport -f "%s" -s' % filePath
         mm.eval(cc)
 
-@error_alert
-@do_function_on(mode='double')
+#@error_alert
+#@do_function_on(mode='double')
 def parent_shape(src, target, delete_src=True, delete_oldShape=True):
     '''parent shape from source to target'''
     #pm.parent(src, world=True)
+    print src,target
     pm.makeIdentity(src, apply=True)
     pm.delete(src.listRelatives(type='transform'))
-    pm.refresh()
     pm.parent(src.getShape(), target, r=True, s=True)
-    print target
     if delete_src:
         pm.delete(src)
     if delete_oldShape:
