@@ -266,8 +266,9 @@ class FacialGuide(object):
             self.constraint = pm.pointOnPolyConstraint(
                 self.guide_mesh, self.root, mo=False,
                 name=self.constraint_name)
-            self.constraint.attr(self.guide_mesh.getParent().name()+'U0').set(closest_uv[0])
-            self.constraint.attr(self.guide_mesh.getParent().name()+'V0').set(closest_uv[1])
+            stripname = self.guide_mesh.getParent().name().split('|')[-1]
+            self.constraint.attr(stripname+'U0').set(closest_uv[0])
+            self.constraint.attr(stripname+'V0').set(closest_uv[1])
             #pm.select(closest_info['Closest Vertex'])
         else:
             pm.error('Please set guide mesh')
@@ -630,7 +631,7 @@ class ControlObject(object):
     '''Class to create Control'''
     def __init__(
             self,
-            name,
+            name='ControlObject',
             suffix='ctl',
             radius=1 ,
             res='high',
@@ -639,9 +640,17 @@ class ControlObject(object):
             offset= 0.0,
             color='red'):
         self._suffix = suffix
-        self.name = '{}_{}'.format(name,suffix)
-        self.radius = radius
-        self.length = length
+        self._name = '{}_{}'.format(name,suffix)
+        self._radius = radius
+        self._length = length
+        self._axis = axis
+        self._offset = offset
+        self._step = res
+        self._color = color
+        self.controls = {}
+        self.controls['all'] = []
+        self.controlGps = []
+
         self._resolutions = {
             'low':4,
             'mid':8,
@@ -662,13 +671,6 @@ class ControlObject(object):
             'pink':[1,0,0.5,0],
             'jade':[0,1,0.5,0]
         }
-        self.axis = axis
-        self.offset = offset
-        self.step = res
-        self.color = color
-        self.controls = {}
-        self.controls['all'] = []
-        self.controlGps = []
         self._controlType = {
             'Pin':self.Pin,
             'Circle':self.Circle,
@@ -682,12 +684,21 @@ class ControlObject(object):
         log.debug('\n'.join(['{}:{}'.format(key,value) for key,value in self.__dict__.items()]))
     ####Define Property
     @property
+    def name(self):
+        return self._name
+    @name.setter
+    def name(self,newName):
+        if self._suffix not in newName:
+            self._name = '{}_{}'.format(newname,self._suffix)
+
+    @property
     def radius(self):
         return self._radius
     @radius.setter
     def radius(self, newradius):
         assert any([isinstance(newradius,typ) for typ in [float,int]]), "radius must be of type float"
         self._radius = newradius
+
     @property
     def length(self):
         return self._length
@@ -695,13 +706,16 @@ class ControlObject(object):
     def length(self, newlength):
         assert any([isinstance(newlength,typ) for typ in [float,int]]), "length must be of type float"
         self._length = newlength
+
     @property
     def offset(self):
         return self._offset
     @offset.setter
     def offset(self, newoffset):
-        assert any([isinstance(newoffset,typ) for typ in [float,int]]), "Offset must be of type float"
-        self._offset = newoffset
+        if any([isinstance(newoffset,typ) for typ in [list,set,tuple]]):
+            assert (len(newoffset)==3), 'offset must be a float3 of type list,set or tuple'
+            self._offset = newoffset
+
     @property
     def color(self):
         return pm.dt.Color(self._color)
@@ -713,6 +727,7 @@ class ControlObject(object):
         if any([isinstance(newcolor,typ) for typ in [list,set,tuple]]):
             assert (len(newcolor)>=3), 'color must be a float4 or float3 of type list,set or tuple'
             self._color = pm.dt.Color(newcolor)
+
     @property
     def axis(self):
         return self._axis
@@ -721,6 +736,7 @@ class ControlObject(object):
         if isinstance(newaxis,str) or isinstance(newaxis,unicode):
             assert (newaxis in self._axisList), "axis data don't have '%s' axis.\nAvailable axis:%s"%(newaxis,','.join(self._axisData))
             self._axis = newaxis
+
     @property
     def step(self):
         return self._step
@@ -786,12 +802,16 @@ class ControlObject(object):
                 self.controls[func.__name__] = []
             self.controls[func.__name__].append(control)
             if kws.has_key('setAxis') and kws['setAxis'] is True:
-                self.setAxis(control)
+                self.setAxis(control,self.axis)
             self.setColor(control,self.color)
+            control.setTranslation(self.offset,'world')
+            pm.makeIdentity(control,apply=True)
             log.info('Control of type:{} name {} created along {}'.format(func.__name__, control.name(), self._axis))
             if groupControl is True:
                 Gp = self.group(control)
                 self.controlGps.append(Gp)
+            else:
+                pm.xform(control,pivots=(0,0,0),ws=True,dph=True,ztp=True)
 
             #### reset Class Attribute Value to __init__ value
             for key,value in oldValue.items():
@@ -878,10 +898,17 @@ class ControlObject(object):
         except AssertionError as why:
             finalPointMatrix = axisData['XY']
             log.error(str(why)+'\nDefault to XY')
-        if sphere and not length>0:
+        if sphere and not cylinder and not length>0:
             quarCircle = len(pointMatrix)/4+1
             finalPointMatrix = axisData['XY']+axisData['XZ']+axisData['XY'][:quarCircle]+axisData['YZ']
-        if cylinder and not length>0:
+        elif sphere and not cylinder and length>0:
+            if axis[-1] == 'X':
+                finalPointMatrix = axisData['YX']+axisData['ZX']
+            elif axis[-1] == 'Y':
+                finalPointMatrix = axisData['XY']+axisData['ZY']
+            elif axis[-1] == 'Z':
+                finalPointMatrix = axisData['XZ']+axisData['YZ']
+        elif cylinder and not sphere and not length>0:
             newpMatrix = []
             pMatrix = pointMatrix
             newpMatrix.extend([[x,0,y] for x,y in pMatrix[:len(pMatrix)/4+1]])
@@ -930,7 +957,6 @@ class ControlObject(object):
             sphere=mode['sphere'],
             radius=self.radius,
             step=self.step,
-            offset=[0,0,self.offset],
             length=self.length)
         return crv
 
@@ -942,7 +968,6 @@ class ControlObject(object):
             radius=self.radius,
             step=self.step,
             sphere=False,
-            offset=[0,0,self.offset],
             length=0)
         return crv
 
@@ -954,9 +979,9 @@ class ControlObject(object):
             radius=self.radius,
             step=self.step,
             cylinder=True,
-            offset=[0,0,self.offset],
             height=self.length,
-            length=0)
+            length=0,
+            )
         return crv
     @__setProperty__
     def NSphere(self,mode={'shaderName':'control_mtl'}):
@@ -1009,8 +1034,15 @@ class ControlObject(object):
         return self.controls
 
     def setAxis(self, control, axis='XY'):
-        self.axis = axis
-        control.setRotation(self._axisData[self._axis])
+        axisData={}
+        axisData['XY'] = [0,0,90]
+        axisData['YX'] = [0,0,-90]
+        axisData['XZ'] = [0,90,0]
+        axisData['ZX'] = [0,-90,0]
+        axisData['YZ'] = [90,0,0]
+        axisData['ZY'] = [-90,0,0]
+        assert (axis in axisData), "set axis data don't have '%s' axis.\nAvailable axis:%s"%(axis,','.join(axisData))
+        control.setRotation(axisData[axis])
         #print control.getRotation()
         pm.makeIdentity(control, apply=True)
         if not control:
@@ -1051,73 +1083,103 @@ class ControlObject(object):
         return selectControl
 
     def createFreeJointControl(self,bones,**kws):
+        ctls = []
         for bone in bones:
-            bonepos = bone.getTranslation('world')
-            bonGp = pm.nt.Transform(name=bone.name()+'Gp')
-            bonGp.setTranslation(bonepos, 'world')
-            pm.makeIdentity(bonGp, apply=True)
-            bone.setParent(bonGp)
+            if not bone.getParent() or not bone.getParent().name().endswith('Gp'):
+                bonepos = bone.getTranslation('world')
+                bonGp = pm.nt.Transform(name=bone.name()+'Gp')
+                bonGp.setTranslation(bonepos, 'world')
+                pm.makeIdentity(bonGp, apply=True)
+                bone.setParent(bonGp)
             ctl = self.Sphere(name=bone.name().replace('bon', 'ctl'),**kws)
+            ctls.append(ctl)
             ctlGp = ctl.getParent()
             #ctl.setParent(ctlGp)
             ctlGp.setTranslation(bonepos, 'world')
             pm.makeIdentity(ctlGp, apply=True)
             for atr in ['tx','ty','tz','rx','ry','rz','sx','sy','sz']:
                 ctl.attr(atr) >> bonGp.attr(atr)
+        pm.select(ctls)
+        return ctls
 
     def createParentJointControl(self, bones,**kws):
+        ctls=[]
         for bone in bones:
-            if 'offset' not in bone.getParent().name():
-                ru.createOffsetJoint(bone)
+            if not bone.getParent() or 'offset' not in bone.getParent().name():
+                ru.createOffsetJoint(bone,cl=True)
             bonematrix = bone.getMatrix(worldSpace=True)
             name = bone.name().split('|')[-1].split('_')[0]
             ctl = self.Pin(name=name+'_ctl',**kws)
             ctlGp = ctl.getParent()
             ctlGp.rename(name+'_ctlGp')
-            #ctl.setParent(ctlGp)
             ctlGp.setMatrix(bonematrix,worldSpace=True)
-            # ctl.rotate.set(offsetRotate)
-            # pm.makeIdentity(ctl,apply=True)
+            if ctls:
+                ctlGp.setParent(ctls[-1])
+            ctls.append(ctl)
             for atr in ['translate', 'rotate', 'scale']:
                 ctl.attr(atr) >> bone.attr(atr)
+        pm.select(ctls)
+        return ctls
     #### Ui contain
-    #@classmethod
-    def show(self):
-        self._showUI()
+    @classmethod
+    def show(cls):
+        cls()._showUI()
 
     # def _setUIValue(self, uiName, *args,**kwargs):
     #     print args, kwargs
     #     self._uiElement[uiName] = args[0]
     #     log.info('%s set to %s'%(uiName, str(args[0])))
 
-    def _getUIValue(self, *args):
+    def _getUIValue(self):
         self.color = self._uiElement['ctlColor'].getRgbValue()
         print self._uiElement['ctlAxis'].getValue()
         self.axis = self._uiElement['ctlAxis'].getValue()
         self.radius = self._uiElement['ctlRadius'].getValue()[0]
         self.length = self._uiElement['ctlLength'].getValue()[0]
         self.step = self._uiElement['ctlRes'].getValue()
+        self.offset = self._uiElement['ctlOffset'].getValue()
 
-    def _do(self, *args):
+    def _do(self):
         self._getUIValue()
         ctlType= self._uiElement['ctlType'].getValue()
         kws = {}
-        for name,value in zip(['group', 'setAxis','mirror'],
-                              self._uiElement['ctlOption'].getValueArray3()):
+        for name,value in zip(self._uiElement['ctlOption'].getLabelArray4(),
+                              self._uiElement['ctlOption'].getValueArray4()):
             kws[name] = value
         print kws,ctlType
         self.createControl(ctlType,**kws)
 
-    def _do2(self, *args):
+    def _do2(self):
+        if pm.selected():
+            sels = pm.selected()
+            self._getUIValue()
+            ctlType= self._uiElement['ctlType'].getValue()
+            kws = {}
+            for name,value in zip(self._uiElement['ctlOption'].getLabelArray4(),
+                                  self._uiElement['ctlOption'].getValueArray4()):
+                kws[name] = value
+            print kws,ctlType
+            for sel in sels:
+                self.changeControlShape(sel,ctlType,**kws)
+
+    def _do3(self):
         self._getUIValue()
-        ctlType= self._uiElement['ctlType'].getValue()
-        kws = {}
-        for name,value in zip(['group', 'setAxis','mirror'],
-                              self._uiElement['ctlOption'].getValueArray3()):
-            kws[name] = value
-        print kws,ctlType
-        for sel in pm.selected():
-            self.changeControlShape(sel,ctlType,**kws)
+        if pm.selected():
+            sels = pm.selected()
+            for sel in sels:
+                self.setColor(sel,self.color)
+    
+    def _do4(self):
+        if pm.selected():
+            sels = pm.selected()
+            self.createFreeJointControl(sels, group=True)
+
+    def _do5(self):
+        if pm.selected():
+            sels = pm.selected()
+            self.createParentJointControl(
+                sels,group=True,
+                mirror=self._uiElement['ctlOption'].getValueArray4()[-1])
 
     def _showUI(self, parent=None):
         self._uiName = 'CreateControlUI'
@@ -1149,7 +1211,7 @@ class ControlObject(object):
                             cl2=('left','right'),
                             co2=(0,0),
                             cw2=(40,100),
-                            label='Name:',text='New Control')
+                            label='Name:',text=self.name)
                         self._uiElement['ctlType'] = pm.optionMenu(label = 'Type:')
                         with self._uiElement['ctlType']:
                             for ct in self._controlType:
@@ -1186,19 +1248,583 @@ class ControlObject(object):
                         with self._uiElement['ctlAxis']:
                             for ct in self._axisList:
                                 pm.menuItem(label=ct)
-                    self._uiElement['ctlOption'] = pm.checkBoxGrp(
+                    self._uiElement['ctlOffset'] = pm.floatFieldGrp(
                         cl4=('left','center','center','center'),
-                        co4=(0,10,10,10),
-                        cw4=(45,60,80,60),
-                        numberOfCheckBoxes=3,
+                        co4=(0,5,0,0),
+                        cw4=(45,50,50,50),
+                        numberOfFields=3,
+                        label='Offset:')
+                    self._uiElement['ctlOption'] = pm.checkBoxGrp(
+                        cl5=('left','center','center','center','center'),
+                        co5=(0,5,0,0,0),
+                        cw5=(45,50,50,50,50),
+                        numberOfCheckBoxes=4,
                         label='Options:',
-                        labelArray3=['Group', 'Reset Axis', 'Mirror'] )
-                    pm.button(label='Create',c=self._do)
+                        labelArray4=['group', 'setAxis', 'sphere', 'mirror'])
+                    pm.button(label='Create',c=pm.Callback(self._do))
                     with pm.popupMenu(b=3):
-                        pm.menuItem(label='Change Current Select',c=self._do2)
-                        pm.menuItem(label='Create Free Control')
-                        pm.menuItem(label='Create Parent Control')
+                        pm.menuItem(label='Change Current Select',c=pm.Callback(self._do2))
+                        pm.menuItem(label='Set Color Select',c=pm.Callback(self._do3))
+                        pm.menuItem(label='Create Free Control',c=pm.Callback(self._do4))
+                        pm.menuItem(label='Create Parent Control',c=pm.Callback(self._do5))
+                        pm.menuItem(label='Create Long Hair Control',c=pm.Callback(HairRig))
+        self._getUIValue()
 
+class HairRig:
+	def getJointChainList(self, top):
+		
+		selList = pm.selected()
+		pm.select(top, hi=True)
+		chainList = pm.selected(type='joint')
+		pm.select(selList, r=True)
+
+		for chain in chainList:
+			if len(chain.getChildren()) > 1:
+				pm.displayError('%s has more than one child.' % chain)
+				return False
+		
+		return chainList
+
+	def lockXformAttrs(self, node, isShown):
+		
+		attrList = ['tx','ty','tz','rx','ry','rz','sx','sy','sz']
+		
+		for attr in attrList:
+			node.attr(attr).lock()
+			node.attr(attr).setKeyable(isShown)
+			node.attr(attr).showInChannelBox(isShown)
+		
+	def makeOctaController(self, name):
+		
+		pntMatrix = [
+			[ 0, 1, 0], [ 1, 0, 0], [ 0, 0,-1],
+			[ 0, 1, 0],	[-1, 0, 0], [ 0, 0,-1],
+			[ 0,-1, 0],	[ 1, 0, 0],	[ 0, 0, 1],
+			[-1, 0, 0],	[ 0,-1, 0],	[ 0, 0, 1], [ 0, 1, 0]]
+		
+		crv = pm.curve(d=1, p=pntMatrix, n=name)
+		
+		return crv
+
+	def makePinController(self, name):
+	
+		rd = 0.5
+		lt = 2.0
+		hw = math.sqrt(2.0) / 4.0
+	
+		pntMatrix = [
+			[0,  0,  0],
+			[0,   lt-rd,0],[-hw, lt-hw,0],
+			[-rd,    lt,0],[-hw, lt+hw,0],
+			[0,   lt+rd,0], [hw, lt+hw,0],
+			[rd,     lt,0], [hw, lt-hw,0],
+			[0,   lt-rd,0]]
+		
+		crv = pm.curve(d=1, p=pntMatrix, n=name)
+		
+		return crv
+	
+	def makeCircleController(self, name):
+		
+		return pm.circle(nr=[1,0,0], r=1.0, n=name, ch=False)[0]
+
+	def makeXformController(self, name, axisName, joint):
+		
+		circle = pm.circle(n=name,ch=1,o=1,nr=[1,0,0],d=1,s=8,r=2.0)[0]
+		axis = pm.group(circle,n=axisName)
+		
+		circle.attr('overrideEnabled').set(1)
+		circle.attr('overrideColor').set((self.colrPLTval))
+
+		const = pm.parentConstraint(joint, axis)
+		pm.delete(const)
+
+		return (axis, circle)
+	
+	def assignHair(self, crv, hairSystem):
+		
+		pm.select(crv, r=1)
+		pm.mel.source('DynCreateHairMenu.mel') # C:/Program Files/Autodesk/Maya(ver)/scripts/startup/
+
+		if hairSystem is None:
+
+			oldAllList = pm.ls(type='hairSystem')
+			pm.mel.assignNewHairSystem()
+			newAllList = pm.ls(type='hairSystem')
+
+			hairSystem = (list(set(newAllList) - set(oldAllList))[0]).getParent()
+
+		else:
+			pm.mel.assignHairSystem(hairSystem)
+			
+		follicle = list(set(hairSystem.getShapes()[0].inputs()).intersection(set(crv[0].getShapes()[0].outputs())))[0]
+		#follicle = hairSystem.getShapes()[0].attr('inputHair[%s]'%id).inputs()[0]
+		hcrv = follicle.attr('outCurve').outputs()[0]
+		
+		pm.rename(hcrv, 'outputCurve#')
+		
+		return (follicle, hcrv, hairSystem)
+		
+	def makeGroupIfNotExist(self, grpName, isHidden):
+		
+		if not pm.objExists(grpName):
+			grp = pm.group(n=grpName, em=1)
+			if isHidden:
+				pm.hide(grp)
+		else:
+			grp = pm.PyNode(grpName)
+		
+		return grp
+
+	def makeJointHair(self, sel, hairSystem):
+
+		simDuped = pm.duplicate(sel, n='sim_%s'%sel.nodeName())[0]
+		mixDuped = pm.duplicate(sel, n='mix_%s'%sel.nodeName())[0]
+		wgtDuped = pm.duplicate(sel, n='weight_%s'%sel.nodeName())[0]
+		
+		selJointList = self.getJointChainList(sel)
+		simJointList = self.getJointChainList(simDuped)
+		mixJointList = self.getJointChainList(mixDuped)
+		wgtJointList = self.getJointChainList(wgtDuped)
+		
+		if not (selJointList and simJointList and mixJointList):
+			return False
+		
+		num = len(selJointList)
+		pos = sel.getTranslation(space='world')
+		ctrlGrp = pm.group(n='%s_ctrls#'%sel.nodeName(), em=1)
+
+		axis, circle = self.makeXformController('%s_top_ctrl#'%sel.nodeName(),'%s_top_ctrl_axis#'%sel.nodeName(),selJointList[0])
+		circle.addAttr('space',at='enum',en='World:Local', k=1, dv=self.dnspRBGval-1)
+		circle.addAttr('ctrl_size',at='double',k=1, dv=1.0)
+		circle.attr('ctrl_size') >> circle.attr('scaleX')
+		circle.attr('ctrl_size') >> circle.attr('scaleY')
+		circle.attr('ctrl_size') >> circle.attr('scaleZ')
+		
+		pntMatrix = []
+
+		skclList = list(set(sel.outputs(type='skinCluster')))
+		
+		for i in xrange(num):
+			
+			if i != 0:
+				pm.rename(simJointList[i], 'sim_%s'%simJointList[i].nodeName())
+				pm.rename(mixJointList[i], 'mix_%s'%mixJointList[i].nodeName())
+			
+			pos = selJointList[i].getTranslation(space='world')
+			ofstJoint = pm.rename(pm.insertJoint(mixJointList[i]), mixJointList[i].nodeName().replace('mix','offset'))
+
+			pntMatrix.append(pos)
+			
+			attrList = ['tx','ty','tz','rx','ry','rz']
+			for attr in attrList:
+				simJointList[i].attr(attr) >> mixJointList[i].attr(attr)
+			
+			pm.parentConstraint(ofstJoint, selJointList[i], mo=True)
+			
+			mixJointList[i].attr('radius').set(0.0)
+			ofstJoint.attr('radius').set(0.0)
+			
+			if not (i == num - 1 and not self.pctlCBXval):
+				
+				''' # If on, no controllers will be created to the joints which does't have any skinCluster
+				for skcl in skclList:
+					if selJointList[i] in skcl.getInfluence():
+						break
+				else:
+					continue
+				'''
+								
+				if self.ctshRBGval==1:
+					ctrl = self.makeCircleController('%s_ctrl' % selJointList[i].nodeName())
+				elif self.ctshRBGval==2:
+					ctrl = self.makePinController('%s_ctrl' % selJointList[i].nodeName())
+				elif self.ctshRBGval==3:
+					ctrl = self.makeOctaController('%s_ctrl' % selJointList[i].nodeName())
+	
+				ctrl.attr('overrideEnabled').set(1)
+				ctrl.attr('overrideColor').set((self.colrPLTval))
+	
+				ctrlAxis = pm.group(ctrl, n='%s_ctrl_axis' % selJointList[i].nodeName())
+				ctrlAxis.attr('rotatePivot').set([0,0,0])
+				ctrlAxis.attr('scalePivot').set([0,0,0])
+				
+				circle.attr('ctrl_size') >> ctrl.attr('scaleX')
+				circle.attr('ctrl_size') >> ctrl.attr('scaleY')
+				circle.attr('ctrl_size') >> ctrl.attr('scaleZ')
+				
+				pm.parentConstraint(mixJointList[i], ctrlAxis)
+				pm.parentConstraint(ctrl, ofstJoint)
+				pm.parent(ctrlAxis, ctrlGrp)
+			
+			# Pour weights to simJointList temporarily
+			
+			for skcl in skclList:
+				
+				if selJointList[i] in skcl.getInfluence():
+				
+					skcl.addInfluence(wgtJointList[i], wt=0)
+					inflList = skcl.getInfluence()
+
+					isMaintainMax = skcl.attr('maintainMaxInfluences').get()
+					maxInfl = skcl.attr('maxInfluences').get()
+			
+					isFullInfl = False
+					if isMaintainMax and maxInfl == len(inflList):
+						isFullInfl=True
+						skcl.attr('maintainMaxInfluences').set(False)
+									
+					for infl in inflList:
+						if infl == selJointList[i] or infl == wgtJointList[i]:
+							infl.attr('lockInfluenceWeights').set(False)
+						else:
+							infl.attr('lockInfluenceWeights').set(True)
+					
+					for geo in skcl.getGeometry():
+						pm.skinPercent(skcl,geo.verts,nrm=True,tv=[selJointList[i],0])
+						
+					skcl.removeInfluence(selJointList[i])
+					
+					if isFullInfl:
+						skcl.attr('maintainMaxInfluences').set(True)
+
+		crv1d = pm.curve(d=1, p=pntMatrix)
+		crv = pm.fitBspline(crv1d, ch=1, tol=0.001)
+				
+		follicle, hcrv, hairSystem = self.assignHair(crv, hairSystem)
+
+		follicleGrp = follicle.getParent()
+		curveGrp = hcrv.getParent()
+		
+		ikhandle = pm.ikHandle(sj=simJointList[0],ee=simJointList[num-1],c=hcrv,createCurve=0,solver='ikSplineSolver')[0]
+
+		# Pour back
+
+		for i in xrange(num):
+	
+			for skcl in skclList:
+				
+				if wgtJointList[i] in skcl.getInfluence():
+
+					skcl.addInfluence(selJointList[i], wt=0)				
+					inflList = skcl.getInfluence()
+
+					isMaintainMax = skcl.attr('maintainMaxInfluences').get()
+					maxInfl = skcl.attr('maxInfluences').get()
+					
+					isFullInfl = False
+					if isMaintainMax and maxInfl == len(inflList):
+						isFullInfl=True
+						skcl.attr('maintainMaxInfluences').set(False)
+	
+					for infl in inflList:
+						if infl == selJointList[i] or infl == wgtJointList[i]:
+							infl.attr('lockInfluenceWeights').set(False)
+						else:
+							infl.attr('lockInfluenceWeights').set(True)
+							
+					for geo in skcl.getGeometry():
+						pm.skinPercent(skcl,geo.verts,nrm=True,tv=[wgtJointList[i],0])	
+									
+					for infl in inflList:
+						infl.attr('lockInfluenceWeights').set(False)		
+					
+					attrList = [wgtJointList[i].attr('message'), wgtJointList[i].attr('bindPose')]
+					for attr in attrList:
+						for dst in pm.connectionInfo(attr, dfs=True):
+							dst = pm.Attribute(dst)
+							if dst.node().type()=='dagPose':
+								attr // dst
+
+					if isFullInfl:
+						skcl.attr('maintainMaxInfluences').set(True)
+		
+		pm.delete(wgtJointList)
+		
+		simGrp = pm.group(simJointList[0], follicle, n='sim_joints#')
+		xformer = pm.group(simGrp, mixJointList[0], selJointList[0], n='%s_transformer#'%sel.nodeName())
+
+		hcrv.attr('scalePivot').set(selJointList[0].getTranslation(space='world'))
+		hcrv.attr('rotatePivot').set(selJointList[0].getTranslation(space='world'))
+		ctrlGrp.attr('scalePivot').set(selJointList[0].getTranslation(space='world'))
+		ctrlGrp.attr('rotatePivot').set(selJointList[0].getTranslation(space='world'))
+		simGrp.attr('scalePivot').set(selJointList[0].getTranslation(space='world'))
+		simGrp.attr('rotatePivot').set(selJointList[0].getTranslation(space='world'))
+	
+		mixJointList[0].attr('template').set(1)
+		hcrv.attr('template').set(1)
+		hairSystem.attr('iterations').set(20)
+		xformer.attr('scalePivot').set(axis.getTranslation())
+		xformer.attr('rotatePivot').set(axis.getTranslation())
+
+		wcnst = pm.parentConstraint(circle, hcrv, mo=True)
+		lcnst = pm.parentConstraint(circle, xformer, mo=True)
+		
+		rev = pm.shadingNode('reverse', asUtility=True)
+		circle.attr('space') >> wcnst.attr('%sW0'%wcnst.getTargetList()[0])
+		circle.attr('space') >> rev.attr('inputX')
+		rev.attr('outputX') >> lcnst.attr('%sW0'%lcnst.getTargetList()[0])
+
+		pm.delete(follicleGrp, curveGrp, crv1d)
+		pm.hide(simGrp)
+		
+		crvGrp = self.makeGroupIfNotExist('hairSystemOutputCurves',0)
+		ikGrp = self.makeGroupIfNotExist('hairSystemIKHandles',1)
+		nodesGrp = self.makeGroupIfNotExist('hairSystemNodes',1)
+
+		pm.parent(hcrv, crvGrp)
+		pm.parent(ikhandle, ikGrp)
+	
+		if hairSystem.getParent() != nodesGrp:
+			pm.parent(hairSystem, nodesGrp)
+
+		if not pm.objExists(self.topName):
+			topGrp = pm.group(n=self.topName,em=1)
+			pm.parent(nodesGrp, ikGrp, crvGrp, xformer, axis, ctrlGrp, topGrp)
+		else:
+			pm.parent(xformer, axis, ctrlGrp, self.topName)
+			
+		topNode = pm.PyNode(self.topName)
+		
+		self.lockXformAttrs(topNode,False)
+		self.lockXformAttrs(ctrlGrp,False)
+		self.lockXformAttrs(crvGrp,False)
+		self.lockXformAttrs(ikGrp,False)
+		self.lockXformAttrs(nodesGrp,False)
+	
+		pm.select(topNode, r=1)
+
+		self.selList.pop(0)
+
+		windowName = 'hairSystem_Window'
+	
+		if pm.window(windowName,ex=1):
+			pm.deleteUI(windowName)
+					
+		if self.selList:
+			self.dialog(self.selList[0])
+
+		pm.displayInfo('"Make Joint Hair" has been successfully done.')
+
+		return True
+
+	def getTopGroupFromHair(self, hs):
+
+		prnt = hs.getParent()
+		if prnt:
+			grnp = prnt.getParent()
+			if grnp:
+				top = grnp.getParent()
+				if top:
+					return top
+
+		return False
+
+	def getTopJointFromHair(self, hs, isBake):
+		
+		jntList = []
+		
+		for flc in hs.outputs(type='follicle', sh=True):
+			crv = flc.outputs(type='nurbsCurve', sh=True)
+			if crv:
+				ikh = crv[0].outputs(type='ikHandle', sh=True)
+				if ikh:
+					simjnt = ikh[0].inputs(type='joint')
+					if simjnt:
+						if isBake:
+							jnt = simjnt[0].attr('translateX').outputs(type='joint')
+						else:
+							jnt = simjnt[0].attr('radius').outputs(type='joint')
+						if jnt:
+							jntList.append(jnt[0])
+		
+		return jntList		
+
+	def bake(self):
+		
+		opmTxt = self.hsysOPM.getValue()
+		isAll = self.alhsCBX.getValue()
+		
+		if isAll:
+			hsList = pm.ls(type='hairSystem')
+
+		else:
+			hsList = pm.ls(opmTxt, r=True)[0].getShapes()
+
+		for hs in hsList:
+			
+			if isAll:
+				topList = [self.getTopGroupFromHair(hs)]
+				
+			else:
+				topList = self.getTopJointFromHair(hs, True)
+
+			if not topList:
+				pm.displayError('The top node not found.')
+				return False
+
+			else:
+				dagList = pm.ls(topList, dag=True)
+				allMixJntList = pm.ls('*mix*', type='joint', r=True)
+				mixJntList = list(set(dagList) & set(allMixJntList))
+
+				if not mixJntList:
+					continue
+
+				ncls = hs.inputs(type='nucleus')[0]
+
+				for mixJnt in mixJntList:
+					simJnt = mixJnt.attr('tx').inputs()
+					if simJnt:
+						simJnt = simJnt[0]
+						if simJnt.nodeType() == 'joint':
+							simJnt.attr('radius') >> mixJnt.attr('radius') # This is for the unbaking
+	
+				if self.tmrgRBG.getSelect() == 1:
+					min = pm.env.getMinTime()
+					max = pm.env.getMaxTime()
+				else:
+					min = self.stedIFG.getValue1()
+					max = self.stedIFG.getValue2()
+	
+				ncls.attr('enable').set(True)
+
+				pm.bakeResults(mixJntList, sm=True, t=[min,max], ral=False, mr=True, at=['tx','ty','tz','rx','ry','rz'])
+
+				ncls.attr('enable').set(False)
+
+				pm.displayInfo('Successfully baked.')
+
+		
+	def unbake(self):
+
+		opmTxt = self.hsysOPM.getValue()
+		isAll = self.alhsCBX.getValue()
+		
+		if isAll:
+			hsList = pm.ls(type='hairSystem')
+
+		else:
+			hsList = pm.ls(opmTxt, r=True)[0].getShapes()
+
+		for hs in hsList:
+			
+			if isAll:
+				topList = [self.getTopGroupFromHair(hs)]
+				
+			else:
+				topList = self.getTopJointFromHair(hs, False)
+
+			if not topList:
+				pm.displayError('The top node not found.')
+				return False
+
+			else:
+				dagList = pm.ls(topList , dag=True)
+				allMixJntList = pm.ls('*mix*', type='joint', r=True)
+				mixJntList = list(set(dagList) & set(allMixJntList))
+
+				if not mixJntList:
+					continue
+
+				ncls = hs.inputs(type='nucleus')[0]
+
+				for mixJnt in mixJntList:
+					
+					ancvList = mixJnt.inputs(type='animCurve')
+					pm.delete(ancvList)
+					simJnt = mixJnt.attr('radius').inputs()
+					
+					if simJnt:
+						simJnt = simJnt[0]
+						simJnt.attr('radius') // mixJnt.attr('radius')
+						simJnt.attr('tx') >> mixJnt.attr('tx')
+						simJnt.attr('ty') >> mixJnt.attr('ty')
+						simJnt.attr('tz') >> mixJnt.attr('tz')
+						simJnt.attr('rx') >> mixJnt.attr('rx')
+						simJnt.attr('ry') >> mixJnt.attr('ry')
+						simJnt.attr('rz') >> mixJnt.attr('rz')
+
+				ncls.attr('enable').set(True)
+
+				pm.displayInfo('Successfully unbaked.')
+
+	def clickedDialogButton(self, window, sel, isNew):
+
+		if isNew:
+			self.makeJointHair(sel, None)
+		else:
+			self.currentHsysVal = self.exhsOPM.getValue()
+			
+			print self.currentHsysVal
+			
+			self.makeJointHair(sel, pm.PyNode(self.exhsOPM.getValue()))
+
+		#self.ui()
+				
+	def dialog(self, sel):
+		
+		hsysList = pm.ls(type='hairSystem')
+	
+		windowName = 'hairSystem_Window'
+	
+		if pm.window(windowName,ex=1):
+			pm.deleteUI(windowName)
+	
+		window = pm.window(windowName,title=sel.nodeName(),mb=1)
+	
+		with window:
+		
+			formLOT = pm.formLayout()
+			with formLOT:
+				self.exhsOPM = pm.optionMenu(label='')
+				
+				for hsys in hsysList:
+					pm.menuItem(l=hsys.getParent().shortName())
+				
+				if 'currentHsysVal' in dir(self):
+					self.exhsOPM.setValue(self.currentHsysVal)
+				
+				self.wrngTXT = pm.text(l='HairSystem can be shared.\nShould the selected HairSystem be used?', align='left')
+				self.usesBTN = pm.button(l='Use selected', w=90, c=pm.Callback(self.clickedDialogButton,window, sel, 0))
+				self.crtnBTN = pm.button(l='Create new', w=90, c=pm.Callback(self.clickedDialogButton,window, sel, 1))
+			
+			formLOT.attachForm(self.exhsOPM, 'top',   5)
+			formLOT.attachForm(self.exhsOPM, 'left', 20)
+			formLOT.attachForm(self.wrngTXT, 'top',  30)
+			formLOT.attachForm(self.wrngTXT, 'left', 20)
+			formLOT.attachForm(self.usesBTN, 'top',  70)
+			formLOT.attachForm(self.usesBTN, 'left', 20)
+			formLOT.attachForm(self.crtnBTN, 'top',  70)
+			formLOT.attachForm(self.crtnBTN, 'left',130)
+		
+	def conditionBranch(self):
+		
+		self.selList = pm.selected(type='joint')
+		self.topName = 'hairSystem'
+
+		if not self.selList:
+			pm.displayError('Select joints.')
+			return False
+		
+		if pm.ls(type='hairSystem'):
+			self.dialog(self.selList[0])
+		else:
+			self.makeJointHair(self.selList[0], None)
+		# pm.select('%s*_transformer1'%self.name,r=True)
+		# pm.group(name='%s_bonGp'%self.name)
+		# pm.select('%s*top_ctrl_axis1'%self.name,r=True)
+		# pm.group(name='%s_top_ctrl_axis'%self.name)
+		# pm.select('%s*ctrls1'%self.name,r=True)
+		# pm.group(name='%s_ctlGp'%self.name)
+
+	def __init__(self,putToLeaf=False, colorOveride=True,dynamicSpace=1,ctlShape=1):
+		#self.name = name
+		self.pctlCBXval = putToLeaf
+		self.colrPLTval = True
+		self.dnspRBGval = dynamicSpace
+		self.ctshRBGval = ctlShape
+		self.conditionBranch()
 
 meta.registerMClassInheritanceMapping()
 # meta.registerMClassNodeMapping(nodeTypes='transform')
