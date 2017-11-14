@@ -651,7 +651,7 @@ def exportCam():
         mm.eval(cc)
 
 #@error_alert
-#@do_function_on(mode='double')
+@do_function_on(mode='double')
 def parent_shape(src, target, delete_src=True, delete_oldShape=True):
     '''parent shape from source to target'''
     #pm.parent(src, world=True)

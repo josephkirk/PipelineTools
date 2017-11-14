@@ -33,7 +33,18 @@ def createOffsetJoint(jointRoot,child=False, suffix='offset_bon'):
         # yield offsetJoint
 
 @ul.do_function_on()
-def removeParent(ob):
+def create_parent(ob):
+    obname = ob.name().split('|')[-1].split('_')[0]+'_'+ob.name().split('_')[-1]
+    parent = pm.nt.Transform(name=obname+'Gp')
+    oldParent= ob.getParent()
+    parent.setTranslation(ob.getTranslation('world'),'world')
+    parent.setRotation(ob.getRotation('world'),'world')
+    parent.setParent(oldParent)
+    ob.setParent(parent)
+    return parent
+
+@ul.do_function_on()
+def remove_parent(ob):
     parent = ob.getParent()
     grandParent= parent.getParent()
     ob.setParent(grandParent)

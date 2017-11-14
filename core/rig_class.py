@@ -689,7 +689,7 @@ class ControlObject(object):
     @name.setter
     def name(self,newName):
         if self._suffix not in newName:
-            self._name = '{}_{}'.format(newname,self._suffix)
+            self._name = '{}_{}'.format(newName,self._suffix)
 
     @property
     def radius(self):
@@ -1077,21 +1077,46 @@ class ControlObject(object):
         return newCtl
 
     def changeControlShape(self, selectControl, ctlType, **kws):
+        kws['group'] = False
         temp = self.createControl(ctlType,**kws)
-        print temp,selectControl
-        ul.parent_shape(temp, selectControl)
+        temp.setParent(selectControl.getParent())
+        temp.setMatrix(selectControl.getMatrix(ws=True),ws=True)
+        pm.delete(selectControl.getShape(), shape=True)
+        pm.parent(temp.getShape(), selectControl, r=True, s=True)
+        pm.delete(temp)
         return selectControl
+
+    def createPropJointControl(self,bones,**kws):
+        ctls = []
+        for bone in bones:
+            bonepos = bone.getMatrix(ws=True)
+            kws['name'] = bone.name().replace('bon', 'ctl')
+            ctl = self.Octa(**kws)
+            ctls.append(ctl)
+            ctlGp = ctl.getParent()
+            #ctl.setParent(ctlGp)
+            ctlGp.setMatrix(bonepos, ws=True)
+            #pm.makeIdentity(ctlGp, apply=True)
+            pm.parentConstraint(ctl,bone,mo=True)
+        pm.select(ctls)
+        return ctls
 
     def createFreeJointControl(self,bones,**kws):
         ctls = []
         for bone in bones:
-            if not bone.getParent() or not bone.getParent().name().endswith('Gp'):
-                bonepos = bone.getTranslation('world')
-                bonGp = pm.nt.Transform(name=bone.name()+'Gp')
+            bonepos = bone.getTranslation('world')
+            bonename = bone.name().split('|')[-1].split('_')[0]
+            if not bone.getParent() or bone.getParent().name()!=(bone.name()+'Gp'):
+                oldParent = bone.getParent()
+                bonGp = pm.nt.Transform(name=bonename+'_bonGp')
                 bonGp.setTranslation(bonepos, 'world')
                 pm.makeIdentity(bonGp, apply=True)
                 bone.setParent(bonGp)
-            ctl = self.Sphere(name=bone.name().replace('bon', 'ctl'),**kws)
+                bonGp.setParent(oldParent)
+            else:
+                bonGp = bone.getParent()
+            self.name = bonename.replace('bon', 'ctl')
+            ctl = self.Sphere(**kws)
             ctls.append(ctl)
             ctlGp = ctl.getParent()
             #ctl.setParent(ctlGp)
@@ -1131,6 +1156,7 @@ class ControlObject(object):
     #     log.info('%s set to %s'%(uiName, str(args[0])))
 
     def _getUIValue(self):
+        self.name = self._uiElement['ctlName'].getText()
         self.color = self._uiElement['ctlColor'].getRgbValue()
         print self._uiElement['ctlAxis'].getValue()
         self.axis = self._uiElement['ctlAxis'].getValue()
@@ -1170,16 +1196,25 @@ class ControlObject(object):
                 self.setColor(sel,self.color)
     
     def _do4(self):
+        self._getUIValue()
         if pm.selected():
             sels = pm.selected()
             self.createFreeJointControl(sels, group=True)
 
     def _do5(self):
+        self._getUIValue()
         if pm.selected():
             sels = pm.selected()
             self.createParentJointControl(
                 sels,group=True,
                 mirror=self._uiElement['ctlOption'].getValueArray4()[-1])
+
+    def _do6(self):
+        self._getUIValue()
+        if pm.selected():
+            sels = pm.selected()
+            self.createPropJointControl(
+                sels,group=True)
 
     def _showUI(self, parent=None):
         self._uiName = 'CreateControlUI'
@@ -1266,8 +1301,13 @@ class ControlObject(object):
                         pm.menuItem(label='Change Current Select',c=pm.Callback(self._do2))
                         pm.menuItem(label='Set Color Select',c=pm.Callback(self._do3))
                         pm.menuItem(label='Create Free Control',c=pm.Callback(self._do4))
+                        pm.menuItem(label='Create Prop Control',c=pm.Callback(self._do6))
                         pm.menuItem(label='Create Parent Control',c=pm.Callback(self._do5))
                         pm.menuItem(label='Create Long Hair Control',c=pm.Callback(HairRig))
+                        pm.menuItem(label='Parent Shape',c=pm.Callback(ul.parent_shape))
+                        pm.menuItem(label='create Offset bone',c=pm.Callback(ru.createOffsetJoint))
+                        pm.menuItem(label='create Parent',c=pm.Callback(ru.create_parent))
+                        pm.menuItem(label='delete Parent',c=pm.Callback(ru.remove_parent))
         self._getUIValue()
 
 class HairRig:
