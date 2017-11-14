@@ -7,75 +7,81 @@ email: josephkirk.art@gmail.com
 All code written by me unless specify
 """
 
-import pymel.core as pm
 import general_utils as ul
-import rig_class as rc
-import string
-import math
+import pymel.core as pm
+
+
 #### Rigging Control
 
 
 ###Rigging Function
 
 @ul.do_function_on()
-def createOffsetJoint(jointRoot,child=False, suffix='offset_bon'):
+def createOffsetJoint(jointRoot, child=False, suffix='offset_bon'):
     jointlist = [jointRoot]
     if child:
         jointlist.extend(jointRoot.getChildren(allDescendents=True))
     for joint in jointlist:
-        newname= joint.name().split('|')[-1].split('_')[0]+'_'+suffix
+        newname = joint.name().split('|')[-1].split('_')[0] + '_' + suffix
         offsetJoint = pm.duplicate(joint, name=newname, po=True)[0]
         offsetJoint.drawStyle.set(2)
         oldParent = joint.getParent()
-        #pm.parent(offsetJoint, oldParent)
+        # pm.parent(offsetJoint, oldParent)
         joint.setParent(offsetJoint)
-        #pm.makeIdentity(joint,apply=True)
+        # pm.makeIdentity(joint,apply=True)
         # yield offsetJoint
+
 
 @ul.do_function_on()
 def create_parent(ob):
-    obname = ob.name().split('|')[-1].split('_')[0]+'_'+ob.name().split('_')[-1]
-    parent = pm.nt.Transform(name=obname+'Gp')
-    oldParent= ob.getParent()
-    parent.setTranslation(ob.getTranslation('world'),'world')
-    parent.setRotation(ob.getRotation('world'),'world')
+    obname = ob.name().split('|')[-1].split('_')[0] + '_' + ob.name().split('_')[-1]
+    parent = pm.nt.Transform(name=obname + 'Gp')
+    oldParent = ob.getParent()
+    parent.setTranslation(ob.getTranslation('world'), 'world')
+    parent.setRotation(ob.getRotation('world'), 'world')
     parent.setParent(oldParent)
     ob.setParent(parent)
     return parent
 
+
 @ul.do_function_on()
 def remove_parent(ob):
     parent = ob.getParent()
-    grandParent= parent.getParent()
+    grandParent = parent.getParent()
     ob.setParent(grandParent)
     pm.delete(parent)
+
 
 @ul.do_function_on('double')
 def xformTo(ob, joint):
     const = pm.parentConstraint(joint, ob)
     pm.delete(const)
 
+
 @ul.do_function_on('double')
-def matchTransform(ob,target):
+def matchTransform(ob, target):
     ob.setMatrix(target.getMatrix(ws=True), ws=True)
+
 
 @ul.do_function_on('double')
 def connectTransform(ob, target, **kws):
     attrdict = {
-        'translate': ['tx','ty','tz'],
-        'rotate': ['rx','ry','rz'],
-        'scale': ['sx','sy','sz']
+        'translate': ['tx', 'ty', 'tz'],
+        'rotate': ['rx', 'ry', 'rz'],
+        'scale': ['sx', 'sy', 'sz']
     }
-    for atr,value in attrdict.items():
+    for atr, value in attrdict.items():
         if kws.has_key(atr):
             if kws(atr) is False:
                 continue
             for attr in value:
                 ob.attr(attr) >> target.attr(attr)
 
+
 def toggleChannelHistory(state=False):
     for ob in pm.ls():
         ob.isHistoricallyInteresting.set(state)
+
 
 def deform_normal_off():
     skin_clusters = pm.ls(type='skinCluster')
@@ -86,18 +92,20 @@ def deform_normal_off():
         print skin_cluster
         print skin_cluster.attr('deformUserNormals').get()
 
+
 @ul.do_function_on('single')
 def mirror_joint_multi(ob):
-    pm.mirrorJoint(ob, myz=True,sr=('Left', 'Right'))
+    pm.mirrorJoint(ob, myz=True, sr=('Left', 'Right'))
+
 
 def get_blendshape_target(
-    bsname,
-    reset_value=False,
-    rebuild=False,
-    delete_old=True,
-    parent=None,
-    offset=0,
-    exclude=[], exclude_last=False):
+        bsname,
+        reset_value=False,
+        rebuild=False,
+        delete_old=True,
+        parent=None,
+        offset=0,
+        exclude=[], exclude_last=False):
     """get blendShape in scene match bsname 
         misc function:
             bsname : blendShape name or id to search for 
@@ -110,7 +118,7 @@ def get_blendshape_target(
     bs_list = pm.ls(type='blendShape')
     if not bs_list:
         return
-    if isinstance(bsname,int):
+    if isinstance(bsname, int):
         blendshape = bs_list[bsname]
     else:
         blendshape = pm.PyNode(bsname)
@@ -118,21 +126,21 @@ def get_blendshape_target(
         return
     target_list = []
     pm.select(cl=True)
-    for id,target in enumerate(blendshape.weight):
-        target_name = pm.aliasAttr(target,q=True)
+    for id, target in enumerate(blendshape.weight):
+        target_name = pm.aliasAttr(target, q=True)
         if reset_value is True or rebuild is True:
             if target_name not in exclude:
                 target.set(0)
         target_weight = target.get()
         target_list.append((target, target_name, target_weight))
-    #print target_list
+    # print target_list
     if rebuild is True:
         base_ob_node = blendshape.getBaseObjects()[0].getParent().getParent()
         print base_ob_node
         base_ob_name = base_ob_node.name()
         blendshape_name = blendshape.name()
         iter = 1
-        target_rebuild_list =[]
+        target_rebuild_list = []
         if parent != None and type(parent) is str:
             if pm.objExists(parent):
                 pm.delete(pm.PyNode(parent))
@@ -140,8 +148,8 @@ def get_blendshape_target(
         if exclude_last is True:
             target_list[-1][0].set(1)
             target_list = target_list[:-1]
-        base_dup = pm.duplicate(base_ob_node,name=base_ob_name+"_rebuild")
-        for target in target_list: 
+        base_dup = pm.duplicate(base_ob_node, name=base_ob_name + "_rebuild")
+        for target in target_list:
             if target[1] not in exclude:
                 target[0].set(1)
                 new_target = pm.duplicate(base_ob_node)
@@ -149,7 +157,7 @@ def get_blendshape_target(
                 pm.parent(new_target, parent)
                 pm.rename(new_target, target[1])
                 target[0].set(0)
-                pm.move(offset*iter ,new_target, moveX=True)
+                pm.move(offset * iter, new_target, moveX=True)
                 iter += 1
         pm.select(target_rebuild_list, r=True)
         pm.select(base_dup, add=True)
@@ -157,29 +165,31 @@ def get_blendshape_target(
         blend_reget = get_blendshape_target(blendshape_name)
         blendshape = blend_reget[0]
         target_list = blend_reget[1]
-    return (blendshape,target_list)
+    return (blendshape, target_list)
+
 
 @ul.do_function_on(mode='singlelast')
-def skin_weight_filter(ob, joint,min=0.0, max=0.1, select=False):
+def skin_weight_filter(ob, joint, min=0.0, max=0.1, select=False):
     '''return vertex with weight less than theshold'''
     skin_cluster = ul.get_skin_cluster(ob)
     ob_shape = ul.get_shape(ob)
     filter_weight = []
     for vtx in ob_shape.vtx:
         weight = pm.skinPercent(skin_cluster, vtx, query=True, transform=joint, transformValue=True)
-        #print weight
+        # print weight
         if min < weight <= max:
             filter_weight.append(vtx)
     if select:
         pm.select(filter_weight)
     return filter_weight
 
+
 @ul.do_function_on(mode='single')
-def switch_skin_type(ob,type='classis'):
+def switch_skin_type(ob, type='classis'):
     type_dict = {
-        'Classis':0,
-        'Dual':1,
-        'Blend':2}
+        'Classis': 0,
+        'Dual': 1,
+        'Blend': 2}
     if not ul.get_skin_cluster(ob) and type not in type_dict.keys():
         return
     skin_cluster = ul.get_skin_cluster(ob)
@@ -187,23 +197,26 @@ def switch_skin_type(ob,type='classis'):
     deform_normal_state = 0 if type_dict[type] is 2 else 1
     skin_cluster.attr('deformUserNormals').set(deform_normal_state)
 
+
 @ul.do_function_on(mode='doubleType', type_filter=['float3', 'transform', 'joint'])
 def skin_weight_setter(component_list, joints_list, skin_value=1.0, normalized=True, hierachy=False):
     '''set skin weight to skin_value for vert in verts_list to first joint,
        other joint will receive average from normalized weight,
        can be use to set Dual Quarternion Weight'''
+
     def get_skin_weight():
         skin_weight = []
         if normalized:
             skin_weight.append((joints_list[0], skin_value))
             if len(joints_list) > 1:
-                skin_normalized = (1.0-skin_value)/(len(joints_list)-1)
+                skin_normalized = (1.0 - skin_value) / (len(joints_list) - 1)
                 for joint in joints_list[1:]:
                     skin_weight.append((joint, skin_normalized))
             return skin_weight
         for joint in joints_list:
-            skin_weight.append((joint,skin_value))
+            skin_weight.append((joint, skin_value))
         return skin_weight
+
     if hierachy:
         child_joint = joints_list[0].listRelatives(allDescendents=True)
         joints_list.extend(child_joint)
@@ -215,7 +228,7 @@ def skin_weight_setter(component_list, joints_list, skin_value=1.0, normalized=T
             pm.select(component, r=True)
             pm.skinPercent(skin_cluster, transformValue=get_skin_weight())
             print component_list
-        pm.select(component_list,joints_list)
+        pm.select(component_list, joints_list)
     else:
         verts_list = ul.convert_component(component_list)
         skin_cluster = ul.get_skin_cluster(verts_list[0])
@@ -223,9 +236,9 @@ def skin_weight_setter(component_list, joints_list, skin_value=1.0, normalized=T
             pm.select(verts_list)
             pm.skinPercent(skin_cluster, transformValue=get_skin_weight())
             pm.select(joints_list, add=True)
-        #print verts_list
-        #print skin_weight
-        #skin_cluster.setWeights(joints_list,[skin])
+            # print verts_list
+            # print skin_weight
+            # skin_cluster.setWeights(joints_list,[skin])
 
 
 @ul.do_function_on(mode='sets', type_filter=['float3'])
@@ -243,10 +256,11 @@ def dual_weight_setter(component_list, weight_value=0.0, query=False):
     else:
         for vert in verts_list:
             for vert in vert.indices():
-                skin_cluster.setBlendWeights(shape, shape.vtx[vert], [weight_value,weight_value])
-        #     print skin_cluster.getBlendWeights(shape, vert)
-        #pm.select(verts_list)
-        #skin_cluster.setBlendWeights(shape, verts_list, [weight_value,])
+                skin_cluster.setBlendWeights(shape, shape.vtx[vert], [weight_value, weight_value])
+                #     print skin_cluster.getBlendWeights(shape, vert)
+                # pm.select(verts_list)
+                # skin_cluster.setBlendWeights(shape, verts_list, [weight_value,])
+
 
 @ul.do_function_on(mode='single', type_filter=['float3', 'transform'])
 def create_joint(ob_list):
@@ -265,6 +279,7 @@ def create_joint(ob_list):
         if new_joint == new_joints[-1]:
             pm.joint(new_joint, edit=True, oj='none', ch=True, zso=True)
 
+
 @ul.error_alert
 @ul.do_function_on(mode='single')
 def insert_joint(joint, num_joint=2):
@@ -273,7 +288,7 @@ def insert_joint(joint, num_joint=2):
     joint_child.orientJoint('none')
     joint_name = ul.remove_number(joint.name())
     if joint_child:
-        distance = joint_child.tx.get()/(num_joint+1)
+        distance = joint_child.tx.get() / (num_joint + 1)
         while num_joint:
             insert_joint = pm.insertJoint(joint)
             pm.joint(insert_joint, edit=True, co=True, ch=False, p=[distance, 0, 0], r=True)
@@ -284,9 +299,10 @@ def insert_joint(joint, num_joint=2):
         joint_list.insert(0, og_joint)
         for index, bone in enumerate(joint_list):
             try:
-                pm.rename(bone, "%s%02d"%(joint_name[0], index+1))
+                pm.rename(bone, "%s%02d" % (joint_name[0], index + 1))
             except:
-                pm.rename(bone, "%s#"%joint_name[0])
+                pm.rename(bone, "%s#" % joint_name[0])
+
 
 @ul.do_function_on(mode='double')
 def snap_simple(ob1, ob2, worldspace=False, hierachy=False, preserve_child=False):
@@ -305,6 +321,8 @@ def snap_simple(ob1, ob2, worldspace=False, hierachy=False, preserve_child=False
         if preserve_child:
             for ob1_child, ob1_child_old_matrix in zip(ob1_childs, ob1_child_old_matrixes):
                 ob1_child.setMatrix(ob1_child_old_matrix, ws=True)
+
+
 # pm.copySkinWeights(ss=skin.name(), ds=dest_skin.name(),
 #                    noMirror=True, normalize=True,
 #                    surfaceAssociation='closestPoint',
@@ -316,12 +334,14 @@ def copy_skin_multi(source_skin_grp, dest_skin_grp, **kwargs):
     source_skins = source_skin_grp.listRelatives(type='transform', ad=1)
     dest_skins = dest_skin_grp.listRelatives(type='transform', ad=1)
     if len(dest_skins) == len(source_skins):
-        print '---{}---'.format('Copying skin from %s to %s'%(source_skin_grp, dest_skin_grp))
+        print '---{}---'.format('Copying skin from %s to %s' % (source_skin_grp, dest_skin_grp))
         for skinTR, dest_skinTR in zip(source_skins, dest_skins):
             copy_skin_single(skinTR, dest_skinTR, **kwargs)
         print '---Copy Skin Finish---'
     else:
         print 'source and target are not the same'
+
+
 @ul.error_alert
 def copy_skin_single(source_skin, dest_skin, **kwargs):
     '''copy skin for 2 object, target object do not need to have skin Cluster'''
@@ -338,49 +358,52 @@ def copy_skin_single(source_skin, dest_skin, **kwargs):
         if not skin:
             raise AttributeError()
         skin_joints = skin.getInfluence()
-        print source_skin,'connected to', skin
-        print source_skin,'influenced by', skin_joints
+        print source_skin, 'connected to', skin
+        print source_skin, 'influenced by', skin_joints
         skin_dest = ul.get_skin_cluster(dest_skin)
         if not skin_dest:
             dest_skin_joints = []
             for bone in skin_joints:
                 label_joint(bone)
                 found_bones = pm.ls(bone.otherType.get(), type='joint')
-                if len(found_bones)>1:
+                if len(found_bones) > 1:
                     for found_bone in found_bones:
                         if found_bone != bone:
                             dest_skin_joints.append(found_bone)
                             break
             dest_skin_joints.append(dest_skin)
-            skin_dest = pm.skinCluster(*dest_skin_joints,tsb=True)
+            skin_dest = pm.skinCluster(*dest_skin_joints, tsb=True)
             dest_skin_joints = dest_skin_joints[:-1]
         else:
             dest_skin_joints = skin_dest.getInfluence()
-        print dest_skin,'connected to', skin_dest
-        print dest_skin,'influenced by', dest_skin_joints
+        print dest_skin, 'connected to', skin_dest
+        print dest_skin, 'influenced by', dest_skin_joints
         kwargs['ds'] = skin_dest.name()
-        #pm.copySkinWeights(**kwargs)
-        #skin_dest.setSkinMethod(skin.getSkinMethod())
-        print '{} successfully copy to {}'.format(source_skin, skin_dest), '\n', "_"*30
+        # pm.copySkinWeights(**kwargs)
+        # skin_dest.setSkinMethod(skin.getSkinMethod())
+        print '{} successfully copy to {}'.format(source_skin, skin_dest), '\n', "_" * 30
     except AttributeError:
-        print '%s cannot copy skin to %s'%(source_skin.name(), dest_skin.name())
-        print "-"*30
+        print '%s cannot copy skin to %s' % (source_skin.name(), dest_skin.name())
+        print "-" * 30
         for ob in [source_skin, dest_skin]:
             print '{:_>20} connect to skinCluster: {}'.format(ob, ul.get_skin_cluster(ob))
-        print "_"*30
+        print "_" * 30
+
 
 @ul.do_function_on(mode='last')
-def connect_joint(bones,boneRoot,**kwargs):
+def connect_joint(bones, boneRoot, **kwargs):
     for bone in bones:
         pm.connectJoint(bone, boneRoot, **kwargs)
+
+
 @ul.error_alert
 @ul.do_function_on(mode='hierachy')
 def label_joint(
-    ob,
-    remove_prefixes = ['CH_'],
-    direction_label = {
-        'Left':(1, ['left', 'Left', 'L_', '_L']),
-        'Right':(2, ['right', 'Right', 'R_', '_R'])}):
+        ob,
+        remove_prefixes=['CH_'],
+        direction_label={
+            'Left': (1, ['left', 'Left', 'L_', '_L']),
+            'Right': (2, ['right', 'Right', 'R_', '_R'])}):
     try:
         ob.attr('type').set(18)
         wildcard = ''
@@ -395,36 +418,39 @@ def label_joint(
             if wildcard:
                 break
         print wildcard
-        label_name = ob.name().replace(wildcard,'')
+        label_name = ob.name().replace(wildcard, '')
         if '|' in label_name:
             label_name = label_name.split('|')[-1]
         if remove_prefixes:
             for prefix in remove_prefixes:
-                label_name = label_name.replace(prefix,'')
+                label_name = label_name.replace(prefix, '')
         ob.otherType.set(label_name)
         ob.side.set(sideid)
-        print 'set {} joint label to {}'.format(ob,label_name)
+        print 'set {} joint label to {}'.format(ob, label_name)
     except AttributeError as why:
         print ob, why
 
+
 @ul.do_function_on(mode='single')
 def create_roll_joint(oldJoint):
-    newJoint = pm.duplicate(oldJoint,rr=1,po=1)[0]
-    pm.rename(newJoint,('%sRoll1'%oldJoint.name()).replace('Left','LeafLeft'))
+    newJoint = pm.duplicate(oldJoint, rr=1, po=1)[0]
+    pm.rename(newJoint, ('%sRoll1' % oldJoint.name()).replace('Left', 'LeafLeft'))
     newJoint.attr('radius').set(2)
     pm.parent(newJoint, oldJoint)
     return newJoint
 
+
 @ul.do_function_on(mode='single')
 def create_sub_joint(ob):
-    subJoint = pm.duplicate(ob,name='%sSub'%ob.name(),rr=1,po=1,)[0]
+    subJoint = pm.duplicate(ob, name='%sSub' % ob.name(), rr=1, po=1, )[0]
     new_pairBlend = pm.createNode('pairBlend')
     subJoint.radius.set(2.0)
-    pm.rename(new_pairBlend,'%sPairBlend'%ob.name())
+    pm.rename(new_pairBlend, '%sPairBlend' % ob.name())
     new_pairBlend.attr('weight').set(0.5)
     ob.rotate >> new_pairBlend.inRotate2
     new_pairBlend.outRotate >> subJoint.rotate
-    return (ob,new_pairBlend,subJoint)
+    return (ob, new_pairBlend, subJoint)
+
 
 @ul.do_function_on(mode='single')
 def reset_attr_value(ob):
@@ -438,16 +464,18 @@ def reset_attr_value(ob):
     for at in attrList[:-1]:
         bone.attr(at).set(0)
 
+
 @ul.do_function_on(mode='single')
 def create_skinDeform(ob):
-    dupOb = pm.duplicate(ob,name="_".join([ob.name(),"skinDeform"]))
+    dupOb = pm.duplicate(ob, name="_".join([ob.name(), "skinDeform"]))
     for child in dupOb[0].listRelatives(ad=True):
         ul.add_suffix(child)
 
+
 @ul.do_function_on(mode='single')
 def mirror_joint_tranform(bone, translate=False, rotate=True, **kwargs):
-    #print bone
-    opbone = get_opposite_joint(bone, customPrefix=(kwargs['customPrefix']if kwargs.has_key('customPrefix') else None))
+    # print bone
+    opbone = get_opposite_joint(bone, customPrefix=(kwargs['customPrefix'] if kwargs.has_key('customPrefix') else None))
     offset = 1
     if not opbone:
         opbone = bone
@@ -456,15 +484,16 @@ def mirror_joint_tranform(bone, translate=False, rotate=True, **kwargs):
     if all([type(b) == pm.nt.Joint for b in [bone, opbone]]):
         if rotate:
             pm.joint(opbone, edit=True, ax=pm.joint(bone, q=True, ax=True),
-                     ay=pm.joint(bone, q=True, ay=True)*offset,
-                     az=pm.joint(bone, q=True, az=True)*offset)
+                     ay=pm.joint(bone, q=True, ay=True) * offset,
+                     az=pm.joint(bone, q=True, az=True) * offset)
         if translate:
             bPos = pm.joint(bone, q=True, p=True)
-            pm.joint(opbone, edit=True, p=(bPos[0]*-1, bPos[1], bPos[2]),
+            pm.joint(opbone, edit=True, p=(bPos[0] * -1, bPos[1], bPos[2]),
                      ch=kwargs['ch'] if kwargs.has_key('ch') else False,
                      co=not kwargs['ch'] if kwargs.has_key('ch') else True)
 
-#@ul.do_function_on
+
+# @ul.do_function_on
 def get_opposite_joint(bone, select=False, opBoneOnly=True, customPrefix=None):
     "get opposite Bone"
     mirrorPrefixes_list = [
@@ -477,9 +506,9 @@ def get_opposite_joint(bone, select=False, opBoneOnly=True, customPrefix=None):
     except:
         pass
     for mirrorprefix in mirrorPrefixes_list:
-        for index,mp in enumerate(mirrorprefix):
+        for index, mp in enumerate(mirrorprefix):
             if mp in bone.name():
-                opBoneName = bone.name().replace(mirrorprefix[index], mirrorprefix[index-1])
+                opBoneName = bone.name().replace(mirrorprefix[index], mirrorprefix[index - 1])
                 opBone = pm.ls(opBoneName)[0] if pm.ls(opBoneName) else None
                 if select:
                     if opBoneOnly:
@@ -488,14 +517,16 @@ def get_opposite_joint(bone, select=False, opBoneOnly=True, customPrefix=None):
                         pm.select(bone, opBone)
                 print opBoneName
                 return opBone
+
+
 @ul.do_function_on('single')
 def reset_bindPose(joint_root):
-    joint_childs = joint_root.listRelatives(type=pm.nt.Joint,ad=True)
+    joint_childs = joint_root.listRelatives(type=pm.nt.Joint, ad=True)
     for joint in joint_childs:
-        if joint.rotate.get() != pm.dt.Vector(0,0,0):
-            #print type(joint.rotate.get())
+        if joint.rotate.get() != pm.dt.Vector(0, 0, 0):
+            # print type(joint.rotate.get())
             joint.jointOrient.set(joint.rotate.get())
-            joint.rotate.set(pm.dt.Vector(0,0,0))
+            joint.rotate.set(pm.dt.Vector(0, 0, 0))
     newbp = pm.dagPose(bp=True, save=True)
     bindPoses = pm.ls(type=pm.nt.DagPose)
     for bp in bindPoses:

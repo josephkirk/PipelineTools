@@ -59,7 +59,7 @@ def error_alert(func):
                 '\nkwargs:\n',','.join(['{}={}'.format(key,value) for key,value in kwargs.items()]),
                 'create Error:']))
             for cause in why:
-                msg.append(str(why))    
+                msg.append(str(why))
             msg = '\n'.join(msg)
             log.error(msg)
     return wrapper
@@ -108,7 +108,7 @@ def do_function_on(mode='single', type_filter=[], return_list=True):
                         assert any([isinstance(ob,typ) for type in type_filter]), '{} not match type {}'.format(ob,str(type_filter))
                 except:
                     log.debug('{} not match type {}'.format(ob,str(type_filter)))
-                    continue 
+                    continue
                 if ob not in object_list:
                     object_list.append(ob) ### search if arg is valid object
             if not object_list:
@@ -207,7 +207,7 @@ def assert_type(ob, typelist=[]):
     assert(any([isinstance(ob, typ) for typ in typelist])),"Object %s does not match any in type:%s"%(ob, ",".join([str(t) for t in typelist]))
     #return ''.join([ob,'match one of:',','.join(types)])
 
-####global misc function 
+####global misc function
 def offcastshadow(wc='*eyeref*'):
     ob_list = pm.ls(wc,s=True)
     for ob in ob_list:
@@ -390,7 +390,7 @@ def get_closest_info(ob, mesh_node):
         (mesh_node.e[edge],
         (mesh_node.e[edge].getPoint(0, space='world')+mesh_node.e[edge].getPoint(1, space='world'))/2)
         for edge in edges]
-    
+
     distance = [(mid_point[0], mid_point[1], ob_pos.distanceTo(mid_point[1])) for mid_point in mid_point_list]
     distance.sort(key=lambda d:d[2])
     results['Closest Edge'] = distance[0][0]
@@ -415,7 +415,7 @@ def get_node(node_name, unique_only=True, type_filter=None, verpose=False):
             msg.append("%s exists, is type %s" % (node, type(node)))
             return node
         else:
-            node = pm.ls('*%s*'%node_name, type=type_filter) 
+            node = pm.ls('*%s*'%node_name, type=type_filter)
             msg.append("found %d object:" % (len(node)))
             for n in node:
                 msg.append(node.name())
@@ -449,9 +449,9 @@ def get_skin_cluster(ob):
         msg = 'Cannot get skinCluster from {}'.format(ob)
         return pm.error(msg)
 
-def convert_component(components_list, toVertex=True, toEdge=False, toFace=False): 
+def convert_component(components_list, toVertex=True, toEdge=False, toFace=False):
     test_type = [o for o in components_list if type(o) is pm.nt.Transform]
-    
+
     if test_type:
         converts = []
         for match in test_type:
@@ -464,12 +464,12 @@ def convert_component(components_list, toVertex=True, toEdge=False, toFace=False
     print converts
     return pm.ls(converts)
 
-def remove_number(string): 
+def remove_number(string):
     for index, character in enumerate(string):
         if character.isdigit():
             return (string[:index], int(string[index:] if string[index:].isdigit() else string[index:]))
 
-def get_pos_center_from_edge(edge): 
+def get_pos_center_from_edge(edge):
     if type(edge) == pm.general.MeshEdge:
         t_node = edge.node()
         verts_set= set()
@@ -482,7 +482,7 @@ def get_pos_center_from_edge(edge):
         vert_pos = sum([v.getPosition() for v in list(verts_set)])/len(verts_set)
         return vert_pos
 
-def get_shape(ob): 
+def get_shape(ob):
     '''return shape from ob, if cannot find raise error'''
     if hasattr(ob, 'getShape'):
         return ob.getShape()
@@ -593,7 +593,7 @@ def hair_from_curve(input_curve, hair_system=""):
     follicle.getShape().outCurve >> hair_curve.getShape().create
     follicle.getShape().outHair >> hair_system.getShape().inputHair[hair_ind]
     hair_system.getShape().outputHair[hair_ind] >> follicle.getShape().currentPosition
-    
+
     return [input_curve,hair_curve,follicle,hair_system]
 
 #@do_function_on(mode='single')
@@ -840,7 +840,7 @@ def send_current_file(scene=True,suffix='_vn', lastest=True, render=False, tex=T
         msg = "Scene Copy Error\n{}".format(','.join(why))
         status.append(msg)
     if tex or extras:
-        if all([src.dirname().dirname().dirname().basename() != d for d in ['CH','BG','CP']]) and src.dirname().dirname().basename()!='CP': 
+        if all([src.dirname().dirname().dirname().basename() != d for d in ['CH','BG','CP']]) and src.dirname().dirname().basename()!='CP':
             scene_src = scene_src.dirname()
             scene_dest = scene_dest.dirname()
             print scene_src
@@ -979,7 +979,7 @@ def sendFile(CH,
                 else:
                     print "no Psd Files"
             except (IOError, OSError) as why:
-                #print AllPath[k] 
+                #print AllPath[k]
                 print why
         else:
             print "no %s folder" % k
