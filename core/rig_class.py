@@ -804,13 +804,13 @@ class ControlObject(object):
             # Assign Keyword Argument value to Class Property value
             log.debug('Assign KeyWord to ControlObject Class Propety')
             if 'offset' in kws:
-                self.offset = offset
+                self.offset = kws['offset']
                 log.debug('{} set to {}'.format('offset', offset))
             if 'res' in kws:
-                self.step = res
+                self.step = kws['res']
                 log.debug('{} set to {}'.format('res', res))
             if 'color' in kws:
-                self.color = color
+                self.color = kws['color']
                 log.debug('{} set to {}'.format('color', color))
 
             for key, value in kws.items():
