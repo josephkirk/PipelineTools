@@ -37,6 +37,27 @@ def batch_export_cam():
         cm.file(f=True, new=True)
         mm.eval("paneLayout -e -m true $gMainPane")
 
+class RigTools:
+    def __init__(self):
+        self._name = 'Rig Tools'
+        self._windowname = self._name.replace(' ','')+'Window'
+    @classmethod
+    def show(cls):
+        cls._init_ui()
+    def init_ui(self):
+        if pm.window(self._windowname, exists=True):
+            pm.deleteUI(self._name)
+            pm.windowPref(self._name, remove=True)
+        self._window = pm.window(
+            self._windowname, title=self._title,
+            rtf=True, sizeable=False)
+        self._template = pm.uiTemplate(self._windowname.replace('Window', 'UITemplate'), force=True)
+        with self._window:
+            with self._template:
+                with frameLayout(label='FacialRig'):
+                    pass
+                with frameLayout(label='SecondaryRig'):
+                    pass
 
 class SendCurrentFile(object):
     def __init__(self):

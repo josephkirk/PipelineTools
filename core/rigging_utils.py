@@ -14,8 +14,42 @@ import pymel.core as pm
 #### Rigging Control
 
 
+###
+def basic_intergration():
+    pm.PyNode('CH_ReferenceShape').visibility.set(False)
+    root = pm.PyNode('ROOT')
+    for atr in ['tx', 'ty', 'tz',
+                'rx', 'ry', 'rz',
+                'sx', 'sy', 'sz']:
+        root.attr(atr).lock()
+        root.attr(atr).set(cb=False, k=False)
+    chref = pm.PyNode('CH_Ctrl_Reference')
+    for atr in ['FacialVis','FacialBS','SecondaryVis','SecondaryBS']:
+        if not chref.hasAttr(atr):
+            chref.addAttr(atr,at='bool',k=1)
+    if not chref.hasAttr('Radius'):
+        chref.addAttr('Radius',at='float',k=1)
+        chref.Radius.set(100)
+    if not chref.Radius.outputs():
+        temp = pm.circle(radius=100)
+        temp[0].setRotation([-90,0,0])
+        pm.makeIdentity(temp[0], apply=True)
+        chref = pm.PyNode('CH_Ctrl_Reference')
+        pm.parent(temp[0].getShape(), chref, r=True, s=True)
+        pm.delete(chref.getShape(), shape=True)
+        chref.Radius >> temp[1].radius
+        pm.delete(temp[0])
+    if pm.objExists('facialGp'):
+        chref.FacialVis >> pm.PyNode('facialGp').visibility
+    for bs in ['FacialBs','EyeDeformBS']:
+        if pm.objExists(bs):
+            chref.FacialBS >> pm.PyNode(bs).envelope
+    if pm.objExists('secondaryGp'):
+        chref.SecondaryVis >> pm.PyNode('secondaryGp').visibility
+    if pm.objExists('SecondaryBS'):
+        chref.SecondaryBS >> pm.PyNode('SecondaryBS').envelope
+    
 ###Rigging Function
-
 @ul.do_function_on()
 def createOffsetJoint(jointRoot, child=False, suffix='offset_bon'):
     jointlist = [jointRoot]
@@ -31,6 +65,31 @@ def createOffsetJoint(jointRoot, child=False, suffix='offset_bon'):
         # pm.makeIdentity(joint,apply=True)
         # yield offsetJoint
 
+@ul.do_function_on()
+def create_loc_control(ob, connect=True):
+    obname = ob.name().split('|')[-1].split('_')[0]
+    loc = pm.spaceLocator(name=obname + 'loc')
+    loc.setTranslation(ob.getTranslation('world'), 'world')
+    loc.setRotation(ob.getRotation('world'), 'world')
+    loc_Gp = create_parent(loc,cl=True)
+    if connect:
+        attrdict = {
+            'translate': ['tx', 'ty', 'tz'],
+            'rotate': ['rx', 'ry', 'rz'],
+            'scale': ['sx', 'sy', 'sz']
+        }
+        for atr, value in attrdict.items():
+            loc.attr(atr) >> ob.attr(atr)
+            for attr in value:
+                loc.attr(attr) >> ob.attr(attr)
+    return loc
+
+@ul.do_function_on(mode='double')
+def connect_with_loc(ctl,bon):
+    loc = create_loc_control(bon,cl=True)
+    pct = pm.pointConstraint(ctl, loc)
+    oct = pm.orientConstraint(ctl, loc)
+    return (loc,pct,oct)
 
 @ul.do_function_on()
 def create_parent(ob):
@@ -65,15 +124,19 @@ def matchTransform(ob, target):
 
 @ul.do_function_on('double')
 def connectTransform(ob, target, **kws):
+    for atr in ['translate','rotate','scale']:
+        if atr not in kws:
+            kws[atr] = True
     attrdict = {
         'translate': ['tx', 'ty', 'tz'],
         'rotate': ['rx', 'ry', 'rz'],
         'scale': ['sx', 'sy', 'sz']
     }
     for atr, value in attrdict.items():
-        if kws.has_key(atr):
-            if kws(atr) is False:
+        if atr in kws:
+            if kws[atr] is False:
                 continue
+            ob.attr(atr) >> target.attr(atr)
             for attr in value:
                 ob.attr(attr) >> target.attr(attr)
 

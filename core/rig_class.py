@@ -795,23 +795,23 @@ class ControlObject(object):
 
         @ul.wraps(func)
         def wrapper(self, *args, **kws):
-            #### store Class Attribute Value
+            # store Class Attribute Value
             oldValue = {}
             oldValue['offset'] = self.offset
             oldValue['res'] = self.step
             oldValue['color'] = self.color
             fkws = func.__defaults__[0]
-            #### Assign Keyword Argument value to Class Property value 
+            # Assign Keyword Argument value to Class Property value
             log.debug('Assign KeyWord to ControlObject Class Propety')
-            if kws.has_key('offset'):
-                self.offset = kws['offset']
-                log.debug('{} set to {}'.format('offset', kws['offset']))
-            if kws.has_key('res'):
-                self.step = kws['res']
-                log.debug('{} set to {}'.format('res', kws['res']))
-            if kws.has_key('color'):
-                self.color = kws['color']
-                log.debug('{} set to {}'.format('color', kws['color']))
+            if 'offset' in kws:
+                self.offset = offset
+                log.debug('{} set to {}'.format('offset', offset))
+            if 'res' in kws:
+                self.step = res
+                log.debug('{} set to {}'.format('res', res))
+            if 'color' in kws:
+                self.color = color
+                log.debug('{} set to {}'.format('color', color))
 
             for key, value in kws.items():
                 if self.__dict__.has_key(key):
@@ -827,6 +827,7 @@ class ControlObject(object):
                 groupControl = kws['grp']
             else:
                 groupControl = True
+
             if kws.has_key('prefixControlName'):
                 prefixName = kws['prefixControlName']
             elif kws.has_key('pre'):
@@ -842,7 +843,7 @@ class ControlObject(object):
             if not self.controls.has_key(func.__name__):
                 self.controls[func.__name__] = []
             self.controls[func.__name__].append(control)
-            if kws.has_key('setAxis') and kws['setAxis'] is True:
+            if kws.has_key('setAxis') and setAxis is True:
                 self.setAxis(control, self.axis)
             self.setColor(control, self.color)
             control.setTranslation(self.offset, 'world')
@@ -1350,10 +1351,16 @@ class ControlObject(object):
                         pm.menuItem(label='Create Prop Control', c=pm.Callback(self._do6))
                         pm.menuItem(label='Create Parent Control', c=pm.Callback(self._do5))
                         pm.menuItem(label='Create Long Hair Control', c=pm.Callback(HairRig))
-                        pm.menuItem(label='Parent Shape', c=pm.Callback(ul.parent_shape))
-                        pm.menuItem(label='create Offset bone', c=pm.Callback(ru.createOffsetJoint))
-                        pm.menuItem(label='create Parent', c=pm.Callback(ru.create_parent))
-                        pm.menuItem(label='delete Parent', c=pm.Callback(ru.remove_parent))
+                    with pm.frameLayout(label='Utils:'):
+                        pm.button(label='Basic Intergration', c=pm.Callback(ru.basic_intergration))
+                        with pm.rowColumnLayout():
+                            pm.button(label='create Parent', c=pm.Callback(ru.create_parent))
+                            pm.button(label='delete Parent', c=pm.Callback(ru.remove_parent))
+                            pm.button(label='Parent Shape', c=pm.Callback(ul.parent_shape))
+                            pm.button(label='create Offset bone', c=pm.Callback(ru.createOffsetJoint))
+                            pm.button(label='create Loc', c=pm.Callback(ru.create_loc_control, connect=False))
+                            pm.button(label='create Loc control', c=pm.Callback(ru.create_loc_control))
+                            pm.button(label='connect with Loc', c=pm.Callback(ru.connect_with_loc))
         self._getUIValue()
 
 
