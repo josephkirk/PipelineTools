@@ -12,7 +12,7 @@ import general_utils as ul
 import rigging_utils as ru
 import math
 from pymel.util.enum import Enum
-from PipelineTools.packages.Red9.core import Red9_Meta as meta
+from ..packages.Red9.core import Red9_Meta as meta
 import logging
 
 logging.basicConfig()
@@ -843,7 +843,7 @@ class ControlObject(object):
             if not self.controls.has_key(func.__name__):
                 self.controls[func.__name__] = []
             self.controls[func.__name__].append(control)
-            if kws.has_key('setAxis') and setAxis is True:
+            if kws.has_key('setAxis') and kws['setAxis'] is True:
                 self.setAxis(control, self.axis)
             self.setColor(control, self.color)
             control.setTranslation(self.offset, 'world')
@@ -1353,14 +1353,31 @@ class ControlObject(object):
                         pm.menuItem(label='Create Long Hair Control', c=pm.Callback(HairRig))
                     with pm.frameLayout(label='Utils:'):
                         pm.button(label='Basic Intergration', c=pm.Callback(ru.basic_intergration))
+                        with pm.rowColumnLayout(rs=[(1,0),]):
+                            bsize = 30
+                            pm.button(label='create Parent', c=pm.Callback(ru.create_parent),h=bsize)
+                            pm.button(label='delete Parent', c=pm.Callback(ru.remove_parent),h=bsize)
+                            pm.button(label='Parent Shape', c=pm.Callback(ul.parent_shape),h=bsize)
+                            pm.button(label='create Offset bone', c=pm.Callback(ru.createOffsetJoint),h=bsize)
+                            pm.button(label='create Loc', c=pm.Callback(ru.create_loc_control, connect=False),h=bsize)
+                            pm.button(label='create Loc control', c=pm.Callback(ru.create_loc_control),h=bsize)
+                            pm.button(label='connect with Loc', c=pm.Callback(ru.connect_with_loc),h=bsize)
+                            pm.button(label='vertex to Loc', c=pm.Callback(ru.create_loc_on_vert),h=bsize)
+                            pm.button(label='connect Transform', c=pm.Callback(ru.connectTransform),h=bsize)
+                            with pm.popupMenu(b=3):
+                                pm.menuItem(label='connect Translate', c=pm.Callback(
+                                    ru.connectTransform,
+                                    translate=True, rotate=False, Scale=False))
+                                pm.menuItem(label='connect Rotate', c=pm.Callback(
+                                    ru.connectTransform,
+                                    translate=False, rotate=True, Scale=False))
+                                pm.menuItem(label='connect Scale', c=pm.Callback(
+                                    ru.connectTransform,
+                                    translate=False, rotate=False, Scale=True))
+                            pm.button(label='disconnect Transform', c=pm.Callback(ru.connectTransform,disconnect=True),h=bsize)
                         with pm.rowColumnLayout():
-                            pm.button(label='create Parent', c=pm.Callback(ru.create_parent))
-                            pm.button(label='delete Parent', c=pm.Callback(ru.remove_parent))
-                            pm.button(label='Parent Shape', c=pm.Callback(ul.parent_shape))
-                            pm.button(label='create Offset bone', c=pm.Callback(ru.createOffsetJoint))
-                            pm.button(label='create Loc', c=pm.Callback(ru.create_loc_control, connect=False))
-                            pm.button(label='create Loc control', c=pm.Callback(ru.create_loc_control))
-                            pm.button(label='connect with Loc', c=pm.Callback(ru.connect_with_loc))
+                            pm.button(label='toggle Channel History', c=pm.Callback(ru.toggleChannelHistory))
+                            pm.button(label='Deform Normal Off', c=pm.Callback(ru.deform_normal_off))
         self._getUIValue()
 
 

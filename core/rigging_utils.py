@@ -9,7 +9,7 @@ All code written by me unless specify
 
 import general_utils as ul
 import pymel.core as pm
-
+import rig_class as rcl
 
 #### Rigging Control
 
@@ -92,6 +92,18 @@ def connect_with_loc(ctl,bon):
     return (loc,pct,oct)
 
 @ul.do_function_on()
+def create_loc_on_vert(vert):
+    if isinstance(vert,pm.general.MeshVertex):
+        tarPos = vert.getPosition('world')
+        tarMesh = vert.node()
+        temp = pm.spaceLocator()
+        fg = rcl.FacialGuide(temp.name())
+        pm.delete(temp)
+        fg.set_guide_mesh(tarMesh)
+        fg.create(pos=tarPos)
+        fg.set_constraint()
+
+@ul.do_function_on()
 def create_parent(ob):
     obname = ob.name().split('|')[-1].split('_')[0] + '_' + ob.name().split('_')[-1]
     parent = pm.nt.Transform(name=obname + 'Gp')
@@ -136,6 +148,12 @@ def connectTransform(ob, target, **kws):
         if atr in kws:
             if kws[atr] is False:
                 continue
+            if 'disconnect' in kws:
+                if kws['disconnect']:
+                    ob.attr(atr) // target.attr(atr)
+                    for attr in value:
+                        ob.attr(attr) // target.attr(attr)
+                    continue
             ob.attr(atr) >> target.attr(atr)
             for attr in value:
                 ob.attr(attr) >> target.attr(attr)
