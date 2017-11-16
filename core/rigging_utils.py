@@ -41,7 +41,7 @@ def basic_intergration():
         pm.delete(temp[0])
     if pm.objExists('facialGp'):
         chref.FacialVis >> pm.PyNode('facialGp').visibility
-    for bs in ['FacialBs','EyeDeformBS']:
+    for bs in ['FacialBS','EyeDeformBS']:
         if pm.objExists(bs):
             chref.FacialBS >> pm.PyNode(bs).envelope
     if pm.objExists('secondaryGp'):
@@ -159,9 +159,10 @@ def connectTransform(ob, target, **kws):
                 ob.attr(attr) >> target.attr(attr)
 
 
-def toggleChannelHistory(state=False):
+def toggleChannelHistory():
     for ob in pm.ls():
-        ob.isHistoricallyInteresting.set(state)
+        state = ob.isHistoricallyInteresting.get()
+        ob.isHistoricallyInteresting.set(not state  )
 
 
 def deform_normal_off():

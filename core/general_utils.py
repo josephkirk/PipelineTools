@@ -658,6 +658,7 @@ def parent_shape(src, target, delete_src=True, delete_oldShape=True):
     print src,target
     pm.makeIdentity(src, apply=True)
     pm.delete(src.listRelatives(type='transform'))
+    pm.refresh()
     pm.parent(src.getShape(), target, r=True, s=True)
     if delete_src:
         pm.delete(src)

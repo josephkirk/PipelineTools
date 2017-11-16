@@ -378,9 +378,14 @@ class FacialControl(object):
         return self.guide
 
     def set_constraint(self):
-        if self.guide and self.root:
-            self.constraint = pm.pointConstraint(self.guide, self.root, o=(0, 0, 0), w=1)
-
+        assert self.guide, 'Control object for %s do not have guide locator'%self.name
+        assert self.root, 'Control object for %s do not have root'%self.name
+        self.constraint = pm.pointConstraint(self.guide, self.root, o=(0, 0, 0), w=1)
+    
+    def delete_constraint(self):
+        if self.constraint:
+            pm.delete(self.constraint)
+    
     def set(self, new_node, rename=True):
         if pm.objExists(new_node):
             self.node = pm.PyNode(new_node)
@@ -399,6 +404,12 @@ class FacialControl(object):
         self.offset = ul.get_node(self.offset_name)
         self.root = ul.get_node(self.root_name)
         self.guide = self.create_guide()
+        if self.root:
+            searchConstraint = self.root.listConnections(type=pm.nt.PointConstraint)
+            if searchConstraint:
+                self.constraint = searchConstraint[0]
+            else:
+                self.constraint = None
 
     @classmethod
     def controls(cls, name, offset_suffix='offset', root_suffix='Gp', suffix='ctl', separator='_'):
@@ -552,7 +563,7 @@ class FacialBone(object):
                 for bone in allbone:
                     if direction in bone.name:
                         bones[direction].append(bone)
-            yield bones
+            yield (name,bones)
 
 
 class FacialEyeRig(object):
@@ -1350,20 +1361,21 @@ class ControlObject(object):
                         pm.menuItem(label='Create Free Control', c=pm.Callback(self._do4))
                         pm.menuItem(label='Create Prop Control', c=pm.Callback(self._do6))
                         pm.menuItem(label='Create Parent Control', c=pm.Callback(self._do5))
+                        pm.menuItem(label='Create Short Hair Control', c=pm.Callback(self._do5))
                         pm.menuItem(label='Create Long Hair Control', c=pm.Callback(HairRig))
                     with pm.frameLayout(label='Utils:'):
                         pm.button(label='Basic Intergration', c=pm.Callback(ru.basic_intergration))
                         with pm.rowColumnLayout(rs=[(1,0),]):
-                            bsize = 30
-                            pm.button(label='create Parent', c=pm.Callback(ru.create_parent),h=bsize)
-                            pm.button(label='delete Parent', c=pm.Callback(ru.remove_parent),h=bsize)
-                            pm.button(label='Parent Shape', c=pm.Callback(ul.parent_shape),h=bsize)
-                            pm.button(label='create Offset bone', c=pm.Callback(ru.createOffsetJoint),h=bsize)
-                            pm.button(label='create Loc', c=pm.Callback(ru.create_loc_control, connect=False),h=bsize)
-                            pm.button(label='create Loc control', c=pm.Callback(ru.create_loc_control),h=bsize)
-                            pm.button(label='connect with Loc', c=pm.Callback(ru.connect_with_loc),h=bsize)
-                            pm.button(label='vertex to Loc', c=pm.Callback(ru.create_loc_on_vert),h=bsize)
-                            pm.button(label='connect Transform', c=pm.Callback(ru.connectTransform),h=bsize)
+                            smallbutton = ul.partial(pm.button,h=30)
+                            smallbutton(label='create Parent', c=pm.Callback(ru.create_parent))
+                            smallbutton(label='delete Parent', c=pm.Callback(ru.remove_parent))
+                            smallbutton(label='Parent Shape', c=pm.Callback(ul.parent_shape))
+                            smallbutton(label='create Offset bone', c=pm.Callback(ru.createOffsetJoint))
+                            smallbutton(label='create Loc', c=pm.Callback(ru.create_loc_control, connect=False))
+                            smallbutton(label='create Loc control', c=pm.Callback(ru.create_loc_control))
+                            smallbutton(label='connect with Loc', c=pm.Callback(ru.connect_with_loc))
+                            smallbutton(label='vertex to Loc', c=pm.Callback(ru.create_loc_on_vert))
+                            smallbutton(label='connect Transform', c=pm.Callback(ru.connectTransform))
                             with pm.popupMenu(b=3):
                                 pm.menuItem(label='connect Translate', c=pm.Callback(
                                     ru.connectTransform,
@@ -1374,7 +1386,7 @@ class ControlObject(object):
                                 pm.menuItem(label='connect Scale', c=pm.Callback(
                                     ru.connectTransform,
                                     translate=False, rotate=False, Scale=True))
-                            pm.button(label='disconnect Transform', c=pm.Callback(ru.connectTransform,disconnect=True),h=bsize)
+                            smallbutton(label='disconnect Transform', c=pm.Callback(ru.connectTransform,disconnect=True))
                         with pm.rowColumnLayout():
                             pm.button(label='toggle Channel History', c=pm.Callback(ru.toggleChannelHistory))
                             pm.button(label='Deform Normal Off', c=pm.Callback(ru.deform_normal_off))
