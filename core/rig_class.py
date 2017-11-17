@@ -1361,7 +1361,7 @@ class ControlObject(object):
                         pm.menuItem(label='Create Free Control', c=pm.Callback(self._do4))
                         pm.menuItem(label='Create Prop Control', c=pm.Callback(self._do6))
                         pm.menuItem(label='Create Parent Control', c=pm.Callback(self._do5))
-                        pm.menuItem(label='Create Short Hair Control', c=pm.Callback(self._do5))
+                        pm.menuItem(label='Create Short Hair Control', c=pm.Callback(ru.create_short_hair))
                         pm.menuItem(label='Create Long Hair Control', c=pm.Callback(HairRig))
                     with pm.frameLayout(label='Utils:'):
                         pm.button(label='Basic Intergration', c=pm.Callback(ru.basic_intergration))

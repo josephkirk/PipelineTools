@@ -50,6 +50,31 @@ def basic_intergration():
         chref.SecondaryBS >> pm.PyNode('SecondaryBS').envelope
     
 ###Rigging Function
+def get_current_chain(ob):
+    boneChains = []
+    while ob.getChildren():
+        childsCount = len(ob.getChildren())
+        assert (childsCount==1), 'Joint split to {} at {}'.format(childsCount,ob)
+        boneChains.append(ob)
+        ob=ob.getChildren()[0]
+    else:
+        boneChains.append(ob)
+    return boneChains
+def dup_bone(bone):
+    dupbone = bone.duplicate(po=True)[0]
+    dupbone.setParent(None)
+    dupbone.radius.set(bone.radius.get()*2)
+    return dupbone
+@ul.do_function_on()
+def create_short_hair(bone):
+    bones = get_current_chain(bone)
+    startBone = bones[0]
+    endBone = bones[-1]
+    midBone = bones[int(round(len(bones)/2))]
+    ikhandle, ikeffector, ikcurve = pm.ikHandle(sj=startBone, ee=endBone,solver='ikSplineSolver')
+    sbonetop, mbonetop, ebonetop = [dup_bone(b) for b in [startBone,midBone,endBone]]
+    curveSkin = pm.skinCluster(sbonetop,mbonetop,ebonetop,ikcurve)
+
 @ul.do_function_on()
 def createOffsetJoint(jointRoot, child=False, suffix='offset_bon'):
     jointlist = [jointRoot]
@@ -158,9 +183,13 @@ def connectTransform(ob, target, **kws):
             for attr in value:
                 ob.attr(attr) >> target.attr(attr)
 
-
+#@ul.do_function_on(mode='set')
 def toggleChannelHistory():
-    for ob in pm.ls():
+    if not pm.selected():
+        oblist = pm.ls()
+    else:
+        oblist = pm.selected()
+    for ob in oblist:
         state = ob.isHistoricallyInteresting.get()
         ob.isHistoricallyInteresting.set(not state  )
 
