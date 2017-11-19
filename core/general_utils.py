@@ -238,7 +238,6 @@ def do_function_on(
             if ((kwargs.has_key('clearSelect') and kwargs['clearSelect'] == True) or
                 (kwargs.has_key('cl') and kwargs['cl'] == True)):
                 pm.select(cl=True)
-                print 'clearSelect'
                 try:
                     del kwargs['clearSelect']
                 except:
