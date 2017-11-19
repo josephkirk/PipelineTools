@@ -14,7 +14,7 @@ import rig_class as rcl
 #### Rigging Control
 
 
-###
+#Project Specific Function
 def basic_intergration():
     pm.PyNode('CH_ReferenceShape').visibility.set(False)
     root = pm.PyNode('ROOT')
@@ -65,9 +65,116 @@ def dup_bone(bone):
     dupbone.setParent(None)
     dupbone.radius.set(bone.radius.get()*2)
     return dupbone
+
+def group(ob):
+    '''group control under newTransform'''
+    Gp = pm.nt.Transform(name=ob + 'Gp')
+    ob.setParent(Gp)
+    log.info('group {} under {}'.format(ob, Gp))
+    return Gp
+
+def createPinCircle(
+        name,
+        createCurve=True,
+        axis='XY',
+        sphere=False,
+        cylinder=False,
+        offset=[0, 0, 0],
+        radius=1.0,
+        length=3.0,
+        height=2,
+        step=20.0,
+        maxAngle=360.0):
+    '''Master function to create all curve control'''
+    log.debug('''create Control with value:\n
+        name: {}\n
+        create Curve: {}\n
+        axis: {}\n
+        sphere: {}\n
+        offset: {}\n
+        radius: {}\n
+        length: {}\n
+        step: {}\n
+        max Angle: {}'''.format(name, createCurve, axis, sphere, offset, radius, length, step, maxAngle))
+    maxAngle = maxAngle / 180.0 * math.pi
+    inc = maxAngle / step
+    pointMatrix = []
+    theta = 0
+    if length > 0:
+        pointMatrix.append([0, 0])
+        pointMatrix.append([0, length])
+        offset = [offset[0], -radius - length - offset[1], offset[2]]
+    # print offset
+    while theta <= maxAngle:
+        if length > 0:
+            x = (-offset[0] + radius * math.sin(theta))
+            y = (offset[1] + radius * math.cos(theta)) * -1.0
+        else:
+            x = (offset[0] + radius * math.cos(theta))
+            y = (offset[1] + radius * math.sin(theta))
+        pointMatrix.append([x, y])
+        # print "theta angle {} produce [{},{}]".format(round(theta,2),round(x,4),round(y,4))
+        theta += inc
+    if not createCurve:
+        return pointMatrix
+    axisData = {}
+    axisData['XY'] = [[x, y, offset[2]] for x, y in pointMatrix]
+    axisData['YX'] = [[y, x, offset[2]] for x, y in pointMatrix]
+    axisData['-XY'] = [[-x, -y, offset[2]] for x, y in pointMatrix]
+    axisData['-YX'] = [[-y, -x, offset[2]] for x, y in pointMatrix]
+    axisData['XZ'] = [[x, offset[2], y] for x, y in pointMatrix]
+    axisData['ZX'] = [[y, offset[2], x] for x, y in pointMatrix]
+    axisData['-XZ'] = [[-x, offset[2], -y] for x, y in pointMatrix]
+    axisData['-ZX'] = [[-y, offset[2], -x] for x, y in pointMatrix]
+    axisData['YZ'] = [[offset[2], x, y] for x, y in pointMatrix]
+    axisData['ZY'] = [[offset[2], y, x] for x, y in pointMatrix]
+    axisData['-YZ'] = [[offset[2], -x, -y] for x, y in pointMatrix]
+    axisData['-ZY'] = [[offset[2], -y, -x] for x, y in pointMatrix]
+    axisData['mXY'] = axisData['XY'] + axisData['-XY']
+    axisData['mYX'] = axisData['YX'] + axisData['-YX']
+    axisData['mXZ'] = axisData['XZ'] + axisData['-XZ']
+    axisData['mZX'] = axisData['ZX'] + axisData['-ZX']
+    axisData['mYZ'] = axisData['YZ'] + axisData['-YZ']
+    axisData['mZY'] = axisData['ZY'] + axisData['-ZY']
+    axisData['all'] = axisData['XY'] + axisData['XZ'] + axisData['ZX'] + axisData['-XY'] + axisData['-XZ'] + \
+                        axisData['-ZX']
+    newname = name
+    try:
+        assert (axisData.has_key(axis)), "Wrong Axis '%s'.\nAvailable axis: %s" % (axis, ','.join(axisData))
+        finalPointMatrix = axisData[axis]
+    except AssertionError as why:
+        finalPointMatrix = axisData['XY']
+        log.error(str(why) + '\nDefault to XY')
+    if sphere and not cylinder and not length > 0:
+        quarCircle = len(pointMatrix) / 4 + 1
+        finalPointMatrix = axisData['XY'] + axisData['XZ'] + axisData['XY'][:quarCircle] + axisData['YZ']
+    elif sphere and not cylinder and length > 0:
+        if axis[-1] == 'X':
+            finalPointMatrix = axisData['YX'] + axisData['ZX']
+        elif axis[-1] == 'Y':
+            finalPointMatrix = axisData['XY'] + axisData['ZY']
+        elif axis[-1] == 'Z':
+            finalPointMatrix = axisData['XZ'] + axisData['YZ']
+    elif cylinder and not sphere and not length > 0:
+        newpMatrix = []
+        pMatrix = pointMatrix
+        newpMatrix.extend([[x, 0, y] for x, y in pMatrix[:len(pMatrix) / 4 + 1]])
+        newpMatrix.extend([[x, height, y] for x, y in pMatrix[:len(pMatrix) / 4 + 1][::-1]])
+        newpMatrix.extend([[x, 0, y] for x, y in pMatrix[::-1][:len(pMatrix) / 2 + 1]])
+        newpMatrix.extend([[x, height, y] for x, y in pMatrix[::-1][len(pMatrix) / 2:-len(pMatrix) / 4 + 1]])
+        newpMatrix.extend([[x, 0, y] for x, y in pMatrix[len(pMatrix) / 4:len(pMatrix) / 2 + 1]])
+        newpMatrix.extend([[x, height, y] for x, y in pMatrix[len(pMatrix) / 2:-len(pMatrix) / 4 + 1]])
+        newpMatrix.append([newpMatrix[-1][0], 0, newpMatrix[-1][2]])
+        newpMatrix.extend([[x, height, y] for x, y in pMatrix[-len(pMatrix) / 4:]])
+        finalPointMatrix = newpMatrix
+    key = range(len(finalPointMatrix))
+    crv = pm.curve(name=newname, d=1, p=finalPointMatrix, k=key)
+    log.debug(crv)
+    return crv
 @ul.do_function_on()
 def create_short_hair(bone):
     bones = get_current_chain(bone)
+    #bonename = b
     startBone = bones[0]
     endBone = bones[-1]
     midBone = bones[int(round(len(bones)/2))]

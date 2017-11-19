@@ -23,6 +23,7 @@ from pymel.core.uitypes import pysideWrapInstance as wrapInstance
 from functools import wraps, partial
 from time import sleep, time
 import logging
+from string import ascii_uppercase as alphabet
 logging.basicConfig()
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
@@ -31,160 +32,8 @@ log.setLevel(logging.INFO)
 
 #global var
 prefpath = 'C:/Users/nphung/Documents/maya/2017/prefs/userPrefs.mel'
-### decorator
-def timeit(func):
-    """time a function"""
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        t= time()
-        result = func(*args, **kwargs)
-        log.debug(func.__name__,'took: ',time()-t)
-        return result
-    return wrapper
 
-def error_alert(func):
-    """print Error if function fail"""
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        try:
-            t=time()
-            result = func(*args, **kwargs)
-            log.info('{} OK and return {}, took: {}'.format(func.__name__, result, time()-t))
-            return result
-        except (IOError, OSError, pm.MayaNodeError, pm.MayaAttributeError, AssertionError, TypeError,AttributeError) as why:
-            msg = []
-            msg.append(''.join([
-                func.__name__,':',
-                '\nargs:\n',','.join([str(a) for a in args]),
-                '\nkwargs:\n',','.join(['{}={}'.format(key,value) for key,value in kwargs.items()]),
-                'create Error:']))
-            for cause in why:
-                msg.append(str(why))
-            msg = '\n'.join(msg)
-            log.error(msg)
-    return wrapper
-
-
-def do_function_on(mode='single', type_filter=[], return_list=True):
-    def decorator(func):
-        """wrap a function to operate on select object or object name string according to mode
-                mode: single, double, set, singlelast, last, doubleType"""
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            if ((kwargs.has_key('clearSelect') and kwargs['clearSelect'] == True) or
-                (kwargs.has_key('cl') and kwargs['cl'] == True)):
-                pm.select(cl=True)
-                print 'clearSelect'
-                try:
-                    del kwargs['clearSelect']
-                except:
-                    pass
-                try:
-                    del kwargs['cl']
-                except:
-                    pass
-            nargs = []
-            for arg in args:
-                if any([isinstance(arg,t) for t in [list, tuple, set]]):
-                    nargs.extend(list(arg))
-                else:
-                    nargs.append(arg)
-            args=nargs
-            ########
-            #Extend Arguments with selection object
-            ########
-            sel=[]
-            for arg in args:
-                if isinstance(arg,str):
-                    arg = get_node(arg)
-                if isinstance(arg,pm.PyNode):
-                    sel.append(arg)
-                    args.pop()
-            sel.extend(pm.selected())
-            object_list = []
-            for ob in sel:
-                try:
-                    if type_filter:
-                        assert any([isinstance(ob,typ) for type in type_filter]), '{} not match type {}'.format(ob,str(type_filter))
-                except:
-                    log.debug('{} not match type {}'.format(ob,str(type_filter)))
-                    continue
-                if ob not in object_list:
-                    object_list.append(ob) ### search if arg is valid object
-            if not object_list:
-                log.error('no object select')
-                return
-            #print object_list
-            #print arg
-            ##########
-            #Define function mode
-            ##########
-            #@error_alert
-            def do_single(): # do function for every object in object_list
-                #print object_list
-                for ob in object_list:
-                    print ob
-                    yield func(ob,*args, **kwargs)
-            #@error_alert
-            def do_hierachy(): # do function for every object and childs in object_list
-                for ob in object_list:
-                    ob_list = [ob]
-                    ob_list.extend(ob.getChildren(allDescendents=True))
-                    for obchild in ob_list:
-                        yield func(obchild,*args, **kwargs)
-            #@error_alert
-            def do_double(): # do function for first in object_list to affect last
-                if len(object_list)>1:
-                    yield func(sel[0], sel[-1],*args, **kwargs)
-            #@error_alert
-            def do_set(): # do function directly to object_list
-                return func(object_list,*args, **kwargs)
-            #@error_alert
-            def do_last(singlelast=False): # set last object in object_list to affect others
-                if len(object_list)>1:
-                    op_list = object_list[:-1]
-                    target = object_list[-1]
-                    if singlelast is True:
-                        for op in op_list:
-                            yield func(op, target,*args, **kwargs)
-                    else:
-                        yield func(op_list, target,*args, **kwargs)
-            #@error_alert
-            def do_double_type(): # like 'last' mode but last object must be a different type from other
-                if len(object_list) > 1:
-                    object_type2 = pm.ls(
-                        object_list,
-                        type=type_filter[-1],
-                        orderedSelection=True)
-                    if object_type2:
-                        object_type1 = [
-                            object for object in pm.ls(object_list, type=type_filter[:-1])
-                            if type(object) != type(object_type2[0])]
-                        yield func(object_type1, object_type2,*args, **kwargs)
-            ########
-            #Define function mode dict
-            ########
-            function_mode = {
-                'single':do_single,
-                'set':do_set,
-                'hierachy':do_hierachy,
-                'double': do_double,
-                'last': do_last,
-                'singlelast': partial(do_last, True),
-                'doubletype': do_double_type
-            }
-            ########
-            #Return function result
-            ########
-            result = function_mode[mode]()
-            if return_list and result:
-                return [r for r in list(result) if r!=None]
-            else:
-                return result
-        return wrapper
-    return decorator
-
-###misc function
+#misc function
 def reloadTexture(udim=True):
     mm.eval('AEReloadAllTextures;')
     if udim:
@@ -198,16 +47,14 @@ def list_join(*args):
         newList.extend(arg)
     return newList
 
-@error_alert
 def assert_key(key,message, **kws):
     assert kws.has_key, message
 
-@error_alert
 def assert_type(ob, typelist=[]):
     assert(any([isinstance(ob, typ) for typ in typelist])),"Object %s does not match any in type:%s"%(ob, ",".join([str(t) for t in typelist]))
     #return ''.join([ob,'match one of:',','.join(types)])
 
-####global misc function
+#global misc function
 def offcastshadow(wc='*eyeref*'):
     ob_list = pm.ls(wc,s=True)
     for ob in ob_list:
@@ -343,7 +190,193 @@ def reset_floating_window():
 def add_suffix(ob, suff="_skinDeform"):
     pm.rename(ob, ob.name()+str(suff))
 
+### decorator
+def timeit(func):
+    """time a function"""
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        t= time()
+        result = func(*args, **kwargs)
+        log.debug(func.__name__,'took: ',time()-t)
+        return result
+    return wrapper
+
+def error_alert(func):
+    """print Error if function fail"""
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            t=time()
+            result = func(*args, **kwargs)
+            log.info('{} OK and return {}, took: {}'.format(func.__name__, result, time()-t))
+            return result
+        except (IOError, OSError, pm.MayaNodeError, pm.MayaAttributeError, AssertionError, TypeError,AttributeError) as why:
+            msg = []
+            msg.append(''.join([
+                func.__name__,':',
+                '\nargs:\n',','.join([str(a) for a in args]),
+                '\nkwargs:\n',','.join(['{}={}'.format(key,value) for key,value in kwargs.items()]),
+                'create Error:']))
+            for cause in why:
+                msg.append(str(why))
+            msg = '\n'.join(msg)
+            log.error(msg)
+    return wrapper
+
+
+def do_function_on(
+    mode='single',
+    type_filter=[],
+    return_list=True):
+    """wrap a function to operate on
+    select object or object name string according to mode:
+    single, double, set, singlelast, last, doubleType"""
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            if ((kwargs.has_key('clearSelect') and kwargs['clearSelect'] == True) or
+                (kwargs.has_key('cl') and kwargs['cl'] == True)):
+                pm.select(cl=True)
+                print 'clearSelect'
+                try:
+                    del kwargs['clearSelect']
+                except:
+                    pass
+                try:
+                    del kwargs['cl']
+                except:
+                    pass
+            nargs = []
+            for arg in args:
+                if any([isinstance(arg,t) for t in [list, tuple, set]]):
+                    nargs.extend(list(arg))
+                else:
+                    nargs.append(arg)
+            args=nargs
+            ########
+            #Extend Arguments with selection object
+            ########
+            sel=[]
+            for arg in args:
+                if isinstance(arg,str):
+                    arg = get_node(arg)
+                if isinstance(arg,pm.PyNode):
+                    sel.append(arg)
+                    args.pop()
+            sel.extend(pm.selected())
+            object_list = []
+            for ob in sel:
+                try:
+                    if type_filter:
+                        assert any([isinstance(ob,typ) for type in type_filter]), '{} not match type {}'.format(ob,str(type_filter))
+                except:
+                    log.debug('{} not match type {}'.format(ob,str(type_filter)))
+                    continue
+                if ob not in object_list:
+                    object_list.append(ob) ### search if arg is valid object
+            if not object_list:
+                log.error('no object select')
+                return
+            #print object_list
+            #print arg
+            ##########
+            #Define function mode
+            ##########
+
+            def do_single(): # do function for every object in object_list
+                #print object_list
+                for ob in object_list:
+                    #print ob
+                    yield func(ob,*args, **kwargs)
+
+            def do_hierachy(): # do function for every object and childs in object_list
+                for ob in object_list:
+                    for child in iter_hierachy(ob):
+                        yield func(child, *args, **kwargs)
+
+            def do_double(): # do function for first in object_list to affect last
+                if len(object_list)>1:
+                    yield func(sel[0], sel[-1],*args, **kwargs)
+
+            def do_set(): # do function directly to object_list
+                return func(object_list,*args, **kwargs)
+
+            def do_last(singlelast=False): # set last object in object_list to affect others
+                if len(object_list)>1:
+                    op_list = object_list[:-1]
+                    target = object_list[-1]
+                    if singlelast is True:
+                        for op in op_list:
+                            yield func(op, target,*args, **kwargs)
+                    else:
+                        yield func(op_list, target,*args, **kwargs)
+
+            def do_double_type(): # like 'last' mode but last object must be a different type from other
+                if len(object_list) > 1:
+                    object_type2 = pm.ls(
+                        object_list,
+                        type=type_filter[-1],
+                        orderedSelection=True)
+                    if object_type2:
+                        object_type1 = [
+                            object for object in pm.ls(object_list, type=type_filter[:-1])
+                            if type(object) != type(object_type2[0])]
+                        yield func(object_type1, object_type2,*args, **kwargs)
+            ########
+            #Define function mode dict
+            ########
+            function_mode = {
+                'single':do_single,
+                'set':do_set,
+                'hierachy':do_hierachy,
+                'double': do_double,
+                'last': do_last,
+                'singlelast': partial(do_last, True),
+                'doubletype': do_double_type
+            }
+            ########
+            #Return function result
+            ########
+            result = function_mode[mode]()
+            if return_list and result:
+                return [r for r in list(result) if r!=None]
+            else:
+                return result
+        return wrapper
+    return decorator
+
 #### utility function
+def recurse_hierachy(root, callback,*args,**kwargs):
+    '''Recursive do a callback function'''
+    def recurse(node):
+        callback(node,*args,**kwargs)
+        for child in node.getChildren(type='transform'):
+            recurse(child)
+    recurse(root)
+
+def iter_hierachy(root):
+    '''yield hierachy generator object with stack method'''
+    stack = [root]
+    level = 0
+    while stack:
+        level +=1
+        node = stack.pop()
+        print node
+        print level
+        yield node
+        childs = node.getChildren( type='transform' )
+        if len(childs) > 1:
+            print '\nsplit to %s, %s'%(len(childs),str(childs))
+            for child in childs:
+                subStack = iter_hierachy(child)
+                for subChild in subStack:
+                    yield subChild
+        else:
+            for child in childs:
+                stack.append( child )
+
+
 @error_alert
 def get_closest_component(ob, mesh_node, uv=True, pos=False):
     ob_pos = ob.getTranslation(space='world')
@@ -510,7 +543,7 @@ def reset_transform(ob):
         ob.attr(atr).set(reset_value)
 
 @do_function_on(mode='single')
-def set_material_attr(mat,mat_type='dielectric',**kwargs):
+def set_Vray_material(mat,mat_type='dielectric',**kwargs):
     '''set Material Attribute'''
     if type(mat) == pm.nt.VRayMtl:
         dielectric_setting = {
@@ -596,22 +629,6 @@ def hair_from_curve(input_curve, hair_system=""):
 
     return [input_curve,hair_curve,follicle,hair_system]
 
-#@do_function_on(mode='single')
-def detach_shape(ob, preserve=False):
-    '''detach Multi Shape to individual Object'''
-    result= []
-    if preserve:
-        ob = pm.duplicate(ob, rr=True)[0]
-    obShape = ob.listRelatives(type='shape')
-    result.append(ob)
-    if len(obShape)>1:
-        for shape in obShape[1:]:
-            transformName = "newTransform01"
-            newTransform = pm.nt.Transform(name=transformName)
-            pm.parent(shape, newTransform, r=1, s=1)
-            result.append(newTransform)
-    return result
-
 def exportCam():
     '''export allBake Camera to FBX files'''
     FBXSettings = [
@@ -677,6 +694,22 @@ def un_parent_shape(ob):
     if type(ob) != pm.nt.Joint:
         pm.delete(ob)
 
+#@do_function_on(mode='single')
+def detach_shape(ob, preserve=False):
+    '''detach Multi Shape to individual Object'''
+    result= []
+    if preserve:
+        ob = pm.duplicate(ob, rr=True)[0]
+    obShape = ob.listRelatives(type='shape')
+    result.append(ob)
+    if len(obShape)>1:
+        for shape in obShape[1:]:
+            transformName = "newTransform01"
+            newTransform = pm.nt.Transform(name=transformName)
+            pm.parent(shape, newTransform, r=1, s=1)
+            result.append(newTransform)
+    return result
+
 @do_function_on(mode='single')
 def mirror_transform(obs, axis="x",xform=[0,4]):
     if not obs:
@@ -715,7 +748,11 @@ def set_material(ob, SG):
         print "There is no %s" % SG.name()
 
 @do_function_on(mode='single')
-def lock_transform(ob, lock=True, pivotToOrigin=True):
+def lock_transform(
+    ob,
+    lock=True,
+    pivotToOrigin=True):
+    '''reset pivot to 0 and toggle transform lock'''
     for at in ['translate','rotate','scale','visibility','tx','ty','tz','rx','ry','rz','sx','sy','sz']:
         ob.attr(at).unlock()
     if pivotToOrigin:
@@ -726,7 +763,7 @@ def lock_transform(ob, lock=True, pivotToOrigin=True):
             ob.attr(at).lock()
 
 @do_function_on(mode='single')
-def add_VrayOSD(ob):
+def add_vray_opensubdiv(ob):
     '''add Vray OpenSubdiv attr to enable smooth mesh render'''
     if str(pm.getAttr('defaultRenderGlobals.ren')) == 'vray':
         obShape = ob.getShape()
@@ -734,7 +771,7 @@ def add_VrayOSD(ob):
         pm.setAttr(obShape+".vrayOsdPreserveMapBorders", 2)
 
 @do_function_on(mode='single')
-def clean_attr(ob):
+def clean_attributes(ob):
     '''clean all Attribute'''
     for atr in ob.listAttr(ud=True):
         try:
@@ -744,7 +781,9 @@ def clean_attr(ob):
             pass
 
 @do_function_on(mode='set')
-def find_instance(obs,instanceOnly=True):
+def find_instances(
+    obs,
+    instanceOnly=True):
     allTransform = [tr for tr in pm.ls(type=pm.nt.Transform) if tr.getShape()]
     instanceShapes =[]
     if instanceOnly:
@@ -763,43 +802,15 @@ def find_instance(obs,instanceOnly=True):
     pm.select(instanceShapes,add=True)
     return instanceShapes
 
-def loc42Curve():
-    sel = pm.selected()
-    if len(sel)>3:
-        posList = [o.translate.get() for o in sel]
-        pm.curve(p=posList)
-
-def randU(offset=0.1):
-    sel=pm.selected()
-    if not sel:
-        return
-    for o in sel:
-        pm.polyEditUV(o.map,u=rand.uniform(-offset,offset))
-
-def mirrorUV(dir='Left'):
-    if dir=='Left':
-        pm.polyEditUV(u=-0.5)
-    else:
-        pm.polyEditUV(u=0.5)
-    pm.polyFlipUV()
-
-def rotateUV():
-    sel=pm.selected()
-    for o in sel:
-        selShape=o.getShape()
-        pm.select(selShape.map,r=1)
-        pm.polyEditUV(rot=1,a=180,pu=0.5,pv=0.5)
-    pm.select(sel,r=1)
-
-@do_function_on()
-@error_alert
-def getInfo(ob):
-    print ob.name()
-    for mod in dir(ob):
-        print mod
-        print ("-"*100+"\n")*2
-
-def send_current_file(scene=True,suffix='_vn', lastest=True, render=False, tex=True, extras=['psd','uv', 'zbr', 'pattern'], version=1, verbose=True):
+def send_current_file(
+    scene=True,
+    suffix='_vn',
+    lastest=True,
+    render=False,
+    tex=True,
+    extras=['psd','uv', 'zbr', 'pattern'],
+    version=1,
+    verbose=True):
     src = pm.sceneName()
     scene_src = src.dirname()
     status = []
@@ -820,7 +831,7 @@ def send_current_file(scene=True,suffix='_vn', lastest=True, render=False, tex=T
             status.append('send latest file')
         dest = scene_dest.__div__(src.basename().replace(src.ext,'{}{}'.format(suffix, src.ext)))
         if scene:
-            checkDir(dest)
+            check_dir(dest)
             pm.sysFile(src, copy=dest)
             status.append("%s copy to %s" % (src,dest))
         if render:
@@ -836,7 +847,7 @@ def send_current_file(scene=True,suffix='_vn', lastest=True, render=False, tex=T
                 break
             if rend_src:
                 rend_dest = dest.dirname().__div__(test_str)
-                status.append(sysCop(rend_src, rend_dest))
+                status.append(sys_cop(rend_src, rend_dest))
     except (IOError, OSError, shutil.Error) as why:
         msg = "Scene Copy Error\n{}".format(','.join(why))
         status.append(msg)
@@ -857,20 +868,20 @@ def send_current_file(scene=True,suffix='_vn', lastest=True, render=False, tex=T
                 for tex_file in tex_files:
                     src = tex_file
                     dest = tex_dest.__div__(tex_file.basename())
-                    checkDir(dest)
+                    check_dir(dest)
                     pm.sysFile(src, copy=dest)
                     status.append("%s copy to %s" % (src,dest))
             if extras:
                 for name, path in tex_extra.items():
                     status.append('%s Sending status:'%name)
                     dest = tex_dest.__div__(name)
-                    status.append(sysCop(path,dest))
+                    status.append(sys_cop(path,dest))
         except (IOError, OSError, shutil.Error) as why:
             msg = "Tex Copy Error:\n{}".format(','.join(why))
             status.append(msg)
     pm.informBox(title='Send File Status', message = '\n'.join(status))
 
-def GetAssetPath(Assetname, versionNum):
+def get_asset_path(Assetname, versionNum):
     ''' get AssetPath Relate to Character'''
     try:
         CH = asset.Character(Assetname)
@@ -910,7 +921,7 @@ def GetAssetPath(Assetname, versionNum):
         print "Character %s has no version or \n\%s" % (Assetname,why)
     return CHPath
 
-def sendFile(CH,
+def send_file(CH,
              ver,
              num=0,
              destdrive="",
@@ -941,14 +952,15 @@ def sendFile(CH,
             todayFolder,
             getDest(fodPath)]))
         #print fodPath,'-->',dest
-        sysCop(fodPath, dest)
+        sys_cop(fodPath, dest)
+
     def sendDir(k):
         if AllPath.has_key(k):
             doCop(pp(AllPath[k]))
         else:
             print "no %s folder" % k
 
-    def sendTexFile(k):
+    def sendTexFile():
         def copFiles(fileList):
             for t in fileList:
                 doCop(t)
@@ -1004,7 +1016,7 @@ def sendFile(CH,
                 if value:
                     sendDir(key)
 
-def checkDir(pa,force=True):
+def check_dir(pa,force=True):
     msg = []
     if not os.path.exists(os.path.dirname(pa)):
         os.makedirs(os.path.dirname(pa))
@@ -1022,8 +1034,8 @@ def checkDir(pa,force=True):
             msg.append("%s exists"%pa)
     return '\n'.join(msg)
 
-def sysCop(src, dest):
-    checkDir(dest)
+def sys_cop(src, dest):
+    check_dir(dest)
     status =[]
     try:
         if os.path.isdir(src):
