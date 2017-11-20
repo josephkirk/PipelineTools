@@ -10,7 +10,12 @@ All code written by me unless specify
 import general_utils as ul
 import pymel.core as pm
 import rig_class as rcl
+import math
+import logging
 
+logging.basicConfig()
+log = logging.getLogger(__name__)
+log.setLevel(logging.INFO)
 #### Rigging Control
 
 
@@ -173,25 +178,128 @@ def createPinCircle(
     log.debug(crv)
     return crv
 
+@ul.do_function_on('singlelast')
+def contraint_multi(ob,target, constraintType='Point'):
+    constraintDict = {
+        'Point': ul.partial(pm.pointConstraint , mo=True),
+        'Parent': ul.partial(pm.parentConstraint , mo=True),
+        'Orient': ul.partial(pm.orientConstraint , mo=True),
+        'Aim': ul.partial(pm.orientConstraint , mo=True)
+    }
+    assert (constraintDict.has_key(constraintType)), 'wrong Constraint Type'
+    constraintDict[constraintType](target,ob)
+
+@ul.do_function_on('double')
+def connect_visibility(ob, target, attrname='Vis'):
+    pm.addAttr(ob, ln=attrname,at='bool',k=1)
+    ob.attr(attrname) >> target.visibility
+
 @ul.do_function_on()
-def create_short_hair(bone):
+def create_short_hair_simple(bone):
     bones = get_current_chain(bone)
-    #bonename = b
+    bonename = bone.name().split('|')[-1]
     startBone = bones[0]
     endBone = bones[-1]
-    midBone = bones[int(round(len(bones)/2))]
+    midBone = bones[int(round((len(bones)-1)/2.0))]
     ikhandle, ikeffector, ikcurve = pm.ikHandle(sj=startBone, ee=endBone,solver='ikSplineSolver')
+    ikhandle.rename(bonename+'_ikhandle')
+    ikeffector.rename(bonename+'_ikeffector')
+    ikcurve.rename(bonename+'_ikCurve')
     sbonetop, mbonetop, ebonetop = [dup_bone(b,name = b.name()+'_top') for b in [startBone,midBone,endBone]]
+    print (len(bones)-1)%2.0
+    if (len(bones)-1)%2.0 == 1:
+        boneUp = bones[int(math.ceil((len(bones)-1)/2.0))]
+        boneDown = bones[int(math.floor((len(bones)-1)/2.0))]
+        mbonetop.setTranslation((boneUp.getTranslation('world')+boneDown.getTranslation('world'))/2,'world')
     for b in [sbonetop, mbonetop, ebonetop]:
         b.setParent(None)
         b.radius.set(b.radius.get()*2)
     curveSkin = pm.skinCluster(sbonetop,mbonetop,ebonetop,ikcurve)
+    return (sbonetop, mbonetop, ebonetop)
+
+@ul.do_function_on()
+def create_short_hair_single(bone):
+    bones = get_current_chain(bone)
+    bonename = bone.name().split('|')[-1]
+    startBone = bones[0]
+    endBone = bones[-1]
+    ikhandle, ikeffector, ikcurve = pm.ikHandle(sj=startBone, ee=endBone,solver='ikSplineSolver')
+    ikhandle.rename(bonename+'_ikhandle')
+    ikeffector.rename(bonename+'_ikeffector')
+    ikcurve.rename(bonename+'_ikCurve')
+    sbonetop, ebonetop = [dup_bone(b,name = b.name()+'_top') for b in [startBone,endBone]]
+    for b in [sbonetop, ebonetop]:
+        b.radius.set(b.radius.get()*2)
+    curveSkin = pm.skinCluster(sbonetop ,ebonetop,ikcurve)
+    return (sbonetop, ebonetop)
+
+@ul.do_function_on(mode='singlelast')
+def create_short_hair(bone,rootTop):
+    bones = get_current_chain(bone)
+    bonename = bone.name().split('|')[-1]
+    startBone = bones[0]
+    endBone = bones[-1]
+    midBone = bones[int(round((len(bones)-1)/2.0))]
+    ikhandle, ikeffector, ikcurve = pm.ikHandle(sj=startBone, ee=endBone,solver='ikSplineSolver')
+    ikhandle.rename(bonename+'_ikhandle')
+    ikeffector.rename(bonename+'_ikeffector')
+    ikcurve.rename(bonename+'_ikCurve')
+    sbonetop, mbonetop, ebonetop = [dup_bone(b,name = b.name()+'_top') for b in [startBone,midBone,endBone]]
+    print (len(bones)-1)%2.0
+    if (len(bones)-1)%2.0 == 1:
+        boneUp = bones[int(math.ceil((len(bones)-1)/2.0))]
+        boneDown = bones[int(math.floor((len(bones)-1)/2.0))]
+        mbonetop.setTranslation((boneUp.getTranslation('world')+boneDown.getTranslation('world'))/2,'world')
+    for b in [sbonetop, mbonetop, ebonetop]:
+        b.setParent(None)
+        b.radius.set(b.radius.get()*2)
+    curveSkin = pm.skinCluster(sbonetop,mbonetop,ebonetop,ikcurve)
+    if not rootTop.hasAttr('swayspeedX'):
+        pm.addAttr(rootTop, ln='swayspeedX', nn='Sway X Speed', sn='swayspX', at='float', k=1, dv=0.75)
+    if not rootTop.hasAttr('swaystrengthX'):
+        pm.addAttr(rootTop, ln='swaystrengthX', nn='Sway X Strength', sn='swaystrX', at='float', k=1, dv=0.25)
+    if not rootTop.hasAttr('swayfrequencyX'):
+        pm.addAttr(rootTop, ln='swayfrequencyX', nn='Sway X Frequency', sn='swayfreX', at='float', k=1, dv=2)
+    if not rootTop.hasAttr('swayspeedY'):
+        pm.addAttr(rootTop, ln='swayspeedY', nn='Sway Y Speed', sn='swayspY', at='float', k=1, dv=1)
+    if not rootTop.hasAttr('swaystrengthY'):
+        pm.addAttr(rootTop, ln='swaystrengthY', nn='Sway Y Strength', sn='swaystrY', at='float', k=1, dv=0.5)
+    if not rootTop.hasAttr('swayfrequencyY'):
+        pm.addAttr(rootTop, ln='swayfrequencyY', nn='Sway Y Frequency', sn='swayfreY', at='float', k=1, dv=1)
     pm.select(ikcurve,r=True)
-    sineWave = pm.nonLinear(type='sine',lowBound=0)
-    sineWave[1].setTranslation(sbonetop.getTranslation('world'), 'world')
-    tempAim = pm.aimConstraint(ebonetop, sineWave[1], aimVector=[0,1,0])
-    #pm.delete(tempAim)
-    sineWave[1].setParent(sbonetop)
+    X = pm.nonLinear( type='sine' )
+    X[1].rename(bonename+'_sineX')
+    pm.select(ikcurve,r=True)
+    Y = pm.nonLinear( type='sine' )
+    Y[1].rename(bonename+'_sineY')
+    #Z = pm.nonLinear(type='sine')
+    for sineHandle in [X,Y]:
+        sineHandle[0].lowBound.set(0)
+        sineHandle[0].amplitude.set(0.25)
+        sineHandle[0].dropoff.set(-1)
+        sineHandle[0].wavelength.set(1.5)
+        sineHandle[1].setTranslation(sbonetop.getTranslation('world'), 'world')
+        tempAim = pm.aimConstraint(
+            ebonetop,
+            sineHandle[1],
+            aimVector=[0,1,0],
+            )
+        sineHandle[1].setParent(sbonetop)
+        sineHandle[1].scaleY.set(sbonetop.getTranslation().distanceTo(ebonetop.getTranslation()))
+        tempAim.worldUpType.set(1)
+        tempAim.setWorldUpObject(mbonetop.name())
+        if sineHandle == Y:
+            tempAim.setUpVector([1,0,0])
+        else:
+            tempAim.setUpVector([0,0,1])
+    sineExpress = pm.expression(
+        s='%s.offset=time*%s*noise(time);\n%s.offset=time*%s*noise(time);'%(
+            X[0].name(),rootTop.swayspX.name(),Y[0].name(),rootTop.swayspY.name()),
+        td=True, ae=1, uc='all')
+    rootTop.swaystrX >> X[0].amplitude
+    rootTop.swayfreX >> X[0].wavelength
+    rootTop.swaystrY >> Y[0].amplitude
+    rootTop.swayfreY >> Y[0].wavelength
     return (sbonetop, mbonetop, ebonetop)
 
 @ul.do_function_on()

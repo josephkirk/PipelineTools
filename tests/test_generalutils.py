@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
 import unittest
-import PipelineTools.core.general_utils as ul
+from context import pt
 import pymel.core as pm
-reload(ul)
+ul = pt.core.ul
 class TestDoFunctionOn(unittest.TestCase):
     """Basic test cases."""
     def setUp(self):

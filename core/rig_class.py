@@ -1075,21 +1075,20 @@ class ControlObject(object):
     def createParentJointControl(self, bones, **kws):
         ctls = []
         for bone in bones:
-            for boneChain in ul.iter_hierachy(bone):
-                if 'offset' not in boneChain.name():
-                    if not boneChain.getParent() or 'offset' not in boneChain.getParent().name():
-                        ru.createOffsetJoint(bone, cl=True)
-                    bonematrix = boneChain.getMatrix(worldSpace=True)
-                    name = boneChain.name().split('|')[-1].split('_')[0]
-                    ctl = self.Pin(name=name + '_ctl', **kws)
-                    ctlGp = ctl.getParent()
-                    ctlGp.rename(name + '_ctlGp')
-                    ctlGp.setMatrix(bonematrix, worldSpace=True)
-                    if ctls:
-                        ctlGp.setParent(ctls[-1])
-                    ctls.append(ctl)
-                    for atr in ['translate', 'rotate', 'scale']:
-                        ctl.attr(atr) >> boneChain.attr(atr)
+            if 'offset' not in bone.name():
+                if not bone.getParent() or 'offset' not in bone.getParent().name():
+                    ru.createOffsetJoint(bone, cl=True)
+                bonematrix = bone.getMatrix(worldSpace=True)
+                name = bone.name().split('|')[-1].split('_')[0]
+                ctl = self.Pin(name=name + '_ctl', **kws)
+                ctlGp = ctl.getParent()
+                ctlGp.rename(name + '_ctlGp')
+                ctlGp.setMatrix(bonematrix, worldSpace=True)
+                if ctls:
+                    ctlGp.setParent(ctls[-1])
+                ctls.append(ctl)
+                for atr in ['translate', 'rotate', 'scale']:
+                    ctl.attr(atr) >> bone.attr(atr)
         return ctls
 
     #### Ui contain
@@ -1250,7 +1249,8 @@ class ControlObject(object):
                         pm.menuItem(label='Create Free Control', c=pm.Callback(self._do4))
                         pm.menuItem(label='Create Prop Control', c=pm.Callback(self._do6))
                         pm.menuItem(label='Create Parent Control', c=pm.Callback(self._do5))
-                        pm.menuItem(label='Create Short Hair Control', c=pm.Callback(ru.create_short_hair))
+                        pm.menuItem(label='Create Short Hair Control', c=pm.Callback(ru.create_short_hair_simple))
+                        pm.menuItem(label='Create Single Short Hair Control', c=pm.Callback(ru.create_short_hair_single))
                         pm.menuItem(label='Create Long Hair Control', c=pm.Callback(HairRig))
                     with pm.frameLayout(label='Utils:'):
                         pm.button(label='Basic Intergration', c=pm.Callback(ru.basic_intergration))
@@ -1276,6 +1276,26 @@ class ControlObject(object):
                                     ru.connectTransform,
                                     translate=False, rotate=False, Scale=True))
                             smallbutton(label='disconnect Transform', c=pm.Callback(ru.connectTransform,disconnect=True))
+                        smallbutton(label='multi Parent Constraint', c=pm.Callback(ru.contraint_multi, constraintType='Parent'))
+                        with pm.popupMenu(b=3):
+                            pm.menuItem(label='multi Point Constraint', c=pm.Callback(
+                                ru.contraint_multi,
+                                constraintType='Point'))
+                            pm.menuItem(label='multi Orient Constraint', c=pm.Callback(
+                                ru.contraint_multi,
+                                constraintType='Orient'))
+                            pm.menuItem(label='multi Aim Constraint', c=pm.Callback(
+                                ru.contraint_multi,
+                                constraintType='Aim'))
+                        with pm.rowColumnLayout():
+                            self._uiElement['visAtrName'] = pm.textFieldGrp(
+                                cl2=('left', 'right'),
+                                co2=(0, 0),
+                                cw2=(40, 100),
+                                label='Vis Attribute Name:', text='FullRigVis')
+                            smallbutton(
+                                label='Connect Visibility', c=lambda x:ru.connect_visibility(
+                                    attrname= self._uiElement['visAtrName'].getText()))
                         with pm.rowColumnLayout():
                             pm.button(label='toggle Channel History', c=pm.Callback(ru.toggleChannelHistory))
                             pm.button(label='Deform Normal Off', c=pm.Callback(ru.deform_normal_off))
