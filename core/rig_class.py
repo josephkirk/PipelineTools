@@ -1075,20 +1075,21 @@ class ControlObject(object):
     def createParentJointControl(self, bones, **kws):
         ctls = []
         for bone in bones:
-            if not bone.getParent() or 'offset' not in bone.getParent().name():
-                ru.createOffsetJoint(bone, cl=True)
-            bonematrix = bone.getMatrix(worldSpace=True)
-            name = bone.name().split('|')[-1].split('_')[0]
-            ctl = self.Pin(name=name + '_ctl', **kws)
-            ctlGp = ctl.getParent()
-            ctlGp.rename(name + '_ctlGp')
-            ctlGp.setMatrix(bonematrix, worldSpace=True)
-            if ctls:
-                ctlGp.setParent(ctls[-1])
-            ctls.append(ctl)
-            for atr in ['translate', 'rotate', 'scale']:
-                ctl.attr(atr) >> bone.attr(atr)
-        pm.select(ctls)
+            for boneChain in ul.iter_hierachy(bone):
+                if 'offset' not in boneChain.name():
+                    if not boneChain.getParent() or 'offset' not in boneChain.getParent().name():
+                        ru.createOffsetJoint(bone, cl=True)
+                    bonematrix = boneChain.getMatrix(worldSpace=True)
+                    name = boneChain.name().split('|')[-1].split('_')[0]
+                    ctl = self.Pin(name=name + '_ctl', **kws)
+                    ctlGp = ctl.getParent()
+                    ctlGp.rename(name + '_ctlGp')
+                    ctlGp.setMatrix(bonematrix, worldSpace=True)
+                    if ctls:
+                        ctlGp.setParent(ctls[-1])
+                    ctls.append(ctl)
+                    for atr in ['translate', 'rotate', 'scale']:
+                        ctl.attr(atr) >> boneChain.attr(atr)
         return ctls
 
     #### Ui contain

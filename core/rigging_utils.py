@@ -60,8 +60,9 @@ def get_current_chain(ob):
     else:
         boneChains.append(ob)
     return boneChains
-def dup_bone(bone):
-    dupbone = bone.duplicate(po=True)[0]
+
+def dup_bone(bone,**kws):
+    dupbone = bone.duplicate(po=True,**kws)[0]
     dupbone.setParent(None)
     dupbone.radius.set(bone.radius.get()*2)
     return dupbone
@@ -171,6 +172,7 @@ def createPinCircle(
     crv = pm.curve(name=newname, d=1, p=finalPointMatrix, k=key)
     log.debug(crv)
     return crv
+
 @ul.do_function_on()
 def create_short_hair(bone):
     bones = get_current_chain(bone)
@@ -179,8 +181,18 @@ def create_short_hair(bone):
     endBone = bones[-1]
     midBone = bones[int(round(len(bones)/2))]
     ikhandle, ikeffector, ikcurve = pm.ikHandle(sj=startBone, ee=endBone,solver='ikSplineSolver')
-    sbonetop, mbonetop, ebonetop = [dup_bone(b) for b in [startBone,midBone,endBone]]
+    sbonetop, mbonetop, ebonetop = [dup_bone(b,name = b.name()+'_top') for b in [startBone,midBone,endBone]]
+    for b in [sbonetop, mbonetop, ebonetop]:
+        b.setParent(None)
+        b.radius.set(b.radius.get()*2)
     curveSkin = pm.skinCluster(sbonetop,mbonetop,ebonetop,ikcurve)
+    pm.select(ikcurve,r=True)
+    sineWave = pm.nonLinear(type='sine',lowBound=0)
+    sineWave[1].setTranslation(sbonetop.getTranslation('world'), 'world')
+    tempAim = pm.aimConstraint(ebonetop, sineWave[1], aimVector=[0,1,0])
+    #pm.delete(tempAim)
+    sineWave[1].setParent(sbonetop)
+    return (sbonetop, mbonetop, ebonetop)
 
 @ul.do_function_on()
 def createOffsetJoint(jointRoot, child=False, suffix='offset_bon'):
