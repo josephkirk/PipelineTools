@@ -58,10 +58,10 @@ def basic_intergration():
 def get_current_chain(ob):
     boneChains = []
     while ob.getChildren():
-        childsCount = len(ob.getChildren())
+        childsCount = len(ob.getChildren(type='joint'))
         assert (childsCount==1), 'Joint split to {} at {}'.format(childsCount,ob)
         boneChains.append(ob)
-        ob=ob.getChildren()[0]
+        ob=ob.getChildren(type='joint')[0]
     else:
         boneChains.append(ob)
     return boneChains
@@ -78,6 +78,25 @@ def group(ob):
     ob.setParent(Gp)
     log.info('group {} under {}'.format(ob, Gp))
     return Gp
+
+def create_square(
+        name,
+        width=1,
+        length=1,
+        offset=[0, 0, 0]):
+    xMax = width/2
+    yMax = length/2
+    pointMatrix = [
+        [ xMax,0, yMax ],
+        [ xMax,0, -yMax ],
+        [ -xMax,0, -yMax ],
+        [ -xMax,0, yMax ],
+        [  xMax,0, yMax ]
+    ]
+    key = range(len(pointMatrix))
+    crv = pm.curve(name=name, d=1, p=pointMatrix, k=key)
+    log.debug(crv)
+    return crv
 
 def createPinCircle(
         name,
@@ -142,18 +161,21 @@ def createPinCircle(
     axisData['mZX'] = axisData['ZX'] + axisData['-ZX']
     axisData['mYZ'] = axisData['YZ'] + axisData['-YZ']
     axisData['mZY'] = axisData['ZY'] + axisData['-ZY']
-    axisData['all'] = axisData['XY'] + axisData['XZ'] + axisData['ZX'] + axisData['-XY'] + axisData['-XZ'] + \
-                        axisData['-ZX']
+    axisData['all'] = axisData['XY'] + axisData['XZ'] + \
+                      axisData['ZX'] + axisData['-XY'] + \
+                      axisData['-XZ'] + axisData['-ZX']
     newname = name
     try:
-        assert (axisData.has_key(axis)), "Wrong Axis '%s'.\nAvailable axis: %s" % (axis, ','.join(axisData))
+        assert (axisData.has_key(axis)), \
+            "Wrong Axis '%s'.\nAvailable axis: %s" % (axis, ','.join(axisData))
         finalPointMatrix = axisData[axis]
     except AssertionError as why:
         finalPointMatrix = axisData['XY']
         log.error(str(why) + '\nDefault to XY')
     if sphere and not cylinder and not length > 0:
         quarCircle = len(pointMatrix) / 4 + 1
-        finalPointMatrix = axisData['XY'] + axisData['XZ'] + axisData['XY'][:quarCircle] + axisData['YZ']
+        finalPointMatrix = axisData['XY'] + axisData['XZ'] + \
+                           axisData['XY'][:quarCircle] + axisData['YZ']
     elif sphere and not cylinder and length > 0:
         if axis[-1] == 'X':
             finalPointMatrix = axisData['YX'] + axisData['ZX']
@@ -184,9 +206,14 @@ def contraint_multi(ob,target, constraintType='Point'):
         'Point': ul.partial(pm.pointConstraint , mo=True),
         'Parent': ul.partial(pm.parentConstraint , mo=True),
         'Orient': ul.partial(pm.orientConstraint , mo=True),
-        'Aim': ul.partial(pm.orientConstraint , mo=True)
+        'PointOrient': None,
+        'Aim': ul.partial(pm.aimConstraint , mo=True, aimVector=[1,0,0], upVector=[1, 0, 0], worldUpType="none")
     }
     assert (constraintDict.has_key(constraintType)), 'wrong Constraint Type'
+    if constraintType == 'PointOrient':
+        constraintDict['Point'](target,ob)
+        constraintDict['Orient'](target,ob)
+        return
     constraintDict[constraintType](target,ob)
 
 @ul.do_function_on('double')
@@ -319,8 +346,8 @@ def createOffsetJoint(jointRoot, child=False, suffix='offset_bon'):
 
 @ul.do_function_on()
 def create_loc_control(ob, connect=True):
-    obname = ob.name().split('|')[-1].split('_')[0]
-    loc = pm.spaceLocator(name=obname + 'loc')
+    obname = ob.name().split('|')[-1]
+    loc = pm.spaceLocator(name=obname + '_loc')
     loc.setTranslation(ob.getTranslation('world'), 'world')
     loc.setRotation(ob.getRotation('world'), 'world')
     loc_Gp = create_parent(loc,cl=True)
@@ -357,7 +384,7 @@ def create_loc_on_vert(vert):
 
 @ul.do_function_on()
 def create_parent(ob):
-    obname = ob.name().split('|')[-1].split('_')[0] + '_' + ob.name().split('_')[-1]
+    obname = ob.name().split('|')[-1]
     parent = pm.nt.Transform(name=obname + 'Gp')
     oldParent = ob.getParent()
     parent.setTranslation(ob.getTranslation('world'), 'world')
@@ -411,14 +438,10 @@ def connectTransform(ob, target, **kws):
                 ob.attr(attr) >> target.attr(attr)
 
 #@ul.do_function_on(mode='set')
-def toggleChannelHistory():
-    if not pm.selected():
-        oblist = pm.ls()
-    else:
-        oblist = pm.selected()
+def toggleChannelHistory(state):
+    oblist = pm.ls()
     for ob in oblist:
-        state = ob.isHistoricallyInteresting.get()
-        ob.isHistoricallyInteresting.set(not state  )
+        ob.isHistoricallyInteresting.set(state)
 
 
 def deform_normal_off():
@@ -427,9 +450,6 @@ def deform_normal_off():
         return
     for skin_cluster in skin_clusters:
         skin_cluster.attr('deformUserNormals').set(False)
-        print skin_cluster
-        print skin_cluster.attr('deformUserNormals').get()
-
 
 @ul.do_function_on('single')
 def mirror_joint_multi(ob):

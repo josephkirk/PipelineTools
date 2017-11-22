@@ -19,6 +19,7 @@ logging.basicConfig()
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 reload(ul)
+reload(ru)
 
 
 # print meta
@@ -716,7 +717,8 @@ class ControlObject(object):
             'Octa': self.Octa,
             'Cylinder': self.Cylinder,
             'Sphere': self.Sphere,
-            'NSphere': self.NSphere
+            'NSphere': self.NSphere,
+            'Rectangle': self.Rectangle
         }
         self._uiElement = {}
         log.info('Control Object class name:{} initialize'.format(name))
@@ -968,6 +970,14 @@ class ControlObject(object):
             length=0)
         return crv
 
+    @__setProperty__
+    def Rectangle(self, mode={}):
+        crv = ru.create_square(
+            self.name,
+            length=self.radius,
+            width=self.length,
+            offset=self.offset)
+        return crv
     #### control method
     def getControls(self):
         msg = ['{} contain controls:'.format(self.name)]
@@ -1075,20 +1085,20 @@ class ControlObject(object):
     def createParentJointControl(self, bones, **kws):
         ctls = []
         for bone in bones:
-            if 'offset' not in bone.name():
-                if not bone.getParent() or 'offset' not in bone.getParent().name():
-                    ru.createOffsetJoint(bone, cl=True)
-                bonematrix = bone.getMatrix(worldSpace=True)
-                name = bone.name().split('|')[-1].split('_')[0]
-                ctl = self.Pin(name=name + '_ctl', **kws)
-                ctlGp = ctl.getParent()
-                ctlGp.rename(name + '_ctlGp')
-                ctlGp.setMatrix(bonematrix, worldSpace=True)
-                if ctls:
-                    ctlGp.setParent(ctls[-1])
-                ctls.append(ctl)
-                for atr in ['translate', 'rotate', 'scale']:
-                    ctl.attr(atr) >> bone.attr(atr)
+            if 'offset' not in bone.getParent().name():
+                ru.createOffsetJoint(bone, cl=True)
+            bonematrix = bone.getMatrix(worldSpace=True)
+            name = bone.name().split('|')[-1].split('_')[0]
+            ctl = self.Pin( **kws)
+            ctl.rename(name + '_ctl')
+            ctlGp = ctl.getParent()
+            ctlGp.rename(name + '_ctlGp')
+            ctlGp.setMatrix(bonematrix, worldSpace=True)
+            if ctls:
+                ctlGp.setParent(ctls[-1])
+            ctls.append(ctl)
+            for atr in ['translate', 'rotate', 'scale']:
+                ctl.attr(atr) >> bone.attr(atr)
         return ctls
 
     #### Ui contain
@@ -1268,13 +1278,13 @@ class ControlObject(object):
                             with pm.popupMenu(b=3):
                                 pm.menuItem(label='connect Translate', c=pm.Callback(
                                     ru.connectTransform,
-                                    translate=True, rotate=False, Scale=False))
+                                    translate=True, rotate=False, scale=False))
                                 pm.menuItem(label='connect Rotate', c=pm.Callback(
                                     ru.connectTransform,
-                                    translate=False, rotate=True, Scale=False))
+                                    translate=False, rotate=True, scale=False))
                                 pm.menuItem(label='connect Scale', c=pm.Callback(
                                     ru.connectTransform,
-                                    translate=False, rotate=False, Scale=True))
+                                    translate=False, rotate=False, scale=True))
                             smallbutton(label='disconnect Transform', c=pm.Callback(ru.connectTransform,disconnect=True))
                         smallbutton(label='multi Parent Constraint', c=pm.Callback(ru.contraint_multi, constraintType='Parent'))
                         with pm.popupMenu(b=3):
@@ -1284,6 +1294,9 @@ class ControlObject(object):
                             pm.menuItem(label='multi Orient Constraint', c=pm.Callback(
                                 ru.contraint_multi,
                                 constraintType='Orient'))
+                            pm.menuItem(label='multi Point&Orient Constraint', c=pm.Callback(
+                                ru.contraint_multi,
+                                constraintType='PointOrient'))
                             pm.menuItem(label='multi Aim Constraint', c=pm.Callback(
                                 ru.contraint_multi,
                                 constraintType='Aim'))
@@ -1297,7 +1310,9 @@ class ControlObject(object):
                                 label='Connect Visibility', c=lambda x:ru.connect_visibility(
                                     attrname= self._uiElement['visAtrName'].getText()))
                         with pm.rowColumnLayout():
-                            pm.button(label='toggle Channel History', c=pm.Callback(ru.toggleChannelHistory))
+                            pm.button(label='Channel History ON', c=pm.Callback(ru.toggleChannelHistory,True))
+                            with pm.popupMenu(b=3):
+                                pm.menuItem(label='Channel History OFF', c=pm.Callback(ru.toggleChannelHistory,False))
                             pm.button(label='Deform Normal Off', c=pm.Callback(ru.deform_normal_off))
         self._getUIValue()
 
@@ -1311,7 +1326,7 @@ class HairRig:
         pm.select(selList, r=True)
 
         for chain in chainList:
-            if len(chain.getChildren()) > 1:
+            if len(chain.getChildren(type='joint')) > 1:
                 pm.displayError('%s has more than one child.' % chain)
                 return False
 
