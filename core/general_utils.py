@@ -346,6 +346,9 @@ def do_function_on(
     return decorator
 
 #### utility function
+def get_name(ob):
+    assert hasattr(ob,'name'), 'Cannot get name for %s'%ob
+    return ob.name().split('|')[-1] 
 def recurse_hierachy(root, callback,*args,**kwargs):
     '''Recursive do a callback function'''
     def recurse(node):
@@ -361,8 +364,6 @@ def iter_hierachy(root):
     while stack:
         level +=1
         node = stack.pop()
-        print node
-        print level
         yield node
         childs = node.getChildren( type='transform' )
         if len(childs) > 1:
@@ -402,6 +403,7 @@ def get_closest_component(ob, mesh_node, uv=True, pos=False):
             mid_edge_uv = ((edge_uv_coor[0] + edge_uv_coor[2])/2,(edge_uv_coor[1] + edge_uv_coor[3])/2)
             result = mid_edge_uv
     return result
+
 @error_alert
 def get_closest_info(ob, mesh_node):
     if not isinstance(ob, pm.nt.Transform):
@@ -576,57 +578,6 @@ def set_Vray_material(mat,mat_type='dielectric',**kwargs):
         except (IOError, OSError, AttributeError) as why:
             print why
 
-@do_function_on(mode='single')
-def assign_curve_to_hair(abc_curve,hair_system="",preserve=False):
-    '''assign Alembic curve Shape or tranform contain multi curve Shape to hairSystem'''
-    curve_list = detach_shape(abc_curve, preserve=preserve)
-    for curve in curve_list:
-        hair_from_curve(curve,hair_system=hair_system)
-
-def hair_from_curve(input_curve, hair_system=""):
-    '''
-    Assign curve to Hair System
-    Modify Function from 
-    Author: Tyler Hurd, www.tylerhurd.com '''
-    print input_curve
-    for attr in ['tx','ty','tz','rx','ry','rz','sx','sy','sz'] :
-        if 's' in attr and pm.getAttr('%s.%s'%(input_curve,attr)) != 1.0 :
-            pm.warning('Transform values found! "%s.%s" is set to %s! Freeze transformations for expected results.'%(input_curve,attr,pm.getAttr('%s.%s'%(input_curve,attr))))
-        elif not 's' in attr and pm.getAttr('%s.%s'%(input_curve,attr)) != 0 :
-            pm.warning('Transform values found! "%s.%s" is set to %s! Freeze transformations for expected results.'%(input_curve,attr,pm.getAttr('%s.%s'%(input_curve,attr))))
-
-    # duplicate driver curve for hair and follicle
-    hair_curve = pm.rename(pm.duplicate(input_curve,rr=1),'%s_HairCurve'%input_curve)
-    follicle = pm.rename(pm.createNode('follicle',ss=1,n='%s_FollicleShape'%input_curve).getParent(),'%s_Follicle'%input_curve)
-    follicle.restPose.set(1)
-    # if no hair system given create new hair system, if name given and it doesn't exist, give it that name
-    if hair_system == '' :
-        if pm.ls(type='hairSystem'):
-            hair_system = pm.ls(type='hairSystem')[0]
-        else:
-            hair_system = pm.rename(pm.createNode('hairSystem',ss=1,n='%s_HairSystemShape'%input_curve).getParent(),'%s_HairSystem'%input_curve)
-            pm.PyNode('time1').outTime >> hair_system.getShape().currentTime
-            pm.select(hair_system)
-            mm.eval('addPfxToHairSystem;')
-    elif hair_system and not pm.objExists(hair_system) :
-        hair_system = pm.rename(pm.createNode('hairSystem',ss=1,n='%sShape'%hair_system).getParent(),hair_system)
-        pm.PyNode('time1').outTime >> hair_system.getShape().currentTime
-        pm.select(hair_system)
-        mm.eval('addPfxToHairSystem;')
-    hair_system = pm.PyNode(hair_system)
-    #hair_system = pm.PyNode(hair_system)
-    hair_ind = len(hair_system.getShape().inputHair.listConnections())
-    if not pm.objExists('%s_follicles'%hair_system):
-        pm.group(name='%s_follicles'%hair_system)
-    # connections
-    pm.parent(input_curve,follicle)
-    pm.parent(follicle,'%s_follicles'%hair_system)
-    input_curve.getShape().worldSpace[0] >> follicle.getShape().startPosition
-    follicle.getShape().outCurve >> hair_curve.getShape().create
-    follicle.getShape().outHair >> hair_system.getShape().inputHair[hair_ind]
-    hair_system.getShape().outputHair[hair_ind] >> follicle.getShape().currentPosition
-
-    return [input_curve,hair_curve,follicle,hair_system]
 
 def exportCam():
     '''export allBake Camera to FBX files'''

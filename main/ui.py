@@ -12,12 +12,11 @@ import maya.cmds as cm
 import maya.mel as mm
 from pymel.core import *
 
-from ..core import general_utils as ul
-from ..core import rigging_utils as rig
-
-reload(ul)
-
-
+from .. import core
+core._reload()
+ul = core.ul
+ru = core.rul
+rcl = core.rcl
 ###Global Var
 ###Function
 def batch_export_cam():
@@ -37,13 +36,11 @@ def batch_export_cam():
         cm.file(f=True, new=True)
         mm.eval("paneLayout -e -m true $gMainPane")
 
-class RigTools:
+class RigTools(object):
     def __init__(self):
         self._name = 'Rig Tools'
         self._windowname = self._name.replace(' ','')+'Window'
-    @classmethod
-    def show(cls):
-        cls._init_ui()
+
     @property
     def name(self):
         return self._name
@@ -55,65 +52,168 @@ class RigTools:
 
     @property
     def window(self):
-        if pm.window(self._windowname, exists=True):
-            pm.deleteUI(self._name)
-            pm.windowPref(self._name, remove=True)
-        self._window = pm.window(
-            self._windowname, title=self._title,
+        if window(self._windowname, exists=True):
+            deleteUI(self._windowname)
+            windowPref(self._windowname, remove=True)
+        self._window = window(
+            self._windowname, title=self._name,
             rtf=True, sizeable=False)
+        self._windowSize = (250, 10)
+        self._uiElement = {}
         return self._window
+
+    @window.setter
+    def window(self,newSize):
+        self._windowSize = newSize
 
     @property
     def template(self):
-        self._template = pm.uiTemplate(self._windowname.replace('Window', 'UITemplate'), force=True)
-        return self._template
+        self._uiTemplate = uiTemplate(self._windowname.replace('Window', 'UITemplate'), force=True)
+        self._uiTemplate.define(
+            button, width=5, height=40, align='left')
+        self._uiTemplate.define(
+            columnLayout, adjustableColumn=1, w=10)
+        self._uiTemplate.define(
+            frameLayout, borderVisible=True,
+            labelVisible=True, width=self._windowSize[0])
+        self._uiTemplate.define(
+            rowColumnLayout,
+            rs=[(1, 5), ],
+            adj=True, numberOfColumns=2,
+            cal=[(1, 'left'), ],
+            columnWidth=[(1, 100), (2, 100)])
+        return self._uiTemplate
+    
+    def defineUI(self,*args,**kws):
+        self.template.define(*args, **kws)
 
     def create_rig_util_ui(self):
-        with pm.frameLayout(label='Utils:'):
-            pm.button(label='Basic Intergration', c=pm.Callback(ru.basic_intergration))
-            pm.button(label='Create Prop Control', c=pm.Callback(self._do6))
-            pm.button(label='Create Parent Control', c=pm.Callback(self._do5))
-            pm.button(label='Create Short Hair Control', c=pm.Callback(ru.create_short_hair_simple))
-            pm.button(label='Create Single Short Hair Control', c=pm.Callback(ru.create_short_hair_single))
-            pm.button(label='Create Long Hair Control', c=pm.Callback(HairRig))
-            with pm.rowColumnLayout(rs=[(1,0),]):
-                smallbutton = ul.partial(pm.button,h=30)
-                smallbutton(label='create Parent', c=pm.Callback(ru.create_parent))
-                smallbutton(label='delete Parent', c=pm.Callback(ru.remove_parent))
-                smallbutton(label='Parent Shape', c=pm.Callback(ul.parent_shape))
-                smallbutton(label='create Offset bone', c=pm.Callback(ru.createOffsetJoint))
-                smallbutton(label='create Loc', c=pm.Callback(ru.create_loc_control, connect=False))
-                smallbutton(label='create Loc control', c=pm.Callback(ru.create_loc_control))
-                smallbutton(label='connect with Loc', c=pm.Callback(ru.connect_with_loc))
-                smallbutton(label='vertex to Loc', c=pm.Callback(ru.create_loc_on_vert))
-                smallbutton(label='connect Transform', c=pm.Callback(ru.connectTransform))
-                with pm.popupMenu(b=3):
-                    pm.menuItem(label='connect Translate', c=pm.Callback(
-                        ru.connectTransform,
-                        translate=True, rotate=False, scale=False))
-                    pm.menuItem(label='connect Rotate', c=pm.Callback(
-                        ru.connectTransform,
-                        translate=False, rotate=True, scale=False))
-                    pm.menuItem(label='connect Scale', c=pm.Callback(
-                        ru.connectTransform,
-                        translate=False, rotate=False, scale=True))
-                smallbutton(label='disconnect Transform', c=pm.Callback(ru.connectTransform,disconnect=True))
-            smallbutton(label='multi Parent Constraint', c=pm.Callback(ru.contraint_multi, constraintType='Parent'))
-            with pm.popupMenu(b=3):
-                pm.menuItem(label='multi Point Constraint', c=pm.Callback(
-                    ru.contraint_multi,
+        with frameLayout(label='Tools:'):
+            with rowColumnLayout(rs=[(1,1),], numberOfColumns=1):
+                button(
+                    label='Basic Intergration',
+                    c=Callback(ru.basic_intergration))
+                button(
+                    label='Skin Weigth Setter',
+                    c=Callback(SkinWeightSetter.show))
+        with frameLayout(label='Create Control:'):
+            with rowColumnLayout(rs=[(1,1),], numberOfColumns=1):
+                button(
+                    label='Create Control Shape',
+                    c=Callback(rcl.ControlObject.show))
+                button(
+                    label='Create Prop Control',
+                    c=Callback(
+                        ul.do_function_on()(ru.create_prop_control)))
+                button(
+                    label='Create Free Control',
+                    c=Callback(
+                        ul.do_function_on()(ru.create_free_control)))
+                button(
+                    label='Create Parent Control',
+                    c=Callback(
+                        ul.do_function_on()(ru.create_parent_control)))
+                button(
+                    label='Create Long Hair Control',
+                    c=Callback(
+                        ul.do_function_on()(ru.create_long_hair)))
+                button(
+                    label='Create Short Hair Control',
+                    c=Callback(
+                        ul.do_function_on()(ru.create_short_hair)))
+                button(
+                    label='Create Simple Short Hair Control',
+                    c=Callback(
+                        ul.do_function_on()(ru.create_short_hair_simple)))
+        with frameLayout(label='Utilities:'):
+            with rowColumnLayout(rs=[(1,0),]):
+                smallbutton = ul.partial(button,h=30)
+                smallbutton(
+                    label='create Parent',
+                    c=Callback(
+                        ul.do_function_on()(ru.create_parent)))
+                smallbutton(
+                    label='delete Parent',
+                    c=Callback(
+                        ul.do_function_on()(ru.remove_parent)))
+                smallbutton(
+                    label='Parent Shape',
+                    c=Callback(
+                        ul.do_function_on('double')(ul.parent_shape)))
+                smallbutton(
+                    label='create Offset bone',
+                    c=Callback(
+                        ul.do_function_on()(ru.create_offset_bone)))
+                smallbutton(
+                    label='create Loc',
+                    c=Callback(
+                        ul.do_function_on()(ru.create_loc_control),connect=False))
+                smallbutton(
+                    label='create Loc control',
+                    c=Callback(
+                        ul.do_function_on()(ru.create_loc_control)))
+                smallbutton(
+                    label='connect with Loc',
+                    c=Callback(
+                        ul.do_function_on('double')(ru.connect_with_loc),
+                        all=True))
+                with popupMenu(b=3):
+                    menuItem(label='translate only', c=Callback(
+                        ul.do_function_on('double')(ru.connect_with_loc),
+                        translate=True))
+                    menuItem(label='rotate only', c=Callback(
+                        ul.do_function_on('double')(ru.connect_with_loc),
+                        rotate=True))
+                smallbutton(
+                    label='vertex to Loc',
+                    c=Callback(
+                        ul.do_function_on()(ru.create_loc_on_vert)))
+                smallbutton(
+                    label='connect Transform',
+                    c=Callback(
+                        ul.do_function_on('double')(ru.connect_transform),
+                        all=True))
+                with popupMenu(b=3):
+                    menuItem(
+                        label='connect Translate',
+                        c=Callback(
+                            ul.do_function_on('double')(ru.connect_transform),
+                            translate=True, rotate=False, scale=False))
+                    menuItem(
+                        label='connect Rotate',
+                        c=Callback(
+                            ul.do_function_on('double')(ru.connect_transform),
+                            translate=False, rotate=True, scale=False))
+                    menuItem(
+                        label='connect Scale',
+                        c=Callback(
+                            ul.do_function_on('double')(ru.connect_transform),
+                            translate=False, rotate=False, scale=True))
+                smallbutton(
+                    label='disconnect Transform',
+                    c=Callback(
+                        ul.do_function_on('double')(ru.connect_transform),
+                        disconnect=True))
+            smallbutton(
+                label='multi Parent Constraint',
+                c=Callback(
+                    ul.do_function_on('double')(ru.contraint_multi),
+                    constraintType='Parent'))
+            with popupMenu(b=3):
+                menuItem(label='multi Point Constraint', c=Callback(
+                    ul.do_function_on('double')(ru.contraint_multi),
                     constraintType='Point'))
-                pm.menuItem(label='multi Orient Constraint', c=pm.Callback(
-                    ru.contraint_multi,
+                menuItem(label='multi Orient Constraint', c=Callback(
+                    ul.do_function_on('double')(ru.contraint_multi),
                     constraintType='Orient'))
-                pm.menuItem(label='multi Point&Orient Constraint', c=pm.Callback(
-                    ru.contraint_multi,
+                menuItem(label='multi Point&Orient Constraint', c=Callback(
+                    ul.do_function_on('double')(ru.contraint_multi),
                     constraintType='PointOrient'))
-                pm.menuItem(label='multi Aim Constraint', c=pm.Callback(
-                    ru.contraint_multi,
+                menuItem(label='multi Aim Constraint', c=Callback(
+                    ul.do_function_on('double')(ru.contraint_multi),
                     constraintType='Aim'))
-            with pm.rowColumnLayout():
-                self._uiElement['visAtrName'] = pm.textFieldGrp(
+            with rowColumnLayout():
+                self._uiElement['visAtrName'] = textFieldGrp(
                     cl2=('left', 'right'),
                     co2=(0, 0),
                     cw2=(40, 100),
@@ -121,20 +221,20 @@ class RigTools:
                 smallbutton(
                     label='Connect Visibility', c=lambda x:ru.connect_visibility(
                         attrname= self._uiElement['visAtrName'].getText()))
-            with pm.rowColumnLayout():
-                pm.button(label='Channel History ON', c=pm.Callback(ru.toggleChannelHistory,True))
-                with pm.popupMenu(b=3):
-                    pm.menuItem(label='Channel History OFF', c=pm.Callback(ru.toggleChannelHistory,False))
-                pm.button(label='Deform Normal Off', c=pm.Callback(ru.deform_normal_off))
+            with rowColumnLayout():
+                button(label='Channel History OFF', c=Callback(ru.toggleChannelHistory, False))
+                with popupMenu(b=3):
+                    menuItem(label='Channel History ON', c=Callback(ru.toggleChannelHistory))
+                button(label='Deform Normal Off', c=Callback(ru.deform_normal_off))
 
-    def init_ui(self):
+    def _init_ui(self):
         with self.window:
             with self.template:
-                with frameLayout(label='FacialRig'):
-                    pass
-                with frameLayout(label='SecondaryRig'):
-                    pass
                 self.create_rig_util_ui()
+
+    @classmethod
+    def show(cls):
+        cls()._init_ui()
 
 class SendCurrentFile(object):
     def __init__(self):
@@ -294,7 +394,6 @@ class SkinWeightSetter(object):
         self.weight_threshold = (0.0, 0.1)
         self.dual_interactive = False
         self.weight_tick = 5
-        self.init_ui()
 
     def last_selection(self):
         self.last_selected = selected()
@@ -321,16 +420,16 @@ class SkinWeightSetter(object):
 
     def set_skin_type(*args):
         # print args
-        ul.switch_skin_type(type=args[1])
-        headsUpMessage("Skin type set to %s" % args[1], time=0.2)
+        ru.switch_skin_type(type=args[1])
+        headsUssage("Skin type set to %s" % args[1], time=0.2)
 
     def set_interactive_state(self):
         self.interactive = False if self.interactive else True
-        headsUpMessage("Interactive %s" % self.interactive, time=0.2)
+        headsUssage("Interactive %s" % self.interactive, time=0.2)
 
     def set_dual_interactive_state(self):
         self.dual_interactive = False if self.dual_interactive else True
-        headsUpMessage("Interactive %s" % self.dual_interactive, time=0.2)
+        headsUssage("Interactive %s" % self.dual_interactive, time=0.2)
 
     def set_weight(self, value):
         self.weight_value = round(value, 2)
@@ -340,11 +439,11 @@ class SkinWeightSetter(object):
 
     def set_normalize_state(self, value):
         self.normalize = False if self.normalize else True
-        headsUpMessage("Normalize %s" % self.normalize, time=0.2)
+        headsUssage("Normalize %s" % self.normalize, time=0.2)
 
     def set_hierachy_state(self, value):
         self.hierachy = False if self.hierachy else True
-        headsUpMessage("Hierachy %s" % self.hierachy, time=0.2)
+        headsUssage("Hierachy %s" % self.hierachy, time=0.2)
 
     def set_dual_weight(self, value):
         self.dual_weight_value = round(value, 2)
@@ -353,7 +452,7 @@ class SkinWeightSetter(object):
             self.dual_weight_setter()
 
     def select_skin_vertex(self):
-        ul.skin_weight_filter(
+        ru.skin_weight_filter(
             min=self.weight_threshold[0],
             max=self.weight_threshold[1],
             select=True)
@@ -364,21 +463,21 @@ class SkinWeightSetter(object):
             mm.eval('artAttrSkinPaintModePaintSelect 0 artAttrSkinPaintCtx')
         if not selected():
             select(self.last_selected, r=True)
-        ul.skin_weight_setter(
+        ru.skin_weight_setter(
             skin_value=self.weight_value,
             normalized=self.normalize,
             hierachy=self.hierachy)
         self.last_selection()
         self.preview_skin_weight()
-        headsUpMessage("Weight Set!", time=0.2)
+        headsUssage("Weight Set!", time=0.2)
 
     @showsHourglass
     def apply_dual_weight(self):
         if not selected():
             select(self.last_selected)
-        ul.dual_weight_setter(weight_value=self.dual_weight_value)
+        ru.dual_weight_setter(weight_value=self.dual_weight_value)
         self.last_selection()
-        headsUpMessage("Dual Quarternion Weight Set!", time=0.2)
+        headsUssage("Dual Quarternion Weight Set!", time=0.2)
 
     def init_ui(self):
         if window('SkinWeightSetterUI', ex=True):
@@ -447,7 +546,9 @@ class SkinWeightSetter(object):
         separator(height=10, style='none')
         helpLine(annotation='copyright 2018 by Nguyen Phi Hung')
         showWindow()
-
+    @classmethod
+    def show(cls):
+        cls().init_ui()
 
 def mirror_uv():
     if window('MirrorUVUI', ex=True):
