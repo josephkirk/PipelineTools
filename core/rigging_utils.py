@@ -1010,6 +1010,7 @@ def hair_from_curve(input_curve, hair_system=""):
         #mm.eval('addPfxToHairSystem;')
     hair_system = pm.PyNode(hair_system)
     #hair_system = pm.PyNode(hair_system)
+    #assignNSolver "";
     hair_ind = len(ul.get_shape(hair_system).inputHair.listConnections())
     if not pm.objExists('%s_follicles'%hair_system):
         pm.group(name='%s_follicles'%hair_system)
