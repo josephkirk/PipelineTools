@@ -1111,7 +1111,7 @@ class ControlObject(object):
     #     self._uiElement[uiName] = args[0]
     #     log.info('%s set to %s'%(uiName, str(args[0])))
 
-    def _getUIValue(self):
+    def _getUIValue(self, *args):
         self.name = self._uiElement['ctlName'].getText()
         self.color = self._uiElement['ctlColor'].getRgbValue()
         print self._uiElement['ctlAxis'].getValue()
@@ -1150,26 +1150,6 @@ class ControlObject(object):
             sels = pm.selected()
             for sel in sels:
                 self.setColor(sel, self.color)
-
-    def _do4(self):
-        self._getUIValue()
-        if pm.selected():
-            sels = pm.selected()
-            self.createFreeJointControl(sels, group=True)
-
-    def _do5(self):
-        self._getUIValue()
-        if pm.selected():
-            sels = pm.selected()
-            self.createParentJointControl(
-                sels, group=True,
-                mirror=self._uiElement['ctlOption'].getValueArray4()[-1])
-
-    def _do6(self):
-        self._getUIValue()
-        if pm.selected():
-            sels = pm.selected()
-            self.createPropJointControl(
                 sels, group=True)
 
     def _showUI(self, parent=None):
@@ -1202,7 +1182,8 @@ class ControlObject(object):
                             cl2=('left', 'right'),
                             co2=(0, 0),
                             cw2=(40, 100),
-                            label='Name:', text=self.name)
+                            label='Name:', text=self.name,
+                            cc = self._getUIValue)
                         self._uiElement['ctlType'] = pm.optionMenu(label='Type:')
                         with self._uiElement['ctlType']:
                             for ct in self._controlType:
@@ -1257,63 +1238,7 @@ class ControlObject(object):
                         pm.menuItem(label='Change Current Select', c=pm.Callback(self._do2))
                         pm.menuItem(label='Set Color Select', c=pm.Callback(self._do3))
                         pm.menuItem(label='Create Free Control', c=pm.Callback(self._do4))
-                        pm.menuItem(label='Create Prop Control', c=pm.Callback(self._do6))
-                        pm.menuItem(label='Create Parent Control', c=pm.Callback(self._do5))
-                        pm.menuItem(label='Create Short Hair Control', c=pm.Callback(ru.create_short_hair_simple))
-                        pm.menuItem(label='Create Single Short Hair Control', c=pm.Callback(ru.create_short_hair_single))
-                        pm.menuItem(label='Create Long Hair Control', c=pm.Callback(HairRig))
-                    with pm.frameLayout(label='Utils:'):
-                        pm.button(label='Basic Intergration', c=pm.Callback(ru.basic_intergration))
-                        with pm.rowColumnLayout(rs=[(1,0),]):
-                            smallbutton = ul.partial(pm.button,h=30)
-                            smallbutton(label='create Parent', c=pm.Callback(ru.create_parent))
-                            smallbutton(label='delete Parent', c=pm.Callback(ru.remove_parent))
-                            smallbutton(label='Parent Shape', c=pm.Callback(ul.parent_shape))
-                            smallbutton(label='create Offset bone', c=pm.Callback(ru.createOffsetJoint))
-                            smallbutton(label='create Loc', c=pm.Callback(ru.create_loc_control, connect=False))
-                            smallbutton(label='create Loc control', c=pm.Callback(ru.create_loc_control))
-                            smallbutton(label='connect with Loc', c=pm.Callback(ru.connect_with_loc))
-                            smallbutton(label='vertex to Loc', c=pm.Callback(ru.create_loc_on_vert))
-                            smallbutton(label='connect Transform', c=pm.Callback(ru.connectTransform))
-                            with pm.popupMenu(b=3):
-                                pm.menuItem(label='connect Translate', c=pm.Callback(
-                                    ru.connectTransform,
-                                    translate=True, rotate=False, scale=False))
-                                pm.menuItem(label='connect Rotate', c=pm.Callback(
-                                    ru.connectTransform,
-                                    translate=False, rotate=True, scale=False))
-                                pm.menuItem(label='connect Scale', c=pm.Callback(
-                                    ru.connectTransform,
-                                    translate=False, rotate=False, scale=True))
-                            smallbutton(label='disconnect Transform', c=pm.Callback(ru.connectTransform,disconnect=True))
-                        smallbutton(label='multi Parent Constraint', c=pm.Callback(ru.contraint_multi, constraintType='Parent'))
-                        with pm.popupMenu(b=3):
-                            pm.menuItem(label='multi Point Constraint', c=pm.Callback(
-                                ru.contraint_multi,
-                                constraintType='Point'))
-                            pm.menuItem(label='multi Orient Constraint', c=pm.Callback(
-                                ru.contraint_multi,
-                                constraintType='Orient'))
-                            pm.menuItem(label='multi Point&Orient Constraint', c=pm.Callback(
-                                ru.contraint_multi,
-                                constraintType='PointOrient'))
-                            pm.menuItem(label='multi Aim Constraint', c=pm.Callback(
-                                ru.contraint_multi,
-                                constraintType='Aim'))
-                        with pm.rowColumnLayout():
-                            self._uiElement['visAtrName'] = pm.textFieldGrp(
-                                cl2=('left', 'right'),
-                                co2=(0, 0),
-                                cw2=(40, 100),
-                                label='Vis Attribute Name:', text='FullRigVis')
-                            smallbutton(
-                                label='Connect Visibility', c=lambda x:ru.connect_visibility(
-                                    attrname= self._uiElement['visAtrName'].getText()))
-                        with pm.rowColumnLayout():
-                            pm.button(label='Channel History ON', c=pm.Callback(ru.toggleChannelHistory,True))
-                            with pm.popupMenu(b=3):
-                                pm.menuItem(label='Channel History OFF', c=pm.Callback(ru.toggleChannelHistory,False))
-                            pm.button(label='Deform Normal Off', c=pm.Callback(ru.deform_normal_off))
+                    
         self._getUIValue()
 
 

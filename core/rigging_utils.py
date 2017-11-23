@@ -221,8 +221,69 @@ def connect_visibility(ob, target, attrname='Vis'):
     pm.addAttr(ob, ln=attrname,at='bool',k=1)
     ob.attr(attrname) >> target.visibility
 
+
+def createPropJointControl(self, bones, **kws):
+    ctls = []
+    for bone in bones:
+        bonepos = bone.getMatrix(ws=True)
+        kws['name'] = bone.name().replace('bon', 'ctl')
+        ctl = self.Octa(**kws)
+        ctls.append(ctl)
+        ctlGp = ctl.getParent()
+        # ctl.setParent(ctlGp)
+        ctlGp.setMatrix(bonepos, ws=True)
+        # pm.makeIdentity(ctlGp, apply=True)
+        pm.parentConstraint(ctl, bone, mo=True)
+    pm.select(ctls)
+    return ctls
+
+def createFreeJointControl(self, bones, **kws):
+    ctls = []
+    for bone in bones:
+        bonepos = bone.getTranslation('world')
+        bonename = bone.name().split('|')[-1].split('_')[0]
+        if not bone.getParent() or bone.getParent().name() != (bone.name() + 'Gp'):
+            oldParent = bone.getParent()
+            bonGp = pm.nt.Transform(name=bonename + '_bonGp')
+            bonGp.setTranslation(bonepos, 'world')
+            pm.makeIdentity(bonGp, apply=True)
+            bone.setParent(bonGp)
+            bonGp.setParent(oldParent)
+        else:
+            bonGp = bone.getParent()
+        self.name = bonename.replace('bon', 'ctl')
+        ctl = self.Sphere(**kws)
+        ctls.append(ctl)
+        ctlGp = ctl.getParent()
+        # ctl.setParent(ctlGp)
+        ctlGp.setTranslation(bonepos, 'world')
+        pm.makeIdentity(ctlGp, apply=True)
+        for atr in ['tx', 'ty', 'tz', 'rx', 'ry', 'rz', 'sx', 'sy', 'sz']:
+            ctl.attr(atr) >> bonGp.attr(atr)
+    pm.select(ctls)
+    return ctls
+
+def createParentJointControl(self, bones, **kws):
+    ctls = []
+    for bone in bones:
+        if 'offset' not in bone.getParent().name():
+            ru.createOffsetJoint(bone, cl=True)
+        bonematrix = bone.getMatrix(worldSpace=True)
+        name = bone.name().split('|')[-1].split('_')[0]
+        ctl = self.Pin( **kws)
+        ctl.rename(name + '_ctl')
+        ctlGp = ctl.getParent()
+        ctlGp.rename(name + '_ctlGp')
+        ctlGp.setMatrix(bonematrix, worldSpace=True)
+        if ctls:
+            ctlGp.setParent(ctls[-1])
+        ctls.append(ctl)
+        for atr in ['translate', 'rotate', 'scale']:
+            ctl.attr(atr) >> bone.attr(atr)
+    return ctls
+
 @ul.do_function_on()
-def create_short_hair_simple(bone):
+def create_short_hair(bone):
     bones = get_current_chain(bone)
     bonename = bone.name().split('|')[-1]
     startBone = bones[0]
@@ -245,7 +306,7 @@ def create_short_hair_simple(bone):
     return (sbonetop, mbonetop, ebonetop)
 
 @ul.do_function_on()
-def create_short_hair_single(bone):
+def create_short_hair_simple(bone):
     bones = get_current_chain(bone)
     bonename = bone.name().split('|')[-1]
     startBone = bones[0]
@@ -256,12 +317,12 @@ def create_short_hair_single(bone):
     ikcurve.rename(bonename+'_ikCurve')
     sbonetop, ebonetop = [dup_bone(b,name = b.name()+'_top') for b in [startBone,endBone]]
     for b in [sbonetop, ebonetop]:
-        b.radius.set(b.radius.get()*2)
+        b.radius.set(b.radius.get()*1.5)
     curveSkin = pm.skinCluster(sbonetop ,ebonetop,ikcurve)
     return (sbonetop, ebonetop)
 
 @ul.do_function_on(mode='singlelast')
-def create_short_hair(bone,rootTop):
+def create_sway_short_hair(bone,rootTop):
     bones = get_current_chain(bone)
     bonename = bone.name().split('|')[-1]
     startBone = bones[0]
@@ -330,37 +391,23 @@ def create_short_hair(bone,rootTop):
     return (sbonetop, mbonetop, ebonetop)
 
 @ul.do_function_on()
-def createOffsetJoint(jointRoot, child=False, suffix='offset_bon'):
-    jointlist = [jointRoot]
-    if child:
-        jointlist.extend(jointRoot.getChildren(allDescendents=True))
-    for joint in jointlist:
-        newname = joint.name().split('|')[-1].split('_')[0] + '_' + suffix
-        offsetJoint = pm.duplicate(joint, name=newname, po=True)[0]
-        offsetJoint.drawStyle.set(2)
-        oldParent = joint.getParent()
-        # pm.parent(offsetJoint, oldParent)
-        joint.setParent(offsetJoint)
-        # pm.makeIdentity(joint,apply=True)
-        # yield offsetJoint
+def create_offset_bone(bone, child=False, suffix='offset_bon'):
+    newname = bone.name().split('|')[-1].split('_')[0] + '_' + suffix
+    offsetbone = pm.duplicate(bone, name=newname, po=True)[0]
+    offsetbone.drawStyle.set(2)
+    oldParent = bone.getParent()
+    bone.setParent(offsetbone)
+    return offsetbone
 
 @ul.do_function_on()
-def create_loc_control(ob, connect=True):
+def create_loc_control(ob, connect=True, **kws):
     obname = ob.name().split('|')[-1]
     loc = pm.spaceLocator(name=obname + '_loc')
     loc.setTranslation(ob.getTranslation('world'), 'world')
     loc.setRotation(ob.getRotation('world'), 'world')
-    loc_Gp = create_parent(loc,cl=True)
+    loc_Gp = create_parent(loc, cl=True)
     if connect:
-        attrdict = {
-            'translate': ['tx', 'ty', 'tz'],
-            'rotate': ['rx', 'ry', 'rz'],
-            'scale': ['sx', 'sy', 'sz']
-        }
-        for atr, value in attrdict.items():
-            loc.attr(atr) >> ob.attr(atr)
-            for attr in value:
-                loc.attr(attr) >> ob.attr(attr)
+        connect_transform(loc, ob, **kws)
     return loc
 
 @ul.do_function_on(mode='double')
@@ -414,10 +461,10 @@ def matchTransform(ob, target):
 
 
 @ul.do_function_on('double')
-def connectTransform(ob, target, **kws):
+def connect_transform(ob, target, **kws):
     for atr in ['translate','rotate','scale']:
         if atr not in kws:
-            kws[atr] = True
+            kws[atr] = False
     attrdict = {
         'translate': ['tx', 'ty', 'tz'],
         'rotate': ['rx', 'ry', 'rz'],
