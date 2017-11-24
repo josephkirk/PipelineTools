@@ -14,6 +14,7 @@ import math
 import logging
 import copy
 import maya.mel as mm
+from ..packages.Red9.core import Red9_Meta as meta
 logging.basicConfig()
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
@@ -228,16 +229,31 @@ def connect_visibility(ob, target, attrname='Vis'):
     pm.addAttr(ob, ln=attrname,at='bool',k=1)
     ob.attr(attrname) >> target.visibility
 
+def reset_controller_transform(*args):
+    controllers = pm.ls(type='controller')
+    for controller in controllers:
+        ul.reset_transform(controller.controllerObject.get())
+
 def create_prop_control(bone, **kws):
-    create_parent(bone)
-    bonepos = bone.getMatrix(ws=True)
-    ctlname = bone.name().replace('bon', 'ctl')
-    ctl = pm.circle(name=ctlname)
-    ctls.append(ctl)
-    ctlGp = ctl.getParent()
-    ctlGp.setMatrix(bonepos, ws=True)
-    connect_transform(ctl, bone)
-    return ctl
+    if 'gp' not in bone.name().lower():
+        if bone.getParent():
+            if 'gp' not in bone.getParent().name().lower():
+                bonGp = create_parent(bone)
+            else:
+                bonGp = bone.getParent()
+        else:
+            bonGp = create_parent(bone)
+        ctlname = ul.get_name(bone).replace('bon', 'ctl')
+        ctl = createPinCircle(
+                ctlname,
+                step=4,
+                sphere=True,
+                radius=2,
+                length=0)
+        ctlGp = create_parent(ctl)
+        xformTo(ctlGp, bone)
+        connect_transform(ctl, bone, all=True)
+        return ctl
 
 def create_free_control(bone, **kws):
     if 'gp' not in bone.name().lower():
@@ -251,7 +267,7 @@ def create_free_control(bone, **kws):
         ctlname = bone.name().replace('bon', 'ctl')
         ctl = createPinCircle(ctlname,length=0,sphere=True)
         ctlGp = create_parent(ctl)
-        ctlGp.setTranslation(bone.getTranslation('world'), 'world')
+        xformTo(ctlGp, bone)
         connect_transform(ctl, bone, all=True)
         return ctl
 
@@ -306,26 +322,43 @@ def create_long_hair(boneRoot, hairSystem=''):
     while True:
         bone = bonChain.next()
         dupbone = dupBoneChain.next()
+        tranformBool = any([0<bone.attr(atr).get() or bone.attr(atr).get()>0 for atr in ['rx','ry','rz', 'sx','sy','sz']])
+        if tranformBool:
+            log.info('%s contain value in rotate or scale. Commencing freeze transform'%bone)
+            freeze_skin_joint(bone)
+            pm.makeIdentity(dupbone, apply=True)
         offsetBone = create_offset_bone(bone)
+        offsetMeta = meta.MetaClass(offsetBone.name())
+        offsetMeta.connectChild(dupbone.name(), 'dynamicBone', 'drivenBone')
         connect_transform(dupbone, offsetBone,rotate=True)
         if not bone.getChildren(type='joint'):
             break
     ikhandle, ikeffector, ikcurve = pm.ikHandle(
         sj=dynamicBones[0], ee=dynamicBones[-1], solver='ikSplineSolver')
     ikhandle.setParent(dupBoneGp)
-    hairSystem = hair_from_curve(ikcurve,hair_system=hairSystem)
-    dynamicCurve, follicle, hairSys = [i for i in hairSystem[1:]]
+    hairSystem = make_curve_dynamic(ikcurve, hairSystem=hairSystem)
+    dynamicCurve, follicle, hairSys = [i for i in hairSystem]
     dynamicCurve.worldSpace[0] >> ikhandle.inCurve
     controls = create_parent_control(boneRoot)
+    for control in controls:
+        tempShape = createPinCircle(
+            control.name(),
+            axis='YZ',
+            radius=2,
+            length=0)
+        ul.parent_shape(tempShape, control)
+        #pm.delete(tempShape)
     controlGp = create_parent(controls[0].getParent())
     controlGp = controlGp.rename(controlGp.name().split('_')[0]+'_root_ctlGp')
-    controlRoot = createPinCircle(controlGp.name(),axis='YZ',radius=2,length=0)
+    controlRoot = createPinCircle(controlGp.name(),axis='YZ',radius=3,length=0)
     xformTo(controlRoot, controlGp)
     controlRoot.setParent(controlGp)
-    follicle.setParent(controlRoot)
+    follicle.getParent().setParent(controlRoot)
     #controls[0].getParent().setParent(controlRoot)
     # locGp = pm.nt.Transform(name='HairCtlConnect_locGp')
     pm.parentConstraint(dynamicBones[0],create_parent(controls[0]))
+    hairSysMeta = meta.MetaClass(hairSys.name())
+    hairSysMeta.connectChildren([c.name() for c in controls], 'boneControl', 'hairSystem', srcSimple=True)
     for ctl, dynamicBone in zip(controls[1:], dynamicBones[1:]):
         offset = create_parent(ctl)
         loc = connect_with_loc(dynamicBone, offset,all=True)[0]
@@ -481,8 +514,8 @@ def create_loc_control(ob, connect=True,**kws):
 
 def connect_with_loc(ctl,bon,**kws):
     loc = create_loc_control(bon,**kws)
-    pct = pm.pointConstraint(ctl, loc)
-    oct = pm.orientConstraint(ctl, loc)
+    pct = pm.pointConstraint(ctl, loc, mo=True)
+    oct = pm.orientConstraint(ctl, loc, mo=True)
     log.info('{} connect with {} using {}'.format(ctl,bon,loc))
     return (loc,pct,oct)
 
@@ -644,6 +677,75 @@ def get_blendshape_target(
         target_list = blend_reget[1]
     return (blendshape, target_list)
 
+def freeze_skin_joint(bon, hi=False):
+    bonname = ul.get_name(bon)
+    tempBon = pm.duplicate(bon,po=True,rr=True)[0]
+    for child in bon.getChildren(type='joint'):
+        pm.parent(child, tempBon)
+    move_skin_weight(bon, tempBon)
+    pm.makeIdentity(bon, apply=True)
+    for child in tempBon.getChildren(type='joint'):
+        pm.parent(child, bon)
+    move_skin_weight(tempBon, bon)
+    pm.delete(tempBon)
+    pm.select(bon, r=True)
+    newbp = pm.dagPose(bp=True, save=True)
+    bindPoses = pm.ls(type=pm.nt.DagPose)
+    for bp in bindPoses:
+        if bp != newbp:
+            pm.delete(bp)
+    if hi:
+        bonChain = ul.iter_hierachy(bon)
+        bonChain.next()
+        while True:
+            bon = bonChain.next()
+            freeze_skin_joint(bon)
+            if not bon.getChildren(type='joint'):
+                    break
+
+def move_skin_weight(bon, targetBon, hi=False, reset_bindPose=False):
+    skinClusters = bon.outputs(type='skinCluster')
+    for skinCluster in skinClusters:
+        inflList = skinCluster.getInfluence()
+        skinCluster.normalizeWeights.set(1)
+        pm.skinCluster(skinCluster,e=True,fnw=True)
+        if targetBon not in inflList:
+            skinCluster.addInfluence(targetBon, wt=0)
+        skinCluster.attr('maintainMaxInfluences').set(False)
+        for infl in inflList:
+            if infl == bon or infl == targetBon:
+                infl.attr('lockInfluenceWeights').set(False)
+            else:
+                infl.attr('lockInfluenceWeights').set(True)
+        if bon in inflList:
+            for geo in skinCluster.getGeometry():
+                pm.skinPercent(skinCluster,geo.verts,nrm=True,tv=[bon,0])
+        for infl in inflList:
+            infl.attr('lockInfluenceWeights').set(False)
+        try:
+            if bon in inflList:
+                skinCluster.removeInfluence(bon)
+        except (OSError,IOError,RuntimeError) as why:
+            pm.warnings(why)
+            log.error(why)
+    if reset_bindPose:
+        pm.select(targetBon, r=True)
+        newbp = pm.dagPose(bp=True, save=True)
+        bindPoses = pm.ls(type=pm.nt.DagPose)
+        for bp in bindPoses:
+            if bp != newbp:
+                pm.delete(bp)
+    if hi:
+        bonChain = ul.iter_hierachy(bon)
+        targetBonChain = ul.iter_hierachy(targetBon)
+        while True:
+            bon = bonChain.next()
+            targetBon = targetBonChain.next()
+            move_skin_weight(bon,targetBon)
+            if not bon.getChildren(type='joint') or \
+                not targetBon.getChildren(type='joint'):
+                break
+
 def skin_weight_filter(ob, joint, min=0.0, max=0.1, select=False):
     '''return vertex with weight less than theshold'''
     skin_cluster = ul.get_skin_cluster(ob)
@@ -720,7 +822,7 @@ def dual_weight_setter(component_list, weight_value=0.0, query=False):
         for vert in verts_list:
             for vert in vert.indices():
                 weight = skin_cluster.getBlendWeights(shape, shape.vtx[vert])
-                weight_list.append((shape.vtx[vert], weight))
+                weight_list.append((ul.get_name(shape.vtx[vert]).split('.')[-1], weight))
         return weight_list
     else:
         for vert in verts_list:
@@ -983,43 +1085,51 @@ def assign_curve_to_hair(abc_curve,hair_system="",preserve=False):
     for curve in curve_list:
         hair_from_curve(curve,hair_system=hair_system)
 
-def hair_from_curve(input_curve, hair_system=""):
-    for attr in ['tx','ty','tz','rx','ry','rz','sx','sy','sz'] :
-        if 's' in attr and pm.getAttr('%s.%s'%(input_curve,attr)) != 1.0 :
-            pm.warning('Transform values found! "%s.%s" is set to %s! Freeze transformations for expected results.'%(input_curve,attr,pm.getAttr('%s.%s'%(input_curve,attr))))
-        elif not 's' in attr and pm.getAttr('%s.%s'%(input_curve,attr)) != 0 :
-            pm.warning('Transform values found! "%s.%s" is set to %s! Freeze transformations for expected results.'%(input_curve,attr,pm.getAttr('%s.%s'%(input_curve,attr))))
+def create_hair_system(name=''):
+    hairSys = pm.nt.HairSystem()
+    if name:
+        hairSys.getParent().rename(name)
+    nucleus = pm.nt.Nucleus()
+    if pm.ls('time1'):
+        time = pm.PyNode('time1')
+    else:
+        time = pm.nt.Time()
+    time.outTime >> hairSys.currentTime
+    time.outTime >> nucleus.currentTime
+    hairSys.currentState >> nucleus.inputActive[0]
+    hairSys.startState >> nucleus.inputActiveStart[0]
+    nucleus.outputObjects[0] >> hairSys.nextState
+    nucleus.startFrame >> hairSys.startFrame
+    hairSys.active.set(1)
+    return (hairSys, nucleus)
 
-    # duplicate driver curve for hair and follicle
-    hair_curve = pm.rename(pm.duplicate(input_curve,rr=1),'%s_HairCurve'%input_curve)
-    follicle = pm.rename(pm.createNode('follicle',ss=1,n='%s_FollicleShape'%input_curve).getParent(),'%s_Follicle'%input_curve)
-    follicle.restPose.set(1)
-    # if no hair system given create new hair system, if name given and it doesn't exist, give it that name
-    if hair_system == '' :
-        if pm.ls(type='hairSystem'):
-            hair_system = pm.ls(type='hairSystem')[0]
+def make_curve_dynamic(inputcurve, hairSystem=''):
+    if hairSystem and pm.objExists(hairSystem):
+        if isinstance(pm.PyNode(hairSystem)):
+            hairSys = pm.PyNode(hairSystem)
+    if 'hairSys' not in locals():
+        if hairSystem:
+            hairSys = create_hair_system(name=hairSystem)[0]
         else:
-            hair_system = pm.rename(pm.createNode('hairSystem',ss=1,n='%s_HairSystemShape'%input_curve).getParent(),'%s_HairSystem'%input_curve)
-            pm.PyNode('time1').outTime >> ul.get_shape(hair_system).currentTime
-            pm.select(hair_system)
-            #mm.eval('addPfxToHairSystem;')
-    elif hair_system and not pm.objExists(hair_system) :
-        hair_system = pm.rename(pm.createNode('hairSystem',ss=1,n='%sShape'%hair_system).getParent(),hair_system)
-        pm.PyNode('time1').outTime >> ul.get_shape(hair_system).currentTime
-        pm.select(hair_system)
-        #mm.eval('addPfxToHairSystem;')
-    hair_system = pm.PyNode(hair_system)
-    #hair_system = pm.PyNode(hair_system)
-    #assignNSolver "";
-    hair_ind = len(ul.get_shape(hair_system).inputHair.listConnections())
-    if not pm.objExists('%s_follicles'%hair_system):
-        pm.group(name='%s_follicles'%hair_system)
-    # connections
-    pm.parent(input_curve,follicle)
-    pm.parent(follicle,'%s_follicles'%hair_system)
-    input_curve.getShape().worldSpace[0] >> ul.get_shape(follicle).startPosition
-    ul.get_shape(follicle).outCurve >> hair_curve.getShape().create
-    ul.get_shape(follicle).outHair >> ul.get_shape(hair_system).inputHair[hair_ind]
-    ul.get_shape(hair_system).outputHair[hair_ind] >> ul.get_shape(follicle).currentPosition
-
-    return [input_curve,hair_curve,follicle,hair_system]
+            if pm.ls(type='hairSystem'):
+                hairSys = pm.ls(type='hairSystem')[-1]
+            else:
+                hairSys = create_hair_system()[0]
+    hair_id = len(hairSys.inputHair.listConnections())
+    outputcurve = pm.duplicate(inputcurve,name=inputcurve.name()+'_dynamic',rr=1)[0]
+    outputcurveGp = pm.nt.Transform(name=inputcurve.name()+'_outputCurveGp')
+    outputcurve.setParent(outputcurveGp)
+    pm.makeIdentity(outputcurve,apply=True)
+    outputcurve_shape = outputcurve.getShape()
+    follicle  = pm.nt.Follicle()
+    follicle.startDirection.set(1)
+    follicle.restPose.set(1)
+    follicleGp = pm.nt.Transform(name=inputcurve.name()+'_follicleGp')
+    follicle.getParent().setParent(follicleGp)
+    inputcurve.setParent(follicle.getParent())
+    inputcurve_shape = inputcurve.getShape()
+    inputcurve_shape.worldSpace[0] >> follicle.startPosition
+    follicle.outCurve >> outputcurve_shape.create
+    follicle.outHair >> hairSys.inputHair[hair_id]
+    hairSys.outputHair[hair_id] >> follicle.currentPosition
+    return (outputcurve_shape, follicle, hairSys)

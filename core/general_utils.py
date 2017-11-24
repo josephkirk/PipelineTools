@@ -276,6 +276,7 @@ def do_function_on(
                     object_list.append(ob) ### search if arg is valid object
             if not object_list:
                 log.error('no object select')
+                #print sel
                 return
             #print object_list
             #print arg
@@ -320,7 +321,7 @@ def do_function_on(
                     if object_type2:
                         object_type1 = [
                             object for object in pm.ls(object_list, type=type_filter[:-1])
-                            if type(object) != type(object_type2[0])]
+                            if isinstance(object, object_type2[0].__base__)]
                         yield func(object_type1, object_type2,*args, **kwargs)
             ########
             #Define function mode dict
@@ -337,7 +338,8 @@ def do_function_on(
             ########
             #Return function result
             ########
-            result = function_mode[mode]()
+            with pm.UndoChunk():
+                result = function_mode[mode]()
             if return_list and result:
                 return [r for r in list(result) if r!=None]
             else:
@@ -528,22 +530,19 @@ def get_shape(ob):
             print('object have no shape')
 
 ###function
-@do_function_on('singlelast')
 def snap_nearest(ob, mesh_node):
     closest_component_pos = get_closest_component(ob, mesh_node, uv=False, pos=True)
     ob.setTranslation(closest_component_pos,'world')
 
-@do_function_on(mode='single',type_filter=['float3'])
 def convert_edge_to_curve(edge):
     pm.polySelect(edge.node(), el=edge.currentItemIndex())
     pm.polyToCurve(degree=1)
-@do_function_on('single')
+
 def reset_transform(ob):
     for atr in ['translate', 'rotate', 'scale']:
         reset_value = [0,0,0] if atr is not 'scale' else [1,1,1]
         ob.attr(atr).set(reset_value)
 
-@do_function_on(mode='single')
 def set_Vray_material(mat,mat_type='dielectric',**kwargs):
     '''set Material Attribute'''
     if type(mat) == pm.nt.VRayMtl:
@@ -577,7 +576,6 @@ def set_Vray_material(mat,mat_type='dielectric',**kwargs):
             mat.attr(key).set(value)
         except (IOError, OSError, AttributeError) as why:
             print why
-
 
 def exportCam():
     '''export allBake Camera to FBX files'''
@@ -618,7 +616,7 @@ def exportCam():
         mm.eval(cc)
 
 #@error_alert
-@do_function_on(mode='double')
+
 def parent_shape(src, target, delete_src=True, delete_oldShape=True):
     '''parent shape from source to target'''
     #pm.parent(src, world=True)
@@ -632,7 +630,6 @@ def parent_shape(src, target, delete_src=True, delete_oldShape=True):
     if delete_oldShape:
         pm.delete(get_shape(target), shape=True)
 
-@do_function_on(mode='single')
 def un_parent_shape(ob):
     '''unParent all shape and create new trasnform for each shape'''
     shapeList = ob.listRelatives(type=pm.nt.Shape)
@@ -644,7 +641,6 @@ def un_parent_shape(ob):
     if type(ob) != pm.nt.Joint:
         pm.delete(ob)
 
-#@do_function_on(mode='single')
 def detach_shape(ob, preserve=False):
     '''detach Multi Shape to individual Object'''
     result= []
@@ -660,7 +656,6 @@ def detach_shape(ob, preserve=False):
             result.append(newTransform)
     return result
 
-@do_function_on(mode='single')
 def mirror_transform(obs, axis="x",xform=[0,4]):
     if not obs:
         print "no object to mirror"
@@ -677,7 +672,6 @@ def mirror_transform(obs, axis="x",xform=[0,4]):
             for at in axisDict[axis][xform[0]:xform[1]]:
                 ob.attr(at).set(ob.attr(at).get()*-1)
 
-@do_function_on(mode='last')
 def transfer_material(obs, obSrc):
     try:
         obSrc_SG = obSrc.getShape().listConnections(type=pm.nt.ShadingEngine)[0]
@@ -697,7 +691,6 @@ def set_material(ob, SG):
     else:
         print "There is no %s" % SG.name()
 
-@do_function_on(mode='single')
 def lock_transform(
     ob,
     lock=True,
@@ -712,7 +705,6 @@ def lock_transform(
         for at in ['translate','rotate','scale']:
             ob.attr(at).lock()
 
-@do_function_on(mode='single')
 def add_vray_opensubdiv(ob):
     '''add Vray OpenSubdiv attr to enable smooth mesh render'''
     if str(pm.getAttr('defaultRenderGlobals.ren')) == 'vray':
@@ -720,7 +712,6 @@ def add_vray_opensubdiv(ob):
         pm.vray('addAttributesFromGroup', obShape, "vray_opensubdiv", 1)
         pm.setAttr(obShape+".vrayOsdPreserveMapBorders", 2)
 
-@do_function_on(mode='single')
 def clean_attributes(ob):
     '''clean all Attribute'''
     for atr in ob.listAttr(ud=True):
@@ -730,7 +721,6 @@ def clean_attributes(ob):
         except:
             pass
 
-@do_function_on(mode='set')
 def find_instances(
     obs,
     instanceOnly=True):

@@ -1051,7 +1051,7 @@ class ControlObject(object):
         #temp.setParent(selectControl.getParent())
         ru.xformTo(temp, selectControl)
         pm.delete(selectControl.getShape(), shape=True)
-        pm.parent(temp.getShape(), selectControl, r=True, s=True)
+        pm.parent(temp[0].getShape(), selectControl, r=True, s=True)
         pm.delete(temp)
         return selectControl
 
@@ -1076,7 +1076,7 @@ class ControlObject(object):
 
     def _showUI(self, parent=None):
         self._uiName = 'CreateControlUI'
-        self._windowSize = (250, 10)
+        self._windowSize = (250, 100)
         if pm.window(self._uiName + 'Window', ex=True):
             pm.deleteUI(self._uiName + 'Window', window=True)
             pm.windowPref(self._uiName + 'Window', remove=True)

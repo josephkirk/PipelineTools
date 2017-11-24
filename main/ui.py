@@ -70,7 +70,7 @@ class RigTools(object):
     def template(self):
         self._uiTemplate = uiTemplate(self._windowname.replace('Window', 'UITemplate'), force=True)
         self._uiTemplate.define(
-            button, width=5, height=40, align='left')
+            button, width=5, height=30, align='left')
         self._uiTemplate.define(
             columnLayout, adjustableColumn=1, w=10)
         self._uiTemplate.define(
@@ -83,16 +83,19 @@ class RigTools(object):
             cal=[(1, 'left'), ],
             columnWidth=[(1, 100), (2, 100)])
         return self._uiTemplate
-    
+
+    def get_hair_system(self):
+        hairSystem = ls(type='hairSystem')
+        if hairSystem:
+            self._uiElement['Hair System'].setText(hairSystem[-1].getParent().name())
+            select(hairSystem[-1])
+
     def defineUI(self,*args,**kws):
         self.template.define(*args, **kws)
 
     def create_rig_util_ui(self):
         with frameLayout(label='Tools:'):
             with rowColumnLayout(rs=[(1,1),], numberOfColumns=1):
-                button(
-                    label='Basic Intergration',
-                    c=Callback(ru.basic_intergration))
                 button(
                     label='Skin Weigth Setter',
                     c=Callback(SkinWeightSetter.show))
@@ -113,10 +116,20 @@ class RigTools(object):
                     label='Create Parent Control',
                     c=Callback(
                         ul.do_function_on()(ru.create_parent_control)))
+                with rowColumnLayout(rs=[(1,1),], numberOfColumns=2, columnWidth=[(1, 150), (2, 50)]):
+                    self._uiElement['Hair System'] = textFieldGrp(
+                        cl2=('left', 'right'),
+                        co2=(80, 10),
+                        cw2=(70, 110),
+                        label='Hair System:', text='')
+                    button(
+                        label='Get',
+                        h=20,
+                        c=Callback(self.get_hair_system))
                 button(
                     label='Create Long Hair Control',
-                    c=Callback(
-                        ul.do_function_on()(ru.create_long_hair)))
+                    c=lambda x:ul.do_function_on()(ru.create_long_hair)(
+                        hairSystem= self._uiElement['Hair System'].getText()))
                 button(
                     label='Create Short Hair Control',
                     c=Callback(
@@ -125,6 +138,10 @@ class RigTools(object):
                     label='Create Simple Short Hair Control',
                     c=Callback(
                         ul.do_function_on()(ru.create_short_hair_simple)))
+                button(
+                    label='Reset All Control Transform',
+                    c=Callback(
+                        ru.reset_controller_transform))
         with frameLayout(label='Utilities:'):
             with rowColumnLayout(rs=[(1,0),]):
                 smallbutton = ul.partial(button,h=30)
@@ -212,6 +229,10 @@ class RigTools(object):
                 menuItem(label='multi Aim Constraint', c=Callback(
                     ul.do_function_on('double')(ru.contraint_multi),
                     constraintType='Aim'))
+        with frameLayout(label='Intergration:'):
+            button(
+                label='Basic Intergration',
+                c=Callback(ru.basic_intergration))
             with rowColumnLayout():
                 self._uiElement['visAtrName'] = textFieldGrp(
                     cl2=('left', 'right'),
@@ -219,7 +240,7 @@ class RigTools(object):
                     cw2=(40, 100),
                     label='Vis Attribute Name:', text='FullRigVis')
                 smallbutton(
-                    label='Connect Visibility', c=lambda x:ru.connect_visibility(
+                    label='Connect Visibility', c=lambda x:ul.do_function_on('double')(ru.connect_visibility)(
                         attrname= self._uiElement['visAtrName'].getText()))
             with rowColumnLayout():
                 button(label='Channel History OFF', c=Callback(ru.toggleChannelHistory, False))
@@ -394,6 +415,7 @@ class SkinWeightSetter(object):
         self.weight_threshold = (0.0, 0.1)
         self.dual_interactive = False
         self.weight_tick = 5
+        self.ui = {}
 
     def last_selection(self):
         self.last_selected = selected()
@@ -415,21 +437,38 @@ class SkinWeightSetter(object):
         artAttrSkinPaintModePaintSelect 1 artAttrSkinPaintCtx;'''
                 % (lastJoint, unicode(get_joint[0])))
 
+    def autoUpdateUI(self):
+        jobNum = scriptJob( e= ["SelectionChanged",self.update_ui], parent = 'SkinWeightSetterUI')
+
+    def update_ui(self):
+        sel = selected()
+        msg = [i.name().split('|')[-1] for i in sel if hasattr(i,'name')]
+        self.ui['messageLine'].setLabel(','.join(msg))
+        componentList = [c for c in sel if c.nodeType()=='mesh']
+        if componentList:
+            self.ui['dualInfo'].setLabel(','.join(['%s: %s'%(i[0],str(i[1])) for i in ru.dual_weight_setter(componentList, query=True)]))
+        try:
+            skinClster = ul.get_skin_cluster(sel[0])
+            if skinClster:
+                skinTypeVal =  skinClster.getSkinMethod()+1
+                self.ui['skinType'].setSelect(skinTypeVal)
+        except:
+            pass
+            
     def set_weight_threshold(self, *args):
         self.weight_threshold = (args[0], args[1])
 
     def set_skin_type(*args):
-        # print args
-        ru.switch_skin_type(type=args[1])
-        headsUssage("Skin type set to %s" % args[1], time=0.2)
+        ul.do_function_on()(ru.switch_skin_type)(type=args[1])
+        headsUpMessage("Skin type set to %s" % args[1], time=0.2)
 
     def set_interactive_state(self):
         self.interactive = False if self.interactive else True
-        headsUssage("Interactive %s" % self.interactive, time=0.2)
+        headsUpMessage("Interactive %s" % self.interactive, time=0.2)
 
     def set_dual_interactive_state(self):
         self.dual_interactive = False if self.dual_interactive else True
-        headsUssage("Interactive %s" % self.dual_interactive, time=0.2)
+        headsUpMessage("Interactive %s" % self.dual_interactive, time=0.2)
 
     def set_weight(self, value):
         self.weight_value = round(value, 2)
@@ -439,11 +478,11 @@ class SkinWeightSetter(object):
 
     def set_normalize_state(self, value):
         self.normalize = False if self.normalize else True
-        headsUssage("Normalize %s" % self.normalize, time=0.2)
+        headsUpMessage("Normalize %s" % self.normalize, time=0.2)
 
     def set_hierachy_state(self, value):
         self.hierachy = False if self.hierachy else True
-        headsUssage("Hierachy %s" % self.hierachy, time=0.2)
+        headsUpMessage("Hierachy %s" % self.hierachy, time=0.2)
 
     def set_dual_weight(self, value):
         self.dual_weight_value = round(value, 2)
@@ -459,33 +498,53 @@ class SkinWeightSetter(object):
 
     @showsHourglass
     def apply_weight(self):
-        if currentCtx() == 'artAttrSkinContext':
-            mm.eval('artAttrSkinPaintModePaintSelect 0 artAttrSkinPaintCtx')
+        #if currentCtx() == 'artAttrSkinContext':
+        #    mm.eval('artAttrSkinPaintModePaintSelect 0 artAttrSkinPaintCtx')
+        #if not selected():
+        #    select(self.last_selected, r=True)
         if not selected():
-            select(self.last_selected, r=True)
-        ru.skin_weight_setter(
-            skin_value=self.weight_value,
-            normalized=self.normalize,
-            hierachy=self.hierachy)
+            log.info('No selection')
+        else:
+            sel = selected()
+            joints = []
+            for id,e in enumerate(sel):
+                if isinstance(e, nt.Joint):
+                    joint = sel.pop(id)
+                    joints.append(joint)
+                    continue
+                if e.nodeType() != 'mesh':
+                    sel.pop(id)
+            ru.skin_weight_setter(
+                sel, joints,
+                skin_value=self.weight_value,
+                normalized=self.normalize,
+                hierachy=self.hierachy)
         self.last_selection()
         self.preview_skin_weight()
-        headsUssage("Weight Set!", time=0.2)
+        headsUpMessage("Weight Set!", time=0.2)
 
     @showsHourglass
     def apply_dual_weight(self):
         if not selected():
-            select(self.last_selected)
-        ru.dual_weight_setter(weight_value=self.dual_weight_value)
+            log.info('No selection')
+        else:
+            sel = selected()
+            for id,e in enumerate(sel):
+                if e.nodeType() != 'mesh':
+                    sel.pop(id)
+        ru.dual_weight_setter(sel,weight_value=self.dual_weight_value)
         self.last_selection()
-        headsUssage("Dual Quarternion Weight Set!", time=0.2)
+        headsUpMessage("Dual Quarternion Weight Set!", time=0.2)
 
     def init_ui(self):
         if window('SkinWeightSetterUI', ex=True):
             deleteUI('SkinWeightSetterUI', window=True)
             windowPref('SkinWeightSetterUI', remove=True)
-        window('SkinWeightSetterUI', t="Skin Weight Setter")
+        window('SkinWeightSetterUI', t="Skin Weight Setter",
+               rtf=True, sizeable=False)
+        frameLayout(label='Set Weight Tool',width=200)
         columnLayout(adjustableColumn=1)
-        optionMenu(label='Skin Type:', changeCommand=self.set_skin_type)
+        self.ui['skinType'] = optionMenu(label='Skin Type:', changeCommand=self.set_skin_type)
         menuItem(label='Classis')
         menuItem(label='Dual')
         menuItem(label='Blend')
@@ -499,7 +558,10 @@ class SkinWeightSetter(object):
             label='Weight Threshold:',
             value1=self.weight_threshold[0], value2=self.weight_threshold[1],
             cc=self.set_weight_threshold)
-        button(label='Select Vertices', c=Callback(self.select_skin_vertex))
+        button(
+            label='Select Vertices',
+            annotation='Select Skin Vertex with weight within threshold',
+            c=Callback(self.select_skin_vertex))
         setParent('..')
         separator(height=10)
         rowColumnLayout(
@@ -543,9 +605,49 @@ class SkinWeightSetter(object):
                 annotation='Set dual quaternion weight to %04.2f' % (weight_value * i),
                 c=Callback(self.set_dual_weight, weight_value * i))
         setParent('..')
+        self.ui['dualInfo'] = text(label='',align='left')
         separator(height=10, style='none')
-        helpLine(annotation='copyright 2018 by Nguyen Phi Hung')
+        rowColumnLayout(
+            numberOfColumns=4,
+            columnWidth=[(1,100),])
+        button(
+            label = 'Freeze Skin Joint',
+            annotation='Freeze transform for joint connect to Skin Cluster',
+            c = Callback(
+                ul.do_function_on()(ru.freeze_skin_joint)))
+        button(
+            label = 'Freeze Skin Joint Chain',
+            annotation='Freeze transform for joint Chain connect to Skin Cluster',
+            c = Callback(
+                ul.do_function_on()(ru.freeze_skin_joint),hi=True))
+        #setParent('..')
+        button(
+            label = 'Transfer Weight',
+            annotation='*Select 2 bone*. Transfer skin weight from one bone to another',
+            c = Callback(
+                ul.do_function_on('double')(ru.move_skin_weight)))
+        button(
+            label = 'Transfer Weight Chain',
+            annotation='*Select 2 bone root*. Transfer skin weight from one bone Chain to another',
+            c = Callback(
+                ul.do_function_on('double')(ru.move_skin_weight),hi=True))
+        #setParent('..')
+        setParent('..')
+        frameLayout(label='Status')
+        columnLayout(adjustableColumn=1)
+        rowColumnLayout(
+            numberOfColumns=2,
+            columnWidth=[(1,100), (2, 300)])
+        text(label='Current Selection:',align='left')
+        self.ui['messageLine'] = text(label='',align='left')
+        setParent('..')
+        separator(height=10, style='none')
+        self.ui['helpLine'] = helpLine(annotation='copyright 2017 by Nguyen Phi Hung')
+        setParent('..')
+        setParent('..')
         showWindow()
+        self.autoUpdateUI()
+
     @classmethod
     def show(cls):
         cls().init_ui()
