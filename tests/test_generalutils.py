@@ -11,18 +11,19 @@ class TestDoFunctionOn(unittest.TestCase):
         collumn = 5
         row = 6
         for i in range(collumn):
-            new_ob = pm.polySphere()[0]
-            if new_obs:
+            new_ob = pm.polySphere(name='testSphere_%s'%i)[0]
+            if len(new_obs)>1:
+                last_ob = new_obs.pop(-1)
                 new_ob.setParent(new_obs[-1])
             new_obs.append(new_ob)
         new_obs = [new_obs[0]]
         for i in range(row):
             dup_ob = pm.duplicate(
-                new_obs[-1],
-                name = new_obs[-1].name()+'_i',
+                new_obs[0],
+                name = new_obs[0.name()+'_%s'%i,
                 rc=True)[0]
             new_obs.append(dup_ob)
-        self.selected = pm.selected()
+        self.selected = pm.selected(new)
         self.suffix = '_suffix'
         self.test_func = lambda ob:pm.rename( ob, ob.name()+self.suffix )
 
