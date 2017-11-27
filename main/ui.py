@@ -11,7 +11,7 @@ from __future__ import with_statement
 import maya.cmds as cm
 import maya.mel as mm
 from pymel.core import *
-
+from functools import wraps
 from .. import core
 core._reload()
 ul = core.ul
@@ -40,6 +40,7 @@ class RigTools(object):
     def __init__(self):
         self._name = 'Rig Tools'
         self._windowname = self._name.replace(' ','')+'Window'
+        self.nodetrack = NodeTracker()
 
     @property
     def name(self):
@@ -90,6 +91,23 @@ class RigTools(object):
             self._uiElement['Hair System'].setText(hairSystem[-1].getParent().name())
             select(hairSystem[-1])
 
+    def ui_update(self):
+        self._callback = scriptJob( e=["SceneOpened",self._ui_update], parent=self._windowname)
+
+    def _ui_update(self):
+        self.nodetrack.reset()
+        self.nodetrack.startTrack()
+        print self.nodetrack.getNodes()
+
+    def delete_created_nodes(self):
+        trackNodes = self.nodetrack.getNodes()
+        if trackNodes:
+            for node in trackNodes:
+                if 'offset' in node.name() and isinstance(node,nt.Joint):
+                    ru.remove_parent(node.getChildrens()[0])
+                else:
+                    delete(node)
+
     def defineUI(self,*args,**kws):
         self.template.define(*args, **kws)
 
@@ -128,8 +146,8 @@ class RigTools(object):
                         c=Callback(self.get_hair_system))
                 button(
                     label='Create Long Hair Control',
-                    c=lambda x:ul.do_function_on()(ru.create_long_hair)(
-                        hairSystem= self._uiElement['Hair System'].getText()))
+                    c=lambda x:ul.do_function_on()(ru.create_long_hair(
+                        hairSystem=self._uiElement['Hair System'].getText())))
                 button(
                     label='Create Short Hair Control',
                     c=Callback(
@@ -138,6 +156,10 @@ class RigTools(object):
                     label='Create Simple Short Hair Control',
                     c=Callback(
                         ul.do_function_on()(ru.create_short_hair_simple)))
+                button(
+                    label='Delete All Created Nodes',
+                    c=Callback(
+                        self.delete_created_nodes))
                 button(
                     label='Reset All Control Transform',
                     c=Callback(
@@ -252,6 +274,8 @@ class RigTools(object):
         with self.window:
             with self.template:
                 self.create_rig_util_ui()
+        self.nodetrack.startTrack()
+        self.ui_update()
 
     @classmethod
     def show(cls):
