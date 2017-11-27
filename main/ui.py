@@ -140,12 +140,6 @@ class RigTools(object):
                         continue
                     if 'offset' in node.getParent().name().lower():
                         ru.remove_parent(node)
-                    if not node.getParent():
-                        continue
-                    if 'gp' in node.getParent().name().lower():
-                        if node.getParent().name().lower() != 'bongp' or \
-                            node.getParent().name().lower() != 'bonegp':
-                            ru.remove_parent(node)
             except MayaNodeError as why:
                 warning(MayaNodeError)
 
