@@ -236,40 +236,28 @@ def reset_controller_transform(*args):
 
 def create_prop_control(bone, **kws):
     if 'gp' not in bone.name().lower():
-        if bone.getParent():
-            if 'gp' not in bone.getParent().name().lower():
-                bonGp = create_parent(bone)
-            else:
-                bonGp = bone.getParent()
-        else:
-            bonGp = create_parent(bone)
-        ctlname = ul.get_name(bone).replace('bon', 'ctl')
-        ctl = createPinCircle(
-                ctlname,
-                step=4,
-                sphere=True,
-                radius=2,
-                length=0)
-        ctlGp = create_parent(ctl)
-        xformTo(ctlGp, bone)
-        connect_transform(ctl, bone, all=True)
-        return ctl
+        bonGp = create_parent(bone)
+    ctlname = ul.get_name(bone).replace('bon', 'ctl')
+    ctl = createPinCircle(
+            ctlname,
+            step=4,
+            sphere=True,
+            radius=2,
+            length=0)
+    ctlGp = create_parent(ctl)
+    xformTo(ctlGp, bone)
+    connect_transform(ctl, bone, all=True)
+    return ctl
 
 def create_free_control(bone, **kws):
     if 'gp' not in bone.name().lower():
-        if bone.getParent():
-            if 'gp' not in bone.getParent().name().lower():
-                bonGp = create_parent(bone)
-            else:
-                bonGp = bone.getParent()
-        else:
-            bonGp = create_parent(bone)
-        ctlname = bone.name().replace('bon', 'ctl')
-        ctl = createPinCircle(ctlname,length=0,sphere=True)
-        ctlGp = create_parent(ctl)
-        xformTo(ctlGp, bone)
-        connect_transform(ctl, bone, all=True)
-        return ctl
+        bonGp = create_parent(bone)
+    ctlname = bone.name().replace('bon', 'ctl')
+    ctl = createPinCircle(ctlname,length=0,sphere=True)
+    ctlGp = create_parent(ctl)
+    xformTo(ctlGp, bone)
+    connect_transform(ctl, bone, all=True)
+    return ctl
 
 def create_parent_control(boneRoot, **kws):
     ctls = []
