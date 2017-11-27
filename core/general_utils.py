@@ -227,7 +227,8 @@ def error_alert(func):
 def do_function_on(
     mode='single',
     type_filter=[],
-    return_list=True):
+    return_list=True,
+    return_args=False):
     """wrap a function to operate on
     select object or object name string according to mode:
     single, double, set, singlelast, last, doubleType"""
@@ -341,9 +342,10 @@ def do_function_on(
             with pm.UndoChunk():
                 result = function_mode[mode]()
             if return_list and result:
-                return [r for r in list(result) if r!=None]
-            else:
-                return result
+                result = [r for r in list(result) if r!=None]
+            if return_args:
+                return (object_list,result)
+            return result
         return wrapper
     return decorator
 

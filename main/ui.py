@@ -11,7 +11,7 @@ from __future__ import with_statement
 import maya.cmds as cm
 import maya.mel as mm
 from pymel.core import *
-from functools import wraps
+import types
 from .. import core
 core._reload()
 ul = core.ul
@@ -40,6 +40,7 @@ class RigTools(object):
     def __init__(self):
         self._name = 'Rig Tools'
         self._windowname = self._name.replace(' ','')+'Window'
+        self.nodebase = []
         self.nodetrack = NodeTracker()
 
     @property
@@ -92,21 +93,60 @@ class RigTools(object):
             select(hairSystem[-1])
 
     def ui_update(self):
-        self._callback = scriptJob( e=["SceneOpened",self._ui_update], parent=self._windowname)
+        self._callback = scriptJob( e=["SceneOpened", self._ui_update], parent=self._windowname)
+
+    def _delete_tracknode(self):
+        scriptJob(ka=True)
+        self.nodetrack.endTrack()
+        del self.nodetrack
 
     def _ui_update(self):
         self.nodetrack.reset()
-        self.nodetrack.startTrack()
+        #self.nodetrack.startTrack()
         print self.nodetrack.getNodes()
 
+    def do_func(self, func, mode='single', **kws):
+        for kw,value in kws.items():
+            if isinstance(value,types.MethodType):
+                kws[kw] = value()
+        self.nodebase = []
+        for i in selected():
+            self.nodebase.append(i)
+            self.nodebase.extend(i.listRelatives(type='transform',ad=True))
+        self.nodetrack.reset()
+        self.nodetrack.startTrack()
+        ul.do_function_on(mode)(func)(**kws)
+        self.nodetrack.endTrack()
+        
     def delete_created_nodes(self):
         trackNodes = self.nodetrack.getNodes()
         if trackNodes:
-            for node in trackNodes:
-                if 'offset' in node.name() and isinstance(node,nt.Joint):
-                    ru.remove_parent(node.getChildrens()[0])
-                else:
-                    delete(node)
+            try:
+                for node in trackNodes:
+                    print node
+                    if objExists(node):
+                        condition = any([c in self.nodebase for c in node.getChildren(ad=True)]) if hasattr(node,'getChildren') else False
+                        if condition:
+                            continue
+                        if hasattr(node,'getChildren'):
+                            for c in node.getChildren(ad=True):
+                                if c in trackNodes:
+                                    trackNodes.remove(c)
+                        delete(node)
+                for node in self.nodebase:
+                    if not node.getParent():
+                        continue
+                    if node.getParent() in self.nodebase:
+                        continue 
+                    ru.remove_parent(node)
+                    if not node.getParent():
+                        continue
+                    if 'gp' in node.getParent().name().lower():
+                        if node.getParent().name().lower() != 'bongp' or \
+                            node.getParent().name().lower() != 'bonegp':
+                            ru.remove_parent(node)
+            except MayaNodeError as why:
+                warning(MayaNodeError)
 
     def defineUI(self,*args,**kws):
         self.template.define(*args, **kws)
@@ -125,15 +165,18 @@ class RigTools(object):
                 button(
                     label='Create Prop Control',
                     c=Callback(
-                        ul.do_function_on()(ru.create_prop_control)))
+                        self.do_func,
+                        ru.create_prop_control))
                 button(
                     label='Create Free Control',
                     c=Callback(
-                        ul.do_function_on()(ru.create_free_control)))
+                        self.do_func,
+                        ru.create_free_control))
                 button(
                     label='Create Parent Control',
                     c=Callback(
-                        ul.do_function_on()(ru.create_parent_control)))
+                        self.do_func,
+                        ru.create_parent_control))
                 with rowColumnLayout(rs=[(1,1),], numberOfColumns=2, columnWidth=[(1, 150), (2, 50)]):
                     self._uiElement['Hair System'] = textFieldGrp(
                         cl2=('left', 'right'),
@@ -146,16 +189,20 @@ class RigTools(object):
                         c=Callback(self.get_hair_system))
                 button(
                     label='Create Long Hair Control',
-                    c=lambda x:ul.do_function_on()(ru.create_long_hair(
-                        hairSystem=self._uiElement['Hair System'].getText())))
+                    c=Callback(
+                        self.do_func,
+                        ru.create_long_hair,
+                        hairSystem=self._uiElement['Hair System'].getText))
                 button(
                     label='Create Short Hair Control',
                     c=Callback(
-                        ul.do_function_on()(ru.create_short_hair)))
+                        self.do_func,
+                        ru.create_short_hair))
                 button(
                     label='Create Simple Short Hair Control',
                     c=Callback(
-                        ul.do_function_on()(ru.create_short_hair_simple)))
+                        self.do_func,
+                        ru.create_short_hair_simple))
                 button(
                     label='Delete All Created Nodes',
                     c=Callback(
