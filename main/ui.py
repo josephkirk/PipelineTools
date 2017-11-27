@@ -42,6 +42,8 @@ class RigTools(object):
         self._windowname = self._name.replace(' ','')+'Window'
         self.nodebase = []
         self.nodetrack = NodeTracker()
+        self.fullbasetrack = []
+        self.fullcreatedtrack = []
 
     @property
     def name(self):
@@ -117,9 +119,15 @@ class RigTools(object):
         self.nodetrack.startTrack()
         ul.do_function_on(mode)(func)(**kws)
         self.nodetrack.endTrack()
+        self.fullbasetrack.extend(self.nodebase)
+        self.fullcreatedtrack.extend(self.nodetrack.getNodes())
         
-    def delete_created_nodes(self):
-        trackNodes = self.nodetrack.getNodes()
+    def delete_created_nodes(self , all=False):
+        if all:
+            self.nodebase = self.fullbasetrack
+            trackNodes = self.fullcreatedtrack
+        else:
+            trackNodes = self.nodetrack.getNodes()
         if trackNodes:
             try:
                 for node in trackNodes:
@@ -140,8 +148,8 @@ class RigTools(object):
                         continue
                     if 'offset' in node.getParent().name().lower():
                         ru.remove_parent(node)
-            except MayaNodeError as why:
-                warning(MayaNodeError)
+            except (MayaNodeError,TypeError) as why:
+                warning(why)
 
     def defineUI(self,*args,**kws):
         self.template.define(*args, **kws)
@@ -199,11 +207,51 @@ class RigTools(object):
                         self.do_func,
                         ru.create_short_hair_simple))
                 button(
-                    label='Delete All Created Nodes',
+                    label='Delete Created Nodes',
                     c=Callback(
                         self.delete_created_nodes))
+                with popupMenu(b=3):
+                    menuItem(
+                        label='Delete All Created Nodes',
+                        c=Callback(
+                            self.delete_created_nodes,
+                            all=True))
+        with frameLayout(label='Control Tag:'):
+            with rowColumnLayout(rs=[(1,0),]):
                 button(
-                    label='Reset All Control Transform',
+                    label='Tag as controller',
+                    c=Callback(
+                        ul.do_function_on()(ru.add_control_tag)))
+                button(
+                    label='Remove tag',
+                    c=Callback(
+                        ul.do_function_on()(ru.remove_control_tag)))
+                with popupMenu(b=3):
+                    menuItem(
+                        label='Remove all tag',
+                        c=Callback(
+                            ru.remove_control_tag,
+                            all=True))
+                button(
+                    label='Parent controller',
+                    c=Callback(
+                        ul.do_function_on('singlelast')(ru.parent_control_tag)))
+                with popupMenu(b=3):
+                    menuItem(
+                        label='Parent hierarchy',
+                        c=Callback(
+                            ul.do_function_on('set')(ru.parent_hierachy)))
+                    menuItem(
+                        label='Unparent controller',
+                        c=Callback(
+                            ul.do_function_on()(ru.unparent_control_tag)))
+                button(
+                    label='Select all controllers',
+                    c=Callback(
+                        ru.remove_control_tag,
+                        q=True,all=True))
+            button(
+                    label='Reset all controllers transform',
                     c=Callback(
                         ru.reset_controller_transform))
         with frameLayout(label='Utilities:'):
@@ -232,7 +280,8 @@ class RigTools(object):
                 smallbutton(
                     label='create Loc control',
                     c=Callback(
-                        ul.do_function_on()(ru.create_loc_control)))
+                        ul.do_function_on()(ru.create_loc_control),
+                        all=True))
                 smallbutton(
                     label='connect with Loc',
                     c=Callback(
@@ -250,31 +299,46 @@ class RigTools(object):
                     c=Callback(
                         ul.do_function_on()(ru.create_loc_on_vert)))
                 smallbutton(
-                    label='connect Transform',
+                    label='Connect Transform',
                     c=Callback(
                         ul.do_function_on('double')(ru.connect_transform),
                         all=True))
                 with popupMenu(b=3):
                     menuItem(
-                        label='connect Translate',
+                        label='Connect Translate',
                         c=Callback(
                             ul.do_function_on('double')(ru.connect_transform),
                             translate=True, rotate=False, scale=False))
                     menuItem(
-                        label='connect Rotate',
+                        label='Connect Rotate',
                         c=Callback(
                             ul.do_function_on('double')(ru.connect_transform),
                             translate=False, rotate=True, scale=False))
                     menuItem(
-                        label='connect Scale',
+                        label='Connect Scale',
                         c=Callback(
                             ul.do_function_on('double')(ru.connect_transform),
                             translate=False, rotate=False, scale=True))
                 smallbutton(
-                    label='disconnect Transform',
+                    label='Disconnect Transform',
                     c=Callback(
-                        ul.do_function_on('double')(ru.connect_transform),
-                        disconnect=True))
+                        ul.do_function_on()(ru.disconnect_transform)))
+                with popupMenu(b=3):
+                    menuItem(
+                        label='Disconnect Translate',
+                        c=Callback(
+                            ul.do_function_on()(ru.disconnect_transform),
+                            attr='translate'))
+                    menuItem(
+                        label='Disconnect Rotate',
+                        c=Callback(
+                            ul.do_function_on()(ru.disconnect_transform),
+                            attr='rotate'))
+                    menuItem(
+                        label='Disconnect Scale',
+                        c=Callback(
+                            ul.do_function_on()(ru.disconnect_transform),
+                            attr='scale'))
             smallbutton(
                 label='multi Parent Constraint',
                 c=Callback(
@@ -293,6 +357,15 @@ class RigTools(object):
                 menuItem(label='multi Aim Constraint', c=Callback(
                     ul.do_function_on('double')(ru.contraint_multi),
                     constraintType='Aim'))
+                menuItem(label='multi Loc Point Constraint', c=Callback(
+                    ul.do_function_on('double')(ru.contraint_multi),
+                    constraintType='LocP'))
+                menuItem(label='multi Loc Orient Constraint', c=Callback(
+                    ul.do_function_on('double')(ru.contraint_multi),
+                    constraintType='LocO'))
+                menuItem(label='multi Loc Point&Orient Constraint', c=Callback(
+                    ul.do_function_on('double')(ru.contraint_multi),
+                    constraintType='LocOP'))
         with frameLayout(label='Intergration:'):
             button(
                 label='Basic Intergration',

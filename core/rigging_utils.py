@@ -216,6 +216,9 @@ def contraint_multi(ob, target, constraintType='Point'):
         'Parent': ul.partial(pm.parentConstraint , mo=True),
         'Orient': ul.partial(pm.orientConstraint , mo=True),
         'PointOrient': None,
+        'LocP': None,
+        'LocO': None,
+        'LocOP': None,
         'Aim': ul.partial(pm.aimConstraint , mo=True, aimVector=[1,0,0], upVector=[1, 0, 0], worldUpType="none")
     }
     assert (constraintDict.has_key(constraintType)), 'wrong Constraint Type'
@@ -223,16 +226,68 @@ def contraint_multi(ob, target, constraintType='Point'):
         constraintDict['Point'](target,ob)
         constraintDict['Orient'](target,ob)
         return
+    if constraintType.startswith('Loc'):
+        assert (isinstance(ob,pm.general.MeshVertex)), 'target is not a vertex'
+        loc = create_loc_on_vert(ob)
+        if constraintType == 'LocP':
+            constraintDict['Point'](loc, target)
+            return
+        if constraintType == 'LocO':
+            constraintDict['Orient'](loc, target)
+            return
+        if constraintType == 'LocOP':
+            constraintDict['Point'](loc, target)
+            constraintDict['Orient'](loc, target)
+            return
     constraintDict[constraintType](target,ob)
 
 def connect_visibility(ob, target, attrname='Vis'):
     pm.addAttr(ob, ln=attrname,at='bool',k=1)
     ob.attr(attrname) >> target.visibility
 
+def add_control_tag(ob):
+    pm.controller(ob)
+
+def remove_control_tag(ob=None,q=False, all=False):
+    if all:
+        allControls = pm.controller(q=1, ac=1)
+        if q:
+            pm.select(allControls,r=True)
+            return
+        for control in allControls:
+            control_tag = pm.controller(control, q=1)
+            pm.delete(control_tag)
+        return
+    control_tag = pm.controller(ob, q=1)
+    pm.delete(control_tag)
+
+def unparent_control_tag(ob):
+    if not pm.controller(ob,q=1, ic=1):
+        log.error('%s is not a controller'%ob)
+        return
+    pm.controller(ob,e=True,unp=True)
+
+def parent_hierachy(obs):
+    obList = obs
+    while obList:
+        obChild = obList.pop()
+        if obList:
+            parent_control_tag(obChild, obList[-1])
+
+def parent_control_tag(ob, target):
+    if not pm.controller(ob,q=1, ic=1):
+        add_control_tag(ob)
+    if not pm.controller(target, q=1, ic=1):
+        add_control_tag(target)
+    pm.controller(ob,target, p=1)
+
 def reset_controller_transform(*args):
     controllers = pm.ls(type='controller')
     for controller in controllers:
-        ul.reset_transform(controller.controllerObject.get())
+        if controller.controllerObject.get():
+            ul.reset_transform(controller.controllerObject.get())
+        else:
+            pm.delete(controller)
 
 def create_prop_control(bone, **kws):
     if 'gp' not in bone.name().lower():
@@ -247,6 +302,7 @@ def create_prop_control(bone, **kws):
     ctlGp = create_parent(ctl)
     xformTo(ctlGp, bone)
     connect_transform(ctl, bone, all=True)
+    add_control_tag(ctl)
     return ctl
 
 def create_free_control(bone, **kws):
@@ -257,6 +313,7 @@ def create_free_control(bone, **kws):
     ctlGp = create_parent(ctl)
     xformTo(ctlGp, bone)
     connect_transform(ctl, bone, all=True)
+    add_control_tag(ctl)
     return ctl
 
 def create_parent_control(boneRoot, **kws):
@@ -277,8 +334,10 @@ def create_parent_control(boneRoot, **kws):
             ctlGp = create_parent(ctl)
             ctlGp.rename(name + '_ctlGp')
             match_transform(ctlGp,bone)
+            add_control_tag(ctl)
             if ctls:
                 ctlGp.setParent(ctls[-1])
+                parent_control_tag(ctl,ctls[-1])
             ctls.append(ctl)
             connect_transform(ctl, bone, all=True )
         if not bone.getChildren(type='joint'):
@@ -341,9 +400,9 @@ def create_long_hair(boneRoot, hairSystem=''):
     controlRoot = createPinCircle(controlGp.name(),axis='YZ',radius=3,length=0)
     xformTo(controlRoot, controlGp)
     controlRoot.setParent(controlGp)
+    focGp = follicle.getParent().getParent()
     follicle.getParent().setParent(controlRoot)
-    #controls[0].getParent().setParent(controlRoot)
-    # locGp = pm.nt.Transform(name='HairCtlConnect_locGp')
+    pm.delete(focGp)
     pm.parentConstraint(dynamicBones[0],create_parent(controls[0]))
     hairSysMeta = meta.MetaClass(hairSys.name())
     hairSysMeta.connectChildren([c.name() for c in controls], 'boneControl', 'hairSystem', srcSimple=True)
@@ -351,6 +410,15 @@ def create_long_hair(boneRoot, hairSystem=''):
         offset = create_parent(ctl)
         loc = connect_with_loc(dynamicBone, offset,all=True)[0]
         loc.getParent().setParent(dynamicBone.getParent())
+    #lock ctlRoot translate and scale
+    for atr in [
+        'tx','ty','tz',
+        'sx','sy','sz',]:
+        controlRoot.setAttr(atr, lock=True, keyable=False, channelBox=False)
+        
+    # add ctl tag
+    add_control_tag(controlRoot)
+    parent_control_tag(controls[0], controlRoot)
 
 def create_short_hair(bone):
     bones = get_current_chain(bone)
@@ -374,8 +442,9 @@ def create_short_hair(bone):
         b.setParent(None)
         b.radius.set(b.radius.get()*2)
     curveSkin = pm.skinCluster(sbonetop,mbonetop,ebonetop,ikcurve)
-    create_free_control(ebonetop)
-    create_free_control(mbonetop)
+    ectl = create_free_control(ebonetop)
+    mctl = create_free_control(mbonetop)
+    parent_control_tag(mctl,ectl)
     return (sbonetop, mbonetop, ebonetop)
 
 def create_short_hair_simple(bone):
@@ -507,16 +576,21 @@ def connect_with_loc(ctl,bon,**kws):
     log.info('{} connect with {} using {}'.format(ctl,bon,loc))
     return (loc,pct,oct)
 
-def create_loc_on_vert(vert):
+def create_loc_on_vert(vert,name='guideLoc'):
+    print vert
     if isinstance(vert,pm.general.MeshVertex):
-        tarPos = vert.getPosition('world')
-        tarMesh = vert.node()
-        temp = pm.spaceLocator()
-        fg = rcl.FacialGuide(temp.name())
-        pm.delete(temp)
-        fg.set_guide_mesh(tarMesh)
-        fg.create(pos=tarPos)
-        fg.set_constraint()
+        uv = vert.getUV()
+        mesh = vert.node()
+        loc = pm.spaceLocator(name=name)
+        locGp = create_parent(loc)
+        ppconstraint = pm.pointOnPolyConstraint(
+            mesh, locGp, mo=False)
+        stripname = ul.get_name(mesh.getParent())
+        print type(uv[0])
+        print uv
+        ppconstraint.attr(stripname + 'U0').set(uv[0])
+        ppconstraint.attr(stripname + 'V0').set(uv[1])
+        return loc
 
 def create_parent(ob):
     obname = ob.name().split('|')[-1]
@@ -577,6 +651,19 @@ def connect_transform(ob, target, **kws):
                 ob.attr(attr) >> target.attr(attr)
                 log.info('{} connect to {}'.format(
                     ob.attr(attr), target.attr(attr)))
+
+def disconnect_transform(ob , attr='all'):
+    attrdict = {
+        'translate': ['translate','tx', 'ty', 'tz'],
+        'rotate': ['rotate','rx', 'ry', 'rz'],
+        'scale': ['scale','sx', 'sy', 'sz']
+    }
+    attrdict['all'] = []
+    for key,value in attrdict.items():
+        attrdict['all'].extend(value)
+    assert (attr in attrdict), 'attribute to connect is not valid, valid value: %s'%str(attrdict.keys())
+    for atr in attrdict[attr]:
+        ob.attr(atr).disconnect()
 
 def toggleChannelHistory(state=True):
     oblist = pm.ls()
@@ -1077,8 +1164,11 @@ def create_hair_system(name=''):
     hairSys = pm.nt.HairSystem()
     if name:
         hairSys.getParent().rename(name)
-    nucleus = pm.nt.Nucleus()
-    if pm.ls('time1'):
+    if not pm.ls(type='nucleus'):
+        nucleus = pm.nt.Nucleus()
+    else:
+        nucleus = pm.ls(type='nucleus')[-1]
+    if pm.ls(type='time'):
         time = pm.PyNode('time1')
     else:
         time = pm.nt.Time()

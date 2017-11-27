@@ -1085,7 +1085,7 @@ class ControlObject(object):
         else:
             self._window = pm.window(
                 self._uiName + 'Window', title=self._uiName,
-                rtf=True, widthHeight=self._windowSize, sizeable=False)
+                rtf=True, widthHeight=self._windowSize, sizeable=True)
         self._uiTemplate = pm.uiTemplate('CreateControlUITemplace', force=True)
         self._uiTemplate.define(pm.button, width=5, height=40, align='left')
         self._uiTemplate.define(pm.columnLayout, adjustableColumn=1, w=10)
