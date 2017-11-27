@@ -137,8 +137,9 @@ class RigTools(object):
                     if not node.getParent():
                         continue
                     if node.getParent() in self.nodebase:
-                        continue 
-                    ru.remove_parent(node)
+                        continue
+                    if 'offset' in node.getParent().name().lower():
+                        ru.remove_parent(node)
                     if not node.getParent():
                         continue
                     if 'gp' in node.getParent().name().lower():
