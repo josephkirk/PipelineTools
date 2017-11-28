@@ -134,11 +134,11 @@ class RigTools(object):
                 for node in trackNodes:
                     print node
                     if objExists(node):
-                        condition = any([c in self.nodebase for c in node.getChildren(ad=True)]) if hasattr(node,'getChildren') else False
+                        condition = any([c in self.nodebase for c in node.listRelatives(type='transform',ad=True)]) if hasattr(node,'listRelatives') else False
                         if condition:
                             continue
-                        if hasattr(node,'getChildren'):
-                            for c in node.getChildren(ad=True):
+                        if hasattr(node,'listRelatives'):
+                            for c in node.listRelatives(type='transform',ad=True):
                                 if c in trackNodes:
                                     trackNodes.remove(c)
                         delete(node)
