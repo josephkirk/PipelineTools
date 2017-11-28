@@ -246,7 +246,7 @@ class RigTools(object):
                     button(
                         label='Remove tag',
                         c=Callback(
-                            ul.do_function_on()(ru.remove_control_tag)))
+                            ru.remove_control_tag))
                     with popupMenu(b=3):
                         menuItem(
                             label='Remove all tag',

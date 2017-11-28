@@ -248,7 +248,7 @@ def connect_visibility(ob, target, attrname='Vis'):
 def add_control_tag(ob):
     pm.controller(ob)
 
-def remove_control_tag(ob=None,q=False, all=False):
+def remove_control_tag(q=False, all=False):
     if all:
         allControls = pm.controller(q=1, ac=1)
         if q:
@@ -258,14 +258,17 @@ def remove_control_tag(ob=None,q=False, all=False):
             control_tag = pm.controller(control, q=1)
             pm.delete(control_tag)
         return
-    control_tag = pm.controller(ob, q=1)
-    pm.delete(control_tag)
+    else:
+        for ob in pm.selected():
+            control_tag = pm.controller(ob, q=1)
+            if control_tag:
+                pm.delete(control_tag)
 
 def unparent_control_tag(ob):
     if not pm.controller(ob,q=1, ic=1):
         log.error('%s is not a controller'%ob)
         return
-    pm.controller(ob,e=True,unp=True)
+    pm.controller(ob,unp=True)
 
 def parent_hierachy(obs):
     obList = obs
@@ -279,6 +282,7 @@ def parent_control_tag(ob, target):
         add_control_tag(ob)
     if not pm.controller(target, q=1, ic=1):
         add_control_tag(target)
+    unparent_control_tag(ob)
     pm.controller(ob,target, p=1)
 
 def reset_controller_transform(*args):
@@ -289,7 +293,7 @@ def reset_controller_transform(*args):
         else:
             pm.delete(controller)
 
-def create_prop_control(bone, **kws):
+def create_prop_control(bone, parent='ctlGp', **kws):
     if 'gp' not in bone.name().lower():
         bonGp = create_parent(bone)
     ctlname = ul.get_name(bone).replace('bon', 'ctl')
@@ -303,9 +307,14 @@ def create_prop_control(bone, **kws):
     xformTo(ctlGp, bone)
     connect_transform(ctl, bone, all=True)
     add_control_tag(ctl)
+    if parent:
+        if pm.objExists(parent):
+            ctlGp.setParent(parent)
+        else:
+            pm.group(ctlGp,name=parent)
     return ctl
 
-def create_free_control(bone, **kws):
+def create_free_control(bone, parent='ctlGp', **kws):
     if 'gp' not in bone.name().lower():
         bonGp = create_parent(bone)
     ctlname = bone.name().replace('bon', 'ctl')
@@ -314,9 +323,14 @@ def create_free_control(bone, **kws):
     xformTo(ctlGp, bone)
     connect_transform(ctl, bone, all=True)
     add_control_tag(ctl)
+    if parent:
+        if pm.objExists(parent):
+          ctlGp.setParent(parent)
+        else:
+            pm.group(ctlGp,name=parent)
     return ctl
 
-def create_parent_control(boneRoot, **kws):
+def create_parent_control(boneRoot, parent='ctlGp', **kws):
     ctls = []
     boneChain = ul.iter_hierachy(boneRoot)
     while True:
@@ -342,6 +356,12 @@ def create_parent_control(boneRoot, **kws):
             connect_transform(ctl, bone, all=True )
         if not bone.getChildren(type='joint'):
             break
+    ctlRoot = ctls[0].getParent()
+    if parent:
+        if pm.objExists(parent):
+            ctlRoot.setParent(parent)
+        else:
+            pm.group(ctlRoot,name=parent)
     return ctls
 
 def aim_setup(ctl,loc):
@@ -403,6 +423,7 @@ def create_long_hair(boneRoot, hairSystem=''):
         offsetBone = create_offset_bone(bone)
         offsetMeta = meta.MetaClass(offsetBone.name())
         offsetMeta.connectChild(dupbone.name(), 'dynamicBone', 'drivenBone')
+        #pm.orientConstraint(dupbone, offsetBone, mo=True)
         connect_transform(dupbone, offsetBone,rotate=True)
         if not bone.getChildren(type='joint'):
             break
@@ -412,7 +433,7 @@ def create_long_hair(boneRoot, hairSystem=''):
     hairSystem = make_curve_dynamic(ikcurve, hairSystem=hairSystem)
     dynamicCurve, follicle, hairSys = [i for i in hairSystem]
     dynamicCurve.worldSpace[0] >> ikhandle.inCurve
-    controls = create_parent_control(boneRoot)
+    controls = create_parent_control(boneRoot, parent='')
     for control in controls:
         tempShape = createPinCircle(
             control.name(),
@@ -441,12 +462,20 @@ def create_long_hair(boneRoot, hairSystem=''):
         'tx','ty','tz',
         'sx','sy','sz',]:
         controlRoot.setAttr(atr, lock=True, keyable=False, channelBox=False)
-        
+    hairMiscGp = pm.group([dupBoneGp,hairSys.getParent(),dynamicCurve.getParent().getParent()], name='hairSystem_miscGp')
+    if pm.objExists('ctlGp'):
+        controlGp.setParent('ctlGp')
+    else:
+        pm.group(controlGp,name='ctlGp')
+    if pm.objExists('miscGp'):
+        hairMiscGp.setParent('miscGp')
+    else:
+        pm.group(hairMiscGp,name='miscGp')
     # add ctl tag
     add_control_tag(controlRoot)
     parent_control_tag(controls[0], controlRoot)
 
-def create_short_hair(bone):
+def create_short_hair(bone, parent='miscGp'):
     bones = get_current_chain(bone)
     bonename = bone.name().split('|')[-1]
     startBone = bones[0]
@@ -466,14 +495,22 @@ def create_short_hair(bone):
             (boneUp.getTranslation('world')+boneDown.getTranslation('world'))/2,'world')
     for b in [sbonetop, mbonetop, ebonetop]:
         b.setParent(None)
-        b.radius.set(b.radius.get()*2)
+        b.radius.set(b.radius.get()*1.2)
     curveSkin = pm.skinCluster(sbonetop,mbonetop,ebonetop,ikcurve)
     ectl = create_free_control(ebonetop)
     mctl = create_free_control(mbonetop)
     parent_control_tag(mctl,ectl)
+    pm.select([mbonetop.getParent(), ebonetop.getParent(), ikcurve, ikhandle], r=True)
+    ikmiscGp = pm.group(name=bonename+'_ikMisc')
+    pm.group([ectl.getParent(), mctl.getParent()], name=bonename+'_ctlGp')
+    if parent:
+        if pm.objExists(parent):
+            ikmiscGp.setParent(parent)
+        else:
+            pm.group(ikmiscGp,name=parent)
     return (sbonetop, mbonetop, ebonetop)
 
-def create_short_hair_simple(bone):
+def create_short_hair_simple(bone, parent='miscGp'):
     bones = get_current_chain(bone)
     bonename = bone.name().split('|')[-1]
     startBone = bones[0]
@@ -486,9 +523,16 @@ def create_short_hair_simple(bone):
     sbonetop, ebonetop = [
         dup_bone(b,name = b.name()+'_'+suffix) for b,suffix in zip([startBone,endBone],['root','top'])]
     for b in [sbonetop, ebonetop]:
-        b.radius.set(b.radius.get()*1.5)
+        b.radius.set(b.radius.get()*1.2)
     curveSkin = pm.skinCluster(sbonetop ,ebonetop,ikcurve)
     create_free_control(ebonetop)
+    pm.select([ebonetop.getParent(), ikcurve, ikhandle], r=True)
+    ikmiscGp = pm.group(name=bonename+'_ikMisc')
+    if parent:
+        if pm.objExists(parent):
+            ikmiscGp.setParent(parent)
+        else:
+            pm.group(ikmiscGp,name=parent)
     return (sbonetop, ebonetop)
 
 def create_sway_short_hair(bone,rootTop):
@@ -1228,6 +1272,8 @@ def make_curve_dynamic(inputcurve, hairSystem=''):
     follicle  = pm.nt.Follicle()
     follicle.startDirection.set(1)
     follicle.restPose.set(1)
+    follicle.fixedSegmentLength.set(1)
+    follicle.segmentLength.set(5)
     follicleGp = pm.nt.Transform(name=inputcurve.name()+'_follicleGp')
     follicle.getParent().setParent(follicleGp)
     inputcurve.setParent(follicle.getParent())
