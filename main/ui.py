@@ -61,7 +61,7 @@ class RigTools(object):
             windowPref(self._windowname, remove=True)
         self._window = window(
             self._windowname, title=self._name,
-            rtf=True, sizeable=False)
+            rtf=True, sizeable=True)
         self._windowSize = (250, 10)
         self._uiElement = {}
         return self._window
@@ -79,13 +79,14 @@ class RigTools(object):
             columnLayout, adjustableColumn=1, w=10)
         self._uiTemplate.define(
             frameLayout, borderVisible=True,
+            collapsable=True,
             labelVisible=True, width=self._windowSize[0])
         self._uiTemplate.define(
             rowColumnLayout,
             rs=[(1, 5), ],
             adj=True, numberOfColumns=2,
             cal=[(1, 'left'), ],
-            columnWidth=[(1, 100), (2, 100)])
+            columnWidth=[(1, 60), (2, 120)])
         return self._uiTemplate
 
     def get_hair_system(self):
@@ -155,235 +156,255 @@ class RigTools(object):
         self.template.define(*args, **kws)
 
     def create_rig_util_ui(self):
-        with frameLayout(label='Tools:'):
-            with rowColumnLayout(rs=[(1,1),], numberOfColumns=1):
-                button(
-                    label='Skin Weigth Setter',
-                    c=Callback(SkinWeightSetter.show))
-        with frameLayout(label='Create Control:'):
-            with rowColumnLayout(rs=[(1,1),], numberOfColumns=1):
-                button(
-                    label='Create Control Shape',
-                    c=Callback(rcl.ControlObject.show))
-                button(
-                    label='Create Prop Control',
-                    c=Callback(
-                        self.do_func,
-                        ru.create_prop_control))
-                button(
-                    label='Create Free Control',
-                    c=Callback(
-                        self.do_func,
-                        ru.create_free_control))
-                button(
-                    label='Create Parent Control',
-                    c=Callback(
-                        self.do_func,
-                        ru.create_parent_control))
-                with rowColumnLayout(rs=[(1,1),], numberOfColumns=2, columnWidth=[(1, 150), (2, 50)]):
-                    self._uiElement['Hair System'] = textFieldGrp(
-                        cl2=('left', 'right'),
-                        co2=(80, 10),
-                        cw2=(70, 110),
-                        label='Hair System:', text='')
+        with columnLayout(adjustableColumn=False):
+            with frameLayout(label='Tools:'):
+                with rowColumnLayout(rs=[(1,1),], numberOfColumns=1):
                     button(
-                        label='Get',
-                        h=20,
-                        c=Callback(self.get_hair_system))
-                button(
-                    label='Create Long Hair Control',
-                    c=Callback(
-                        self.do_func,
-                        ru.create_long_hair,
-                        hairSystem=self._uiElement['Hair System'].getText))
-                button(
-                    label='Create Short Hair Control',
-                    c=Callback(
-                        self.do_func,
-                        ru.create_short_hair))
-                button(
-                    label='Create Simple Short Hair Control',
-                    c=Callback(
-                        self.do_func,
-                        ru.create_short_hair_simple))
-                button(
-                    label='Delete Created Nodes',
-                    c=Callback(
-                        self.delete_created_nodes))
-                with popupMenu(b=3):
-                    menuItem(
-                        label='Delete All Created Nodes',
+                        label='Skin Weigth Setter',
+                        c=Callback(SkinWeightSetter.show))
+            with frameLayout(label='Create Control:'):
+                with columnLayout():
+                    center_text = ul.partial(text, align='center')
+                    button(
+                        label='Create Control Shape',
+                        c=Callback(rcl.ControlObject.show))
+                    separator()
+                    center_text(label='Create Single Bone Control:')
+                    with rowColumnLayout( rs=[(1,1),], numberOfColumns=2):
+                        button(
+                            label='Prop Control',
+                            c=Callback(
+                                self.do_func,
+                                ru.create_prop_control))
+                        button(
+                            label='Free Control',
+                            c=Callback(
+                                self.do_func,
+                                ru.create_free_control))
+                    separator()
+                    center_text(label='Create Bone Chain Controls:')
+                    with rowColumnLayout(rs=[(1,1),], numberOfColumns=2):
+                        button(
+                            label='Parent Control',
+                            c=Callback(
+                                self.do_func,
+                                ru.create_parent_control))
+                        button(
+                            label='Aim Setup',
+                            c=Callback(
+                                self.do_func,
+                                ru.aim_setup,
+                                mode='singlelast'))
+                    separator()
+                    center_text(label='Create Long Hair Control:')
+                    with rowColumnLayout(rs=[(1,1),], numberOfColumns=2, columnWidth=[(1, 150), (2, 50)]):
+                        self._uiElement['Hair System'] = textFieldGrp(
+                            cl2=('left', 'right'),
+                            co2=(80, 10),
+                            cw2=(70, 110),
+                            label='Hair System:', text='')
+                        button(
+                            label='Get',
+                            h=20,
+                            c=Callback(self.get_hair_system))
+                    button(
+                        label='Create',
                         c=Callback(
-                            self.delete_created_nodes,
-                            all=True))
-        with frameLayout(label='Control Tag:'):
-            with rowColumnLayout(rs=[(1,0),]):
-                button(
-                    label='Tag as controller',
-                    c=Callback(
-                        ul.do_function_on()(ru.add_control_tag)))
-                button(
-                    label='Remove tag',
-                    c=Callback(
-                        ul.do_function_on()(ru.remove_control_tag)))
-                with popupMenu(b=3):
-                    menuItem(
-                        label='Remove all tag',
+                            self.do_func,
+                            ru.create_long_hair,
+                            hairSystem=self._uiElement['Hair System'].getText))
+                    separator()
+                    center_text(label='Create Short Hair Control:')
+                    with rowColumnLayout(rs=[(1,1),], numberOfColumns=2):
+                        button(
+                            label='With Middle',
+                            c=Callback(
+                                self.do_func,
+                                ru.create_short_hair))
+                        button(
+                            label='Top Only',
+                            c=Callback(
+                                self.do_func,
+                                ru.create_short_hair_simple))
+                    separator()
+                    button(
+                        label='Delete Created Nodes',
+                        c=Callback(
+                            self.delete_created_nodes))
+                    with popupMenu(b=3):
+                        menuItem(
+                            label='Delete All Created Nodes',
+                            c=Callback(
+                                self.delete_created_nodes,
+                                all=True))
+            with frameLayout(label='Control Tag:'):
+                with rowColumnLayout(rs=[(1,0),]):
+                    button(
+                        label='Tag as controller',
+                        c=Callback(
+                            ul.do_function_on()(ru.add_control_tag)))
+                    button(
+                        label='Remove tag',
+                        c=Callback(
+                            ul.do_function_on()(ru.remove_control_tag)))
+                    with popupMenu(b=3):
+                        menuItem(
+                            label='Remove all tag',
+                            c=Callback(
+                                ru.remove_control_tag,
+                                all=True))
+                    button(
+                        label='Parent controller',
+                        c=Callback(
+                            ul.do_function_on('singlelast')(ru.parent_control_tag)))
+                    with popupMenu(b=3):
+                        menuItem(
+                            label='Parent hierarchy',
+                            c=Callback(
+                                ul.do_function_on('set')(ru.parent_hierachy)))
+                        menuItem(
+                            label='Unparent controller',
+                            c=Callback(
+                                ul.do_function_on()(ru.unparent_control_tag)))
+                    button(
+                        label='Select all controllers',
                         c=Callback(
                             ru.remove_control_tag,
+                            q=True,all=True))
+                button(
+                        label='Reset all controllers transform',
+                        c=Callback(
+                            ru.reset_controller_transform))
+            with frameLayout(label='Utilities:'):
+                with rowColumnLayout(rs=[(1,0),]):
+                    smallbutton = ul.partial(button,h=30)
+                    smallbutton(
+                        label='create Parent',
+                        c=Callback(
+                            ul.do_function_on()(ru.create_parent)))
+                    smallbutton(
+                        label='delete Parent',
+                        c=Callback(
+                            ul.do_function_on()(ru.remove_parent)))
+                    smallbutton(
+                        label='Parent Shape',
+                        c=Callback(
+                            ul.do_function_on('double')(ul.parent_shape)))
+                    smallbutton(
+                        label='create Offset bone',
+                        c=Callback(
+                            ul.do_function_on()(ru.create_offset_bone)))
+                    smallbutton(
+                        label='create Loc',
+                        c=Callback(
+                            ul.do_function_on()(ru.create_loc_control),connect=False))
+                    smallbutton(
+                        label='create Loc control',
+                        c=Callback(
+                            ul.do_function_on()(ru.create_loc_control),
                             all=True))
+                    smallbutton(
+                        label='connect with Loc',
+                        c=Callback(
+                            ul.do_function_on('double')(ru.connect_with_loc),
+                            all=True))
+                    with popupMenu(b=3):
+                        menuItem(label='translate only', c=Callback(
+                            ul.do_function_on('double')(ru.connect_with_loc),
+                            translate=True))
+                        menuItem(label='rotate only', c=Callback(
+                            ul.do_function_on('double')(ru.connect_with_loc),
+                            rotate=True))
+                    smallbutton(
+                        label='vertex to Loc',
+                        c=Callback(
+                            ul.do_function_on()(ru.create_loc_on_vert)))
+                    smallbutton(
+                        label='Connect Transform',
+                        c=Callback(
+                            ul.do_function_on('double')(ru.connect_transform),
+                            all=True))
+                    with popupMenu(b=3):
+                        menuItem(
+                            label='Connect Translate',
+                            c=Callback(
+                                ul.do_function_on('double')(ru.connect_transform),
+                                translate=True, rotate=False, scale=False))
+                        menuItem(
+                            label='Connect Rotate',
+                            c=Callback(
+                                ul.do_function_on('double')(ru.connect_transform),
+                                translate=False, rotate=True, scale=False))
+                        menuItem(
+                            label='Connect Scale',
+                            c=Callback(
+                                ul.do_function_on('double')(ru.connect_transform),
+                                translate=False, rotate=False, scale=True))
+                    smallbutton(
+                        label='Disconnect Transform',
+                        c=Callback(
+                            ul.do_function_on()(ru.disconnect_transform)))
+                    with popupMenu(b=3):
+                        menuItem(
+                            label='Disconnect Translate',
+                            c=Callback(
+                                ul.do_function_on()(ru.disconnect_transform),
+                                attr='translate'))
+                        menuItem(
+                            label='Disconnect Rotate',
+                            c=Callback(
+                                ul.do_function_on()(ru.disconnect_transform),
+                                attr='rotate'))
+                        menuItem(
+                            label='Disconnect Scale',
+                            c=Callback(
+                                ul.do_function_on()(ru.disconnect_transform),
+                                attr='scale'))
+                smallbutton(
+                    label='multi Parent Constraint',
+                    c=Callback(
+                        ul.do_function_on('singlelast')(ru.contraint_multi),
+                        constraintType='Parent'))
+                with popupMenu(b=3):
+                    menuItem(label='multi Point Constraint', c=Callback(
+                        ul.do_function_on('singlelast')(ru.contraint_multi),
+                        constraintType='Point'))
+                    menuItem(label='multi Orient Constraint', c=Callback(
+                        ul.do_function_on('singlelast')(ru.contraint_multi),
+                        constraintType='Orient'))
+                    menuItem(label='multi Point&Orient Constraint', c=Callback(
+                        ul.do_function_on('singlelast')(ru.contraint_multi),
+                        constraintType='PointOrient'))
+                    menuItem(label='multi Aim Constraint', c=Callback(
+                        ul.do_function_on('singlelast')(ru.contraint_multi),
+                        constraintType='Aim'))
+                    menuItem(label='multi Loc Point Constraint', c=Callback(
+                        ul.do_function_on('double')(ru.contraint_multi),
+                        constraintType='LocP'))
+                    menuItem(label='multi Loc Orient Constraint', c=Callback(
+                        ul.do_function_on('double')(ru.contraint_multi),
+                        constraintType='LocO'))
+                    menuItem(label='multi Loc Point&Orient Constraint', c=Callback(
+                        ul.do_function_on('double')(ru.contraint_multi),
+                        constraintType='LocOP'))
+            with frameLayout(label='Intergration:'):
                 button(
-                    label='Parent controller',
-                    c=Callback(
-                        ul.do_function_on('singlelast')(ru.parent_control_tag)))
-                with popupMenu(b=3):
-                    menuItem(
-                        label='Parent hierarchy',
-                        c=Callback(
-                            ul.do_function_on('set')(ru.parent_hierachy)))
-                    menuItem(
-                        label='Unparent controller',
-                        c=Callback(
-                            ul.do_function_on()(ru.unparent_control_tag)))
-                button(
-                    label='Select all controllers',
-                    c=Callback(
-                        ru.remove_control_tag,
-                        q=True,all=True))
-            button(
-                    label='Reset all controllers transform',
-                    c=Callback(
-                        ru.reset_controller_transform))
-        with frameLayout(label='Utilities:'):
-            with rowColumnLayout(rs=[(1,0),]):
-                smallbutton = ul.partial(button,h=30)
-                smallbutton(
-                    label='create Parent',
-                    c=Callback(
-                        ul.do_function_on()(ru.create_parent)))
-                smallbutton(
-                    label='delete Parent',
-                    c=Callback(
-                        ul.do_function_on()(ru.remove_parent)))
-                smallbutton(
-                    label='Parent Shape',
-                    c=Callback(
-                        ul.do_function_on('double')(ul.parent_shape)))
-                smallbutton(
-                    label='create Offset bone',
-                    c=Callback(
-                        ul.do_function_on()(ru.create_offset_bone)))
-                smallbutton(
-                    label='create Loc',
-                    c=Callback(
-                        ul.do_function_on()(ru.create_loc_control),connect=False))
-                smallbutton(
-                    label='create Loc control',
-                    c=Callback(
-                        ul.do_function_on()(ru.create_loc_control),
-                        all=True))
-                smallbutton(
-                    label='connect with Loc',
-                    c=Callback(
-                        ul.do_function_on('double')(ru.connect_with_loc),
-                        all=True))
-                with popupMenu(b=3):
-                    menuItem(label='translate only', c=Callback(
-                        ul.do_function_on('double')(ru.connect_with_loc),
-                        translate=True))
-                    menuItem(label='rotate only', c=Callback(
-                        ul.do_function_on('double')(ru.connect_with_loc),
-                        rotate=True))
-                smallbutton(
-                    label='vertex to Loc',
-                    c=Callback(
-                        ul.do_function_on()(ru.create_loc_on_vert)))
-                smallbutton(
-                    label='Connect Transform',
-                    c=Callback(
-                        ul.do_function_on('double')(ru.connect_transform),
-                        all=True))
-                with popupMenu(b=3):
-                    menuItem(
-                        label='Connect Translate',
-                        c=Callback(
-                            ul.do_function_on('double')(ru.connect_transform),
-                            translate=True, rotate=False, scale=False))
-                    menuItem(
-                        label='Connect Rotate',
-                        c=Callback(
-                            ul.do_function_on('double')(ru.connect_transform),
-                            translate=False, rotate=True, scale=False))
-                    menuItem(
-                        label='Connect Scale',
-                        c=Callback(
-                            ul.do_function_on('double')(ru.connect_transform),
-                            translate=False, rotate=False, scale=True))
-                smallbutton(
-                    label='Disconnect Transform',
-                    c=Callback(
-                        ul.do_function_on()(ru.disconnect_transform)))
-                with popupMenu(b=3):
-                    menuItem(
-                        label='Disconnect Translate',
-                        c=Callback(
-                            ul.do_function_on()(ru.disconnect_transform),
-                            attr='translate'))
-                    menuItem(
-                        label='Disconnect Rotate',
-                        c=Callback(
-                            ul.do_function_on()(ru.disconnect_transform),
-                            attr='rotate'))
-                    menuItem(
-                        label='Disconnect Scale',
-                        c=Callback(
-                            ul.do_function_on()(ru.disconnect_transform),
-                            attr='scale'))
-            smallbutton(
-                label='multi Parent Constraint',
-                c=Callback(
-                    ul.do_function_on('double')(ru.contraint_multi),
-                    constraintType='Parent'))
-            with popupMenu(b=3):
-                menuItem(label='multi Point Constraint', c=Callback(
-                    ul.do_function_on('double')(ru.contraint_multi),
-                    constraintType='Point'))
-                menuItem(label='multi Orient Constraint', c=Callback(
-                    ul.do_function_on('double')(ru.contraint_multi),
-                    constraintType='Orient'))
-                menuItem(label='multi Point&Orient Constraint', c=Callback(
-                    ul.do_function_on('double')(ru.contraint_multi),
-                    constraintType='PointOrient'))
-                menuItem(label='multi Aim Constraint', c=Callback(
-                    ul.do_function_on('double')(ru.contraint_multi),
-                    constraintType='Aim'))
-                menuItem(label='multi Loc Point Constraint', c=Callback(
-                    ul.do_function_on('double')(ru.contraint_multi),
-                    constraintType='LocP'))
-                menuItem(label='multi Loc Orient Constraint', c=Callback(
-                    ul.do_function_on('double')(ru.contraint_multi),
-                    constraintType='LocO'))
-                menuItem(label='multi Loc Point&Orient Constraint', c=Callback(
-                    ul.do_function_on('double')(ru.contraint_multi),
-                    constraintType='LocOP'))
-        with frameLayout(label='Intergration:'):
-            button(
-                label='Basic Intergration',
-                c=Callback(ru.basic_intergration))
-            with rowColumnLayout():
-                self._uiElement['visAtrName'] = textFieldGrp(
-                    cl2=('left', 'right'),
-                    co2=(0, 0),
-                    cw2=(40, 100),
-                    label='Vis Attribute Name:', text='FullRigVis')
-                smallbutton(
-                    label='Connect Visibility', c=lambda x:ul.do_function_on('double')(ru.connect_visibility)(
-                        attrname= self._uiElement['visAtrName'].getText()))
-            with rowColumnLayout():
-                button(label='Channel History OFF', c=Callback(ru.toggleChannelHistory, False))
-                with popupMenu(b=3):
-                    menuItem(label='Channel History ON', c=Callback(ru.toggleChannelHistory))
-                button(label='Deform Normal Off', c=Callback(ru.deform_normal_off))
+                    label='Basic Intergration',
+                    c=Callback(ru.basic_intergration))
+                with rowColumnLayout():
+                    self._uiElement['visAtrName'] = textFieldGrp(
+                        cl2=('left', 'right'),
+                        co2=(0, 0),
+                        cw2=(40, 100),
+                        label='Vis Attribute Name:', text='FullRigVis')
+                    smallbutton(
+                        label='Connect Visibility', c=lambda x:ul.do_function_on('double')(ru.connect_visibility)(
+                            attrname= self._uiElement['visAtrName'].getText()))
+                with rowColumnLayout():
+                    button(label='Channel History OFF', c=Callback(ru.toggleChannelHistory, False))
+                    with popupMenu(b=3):
+                        menuItem(label='Channel History ON', c=Callback(ru.toggleChannelHistory))
+                    button(label='Deform Normal Off', c=Callback(ru.deform_normal_off))
 
     def _init_ui(self):
         with self.window:

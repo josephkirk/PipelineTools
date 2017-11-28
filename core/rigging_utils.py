@@ -344,6 +344,32 @@ def create_parent_control(boneRoot, **kws):
             break
     return ctls
 
+def aim_setup(ctl,loc):
+    oldParent = ctl.getParent().getParent()
+    create_parent(ctl)
+    orientOffset=ctl.getParent().duplicate(
+        name=ul.get_name(ctl)+'_orientOffset',po=True,rr=True)[0]
+    pm.orientConstraint(orientOffset,ctl)
+    aimTransform = orientOffset.duplicate(
+        name=orientOffset.name().replace('orientOffset','Aim'))[0]
+    aimGp = create_parent(aimTransform)
+    aimGp.setParent(None)
+    pm.group(aimGp, name='aimGp')
+    connect_transform(aimTransform, orientOffset, rotate=True)
+    pm.aimConstraint(
+        loc, aimTransform,
+        mo=True, aimVector=[1,0,0],
+        upVector=[1, 0, 0], worldUpType="none")
+    locConnection = list(
+        connect_with_loc(
+            ctl, ctl.outputs(type='joint')[0], all=True))
+    locGp = locConnection[0].getParent()
+    locConnection.append(locGp)
+    locGp.setParent(oldParent)
+    for c in locConnection:
+        c.rename(c.name().replace('loc','aimLoc'))
+    return (orientOffset, aimGp, locGp)
+
 def dup_bone_chain(boneRoot,suffix='dup'):
     boneChain = ul.iter_hierachy(boneRoot)
     newChain = []
