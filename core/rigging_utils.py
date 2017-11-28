@@ -488,7 +488,7 @@ def create_short_hair(bone, parent='miscGp'):
     ikcurve.rename(bonename+'_ikCurve')
     sbonetop, mbonetop, ebonetop = [
         dup_bone(b,name = b.name()+'_'+suffix) for b,suffix in zip([startBone,midBone,endBone],['root','mid','top'])]
-    sbonetop.setParent(bone.getParent())
+    #sbonetop.setParent(bone.getParent())
     if (len(bones)-1)%2.0 == 1:
         boneUp = bones[int(math.ceil((len(bones)-1)/2.0))]
         boneDown = bones[int(math.floor((len(bones)-1)/2.0))]
@@ -528,7 +528,7 @@ def create_short_hair_simple(bone, parent='miscGp'):
     curveSkin = pm.skinCluster(sbonetop ,ebonetop,ikcurve)
     create_free_control(ebonetop)
     pm.select([ebonetop.getParent(), ikcurve, ikhandle], r=True)
-    sbonetop.setParent(bone.getParent())
+    #sbonetop.setParent(bone.getParent())
     ikmiscGp = pm.group(name=bonename+'_ikMisc')
     if parent:
         if pm.objExists(parent):
