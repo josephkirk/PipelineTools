@@ -61,7 +61,7 @@ class RigTools(object):
             windowPref(self._windowname, remove=True)
         self._window = window(
             self._windowname, title=self._name,
-            rtf=True, sizeable=True)
+            rtf=True)
         self._windowSize = (250, 10)
         self._uiElement = {}
         return self._window
@@ -69,6 +69,10 @@ class RigTools(object):
     @window.setter
     def window(self,newSize):
         self._windowSize = newSize
+
+    def reset_window_height(self):
+        #self._window.setSizeable(True)
+        self._window.setHeight(10)
 
     @property
     def template(self):
@@ -79,7 +83,7 @@ class RigTools(object):
             columnLayout, adjustableColumn=1, w=10)
         self._uiTemplate.define(
             frameLayout, borderVisible=True,
-            collapsable=True,
+            collapsable=True, cc=Callback(self.reset_window_height), cl=True,
             labelVisible=True, width=self._windowSize[0])
         self._uiTemplate.define(
             rowColumnLayout,
@@ -157,12 +161,13 @@ class RigTools(object):
 
     def create_rig_util_ui(self):
         with columnLayout(adjustableColumn=False):
-            with frameLayout(label='Tools:'):
-                with rowColumnLayout(rs=[(1,1),], numberOfColumns=1):
-                    button(
-                        label='Skin Weigth Setter',
-                        c=Callback(SkinWeightSetter.show))
-            with frameLayout(label='Create Control:'):
+            with frameLayout(label='Tools:',cl=False):
+                with columnLayout():
+                    with rowColumnLayout(rs=[(1,1),], numberOfColumns=1):
+                        button(
+                            label='Skin Weigth Setter',
+                            c=Callback(SkinWeightSetter.show))
+            with frameLayout(label='Create Control:',cl=False):
                 with columnLayout():
                     center_text = ul.partial(text, align='center')
                     button(
@@ -202,7 +207,7 @@ class RigTools(object):
                             cl2=('left', 'right'),
                             co2=(80, 10),
                             cw2=(70, 110),
-                            label='Hair System:', text='')
+                            label='Hair System:', text='hairSystem1')
                         button(
                             label='Get',
                             h=20,
@@ -614,7 +619,9 @@ class SkinWeightSetter(object):
                 self.ui['skinType'].setSelect(skinTypeVal)
         except:
             pass
-            
+        if not sel:
+            self.ui['messageLine'].setLabel('')
+
     def set_weight_threshold(self, *args):
         self.weight_threshold = (args[0], args[1])
 
@@ -700,112 +707,186 @@ class SkinWeightSetter(object):
         if window('SkinWeightSetterUI', ex=True):
             deleteUI('SkinWeightSetterUI', window=True)
             windowPref('SkinWeightSetterUI', remove=True)
-        window('SkinWeightSetterUI', t="Skin Weight Setter",
-               rtf=True, sizeable=False)
-        frameLayout(label='Set Weight Tool',width=200)
-        columnLayout(adjustableColumn=1)
-        self.ui['skinType'] = optionMenu(label='Skin Type:', changeCommand=self.set_skin_type)
-        menuItem(label='Classis')
-        menuItem(label='Dual')
-        menuItem(label='Blend')
-        # setParent('..')
-        separator(height=10)
-        rowColumnLayout(
-            numberOfColumns=2,
-            columnWidth=[(1, 320), (2, 120)])
-        self.skin_weight_theshold = floatFieldGrp(
-            numberOfFields=2,
-            label='Weight Threshold:',
-            value1=self.weight_threshold[0], value2=self.weight_threshold[1],
-            cc=self.set_weight_threshold)
-        button(
-            label='Select Vertices',
-            annotation='Select Skin Vertex with weight within threshold',
-            c=Callback(self.select_skin_vertex))
-        setParent('..')
-        separator(height=10)
-        rowColumnLayout(
-            numberOfColumns=3,
-            columnWidth=[(1, 140), (2, 80)])
-        text(label='Option: ', align='right')
-        checkBox(
-            label='Normalize', annotation='if Normalize is uncheck, set all selected joint weight the same',
-            value=self.normalize, cc=self.set_normalize_state)
-        checkBox(
-            label='Hierachy', annotation='if Hierachy is check, set weight value for child Joint',
-            value=self.hierachy, cc=self.set_hierachy_state)
-        setParent('..')
-        self.skin_weight_slider_ui = floatSliderButtonGrp(
-            label='Skin Weight: ',
-            annotation='Click "Set" to set skin weight or use loop button to turn on interactive mode',
-            field=True, precision=2, value=self.weight_value, minValue=0.0, maxValue=1.0, cc=self.set_weight,
-            buttonLabel='Set', bc=Callback(self.apply_weight),
-            image='playbackLoopingContinuous.png', sbc=self.set_interactive_state)
-        separator(height=5, style='none')
-        gridLayout(numberOfColumns=self.weight_tick, cellWidthHeight=(95, 30))
-        weight_value = 1.0 / (self.weight_tick - 1)
-        for i in range(self.weight_tick):
-            button(
-                label=str(weight_value * i),
-                annotation='Set skin weight to %04.2f' % (weight_value * i),
-                c=Callback(self.set_weight, weight_value * i))
-        setParent('..')
-        separator(height=10)
-        self.dual_weight_slider_ui = floatSliderButtonGrp(
-            label='Dual Quarternion Weight: ',
-            annotation='Click "Set" to set skin weight or use loop button to turn on interactive mode',
-            field=True, precision=2, value=self.dual_weight_value, minValue=0.0, maxValue=1.0, cc=self.set_dual_weight,
-            buttonLabel='Set', bc=Callback(self.apply_dual_weight),
-            image='playbackLoopingContinuous.png', sbc=self.set_dual_interactive_state)
-        separator(height=5, style='none')
-        gridLayout(numberOfColumns=self.weight_tick, cellWidthHeight=(95, 30))
-        for i in range(self.weight_tick):
-            button(
-                label=str(weight_value * i),
-                annotation='Set dual quaternion weight to %04.2f' % (weight_value * i),
-                c=Callback(self.set_dual_weight, weight_value * i))
-        setParent('..')
-        self.ui['dualInfo'] = text(label='',align='left')
-        separator(height=10, style='none')
-        rowColumnLayout(
-            numberOfColumns=4,
-            columnWidth=[(1,100),])
-        button(
-            label = 'Freeze Skin Joint',
-            annotation='Freeze transform for joint connect to Skin Cluster',
-            c = Callback(
-                ul.do_function_on()(ru.freeze_skin_joint)))
-        button(
-            label = 'Freeze Skin Joint Chain',
-            annotation='Freeze transform for joint Chain connect to Skin Cluster',
-            c = Callback(
-                ul.do_function_on()(ru.freeze_skin_joint),hi=True))
-        #setParent('..')
-        button(
-            label = 'Transfer Weight',
-            annotation='*Select 2 bone*. Transfer skin weight from one bone to another',
-            c = Callback(
-                ul.do_function_on('double')(ru.move_skin_weight)))
-        button(
-            label = 'Transfer Weight Chain',
-            annotation='*Select 2 bone root*. Transfer skin weight from one bone Chain to another',
-            c = Callback(
-                ul.do_function_on('double')(ru.move_skin_weight),hi=True))
-        #setParent('..')
-        setParent('..')
-        frameLayout(label='Status')
-        columnLayout(adjustableColumn=1)
-        rowColumnLayout(
-            numberOfColumns=2,
-            columnWidth=[(1,100), (2, 300)])
-        text(label='Current Selection:',align='left')
-        self.ui['messageLine'] = text(label='',align='left')
-        setParent('..')
-        separator(height=10, style='none')
-        self.ui['helpLine'] = helpLine(annotation='copyright 2017 by Nguyen Phi Hung')
-        setParent('..')
-        setParent('..')
-        showWindow()
+        with window(
+                'SkinWeightSetterUI',
+                t="Skin Weight Setter",
+                rtf=True):
+            with frameLayout(
+                label='Set Weight Tool',
+                borderVisible=True):
+                with columnLayout(adjustableColumn=1):
+                    self.ui['skinType'] = optionMenu(
+                        label='Skin Type:',
+                        changeCommand=self.set_skin_type)
+                    with self.ui['skinType']:
+                        menuItem(label='Classis')
+                        menuItem(label='Dual')
+                        menuItem(label='Blend')
+                    separator(height=10)
+
+                    with rowColumnLayout(
+                        numberOfColumns=2,
+                        columnWidth=[(1, 320), (2, 120)]):
+                        self.skin_weight_theshold = floatFieldGrp(
+                            numberOfFields=2,
+                            label='Weight Threshold:',
+                            value1=self.weight_threshold[0], value2=self.weight_threshold[1],
+                            cc=self.set_weight_threshold)
+                        button(
+                            label='Select Vertices',
+                            annotation='Select Skin Vertex with weight within threshold',
+                            c=Callback(self.select_skin_vertex))
+                    separator(height=10)
+                with columnLayout(
+                    adjustableColumn=1):
+                    with rowColumnLayout(
+                        numberOfColumns=3,
+                        columnWidth=[(1, 140), (2, 80)]):
+                        text(label='Option: ', align='right')
+                        checkBox(
+                            label='Normalize',
+                            annotation='if Normalize is uncheck, set all selected joint weight the same',
+                            value=self.normalize,
+                            cc=self.set_normalize_state)
+                        checkBox(
+                            label='Hierachy',
+                            annotation='if Hierachy is check, set weight value for child Joint',
+                            value=self.hierachy,
+                            cc=self.set_hierachy_state)
+                    self.skin_weight_slider_ui = floatSliderButtonGrp(
+                        label='Skin Weight: ',
+                        annotation='Click "Set" to set skin weight or use loop button to turn on interactive mode',
+                        field=True, precision=2,
+                        value=self.weight_value,
+                        minValue=0.0, maxValue=1.0,
+                        cc=self.set_weight,
+                        buttonLabel='Set',
+                        bc=Callback(self.apply_weight),
+                        image='playbackLoopingContinuous.png',
+                        sbc=self.set_interactive_state)
+                    separator(height=5, style='none')
+                with columnLayout(adjustableColumn=1):
+                    with gridLayout(
+                        numberOfColumns=self.weight_tick,
+                        cellWidthHeight=(95, 30)):
+                        weight_value = 1.0 / (self.weight_tick - 1)
+                        for i in range(self.weight_tick):
+                            button(
+                                label=str(weight_value * i),
+                                annotation='Set skin weight to %04.2f' % (
+                                    weight_value * i),
+                                c=Callback(
+                                    self.set_weight, weight_value * i))
+                    separator(height=10)
+
+                    self.dual_weight_slider_ui = floatSliderButtonGrp(
+                        label='Dual Quarternion Weight: ',
+                        annotation='Click "Set" to set skin weight or use loop button to turn on interactive mode',
+                        field=True, precision=2,
+                        value=self.dual_weight_value,
+                        minValue=0.0, maxValue=1.0,
+                        cc=self.set_dual_weight,
+                        buttonLabel='Set',
+                        bc=Callback(self.apply_dual_weight),
+                        image='playbackLoopingContinuous.png',
+                        sbc=self.set_dual_interactive_state)
+                    separator(height=5, style='none')
+
+                    with gridLayout(
+                        numberOfColumns=self.weight_tick,
+                        cellWidthHeight=(95, 30)):
+                        for i in range(self.weight_tick):
+                            button(
+                                label=str(weight_value * i),
+                                annotation='Set dual quaternion weight to %04.2f' % (weight_value * i),
+                                c=Callback(
+                                    self.set_dual_weight, weight_value * i))
+                        self.ui['dualInfo']=text(label='',align='left')
+                    #separator(height=5, style='none')
+
+            with frameLayout(label='Utils',borderVisible=True):
+                with columnLayout():
+                    text(label='Bone Naming Tool:')
+                    with rowColumnLayout(
+                        numberOfColumns=6,
+                        columnWidth=[
+                            (1,150),
+                            (2,80),
+                            (3,50),
+                            (4,50),
+                            (5,50),
+                            (6,50)]):
+                        self.ui['renameBone']=[]
+                        self.ui['renameBone'].append(textField())
+                        self.ui['renameBone'].append(optionMenu())
+                        with self.ui['renameBone'][1]:
+                            menuItem(label='Front')
+                            menuItem(label='Left')
+                            menuItem(label='Right')
+                            menuItem(label='Center')
+                            menuItem(label='Back')
+                            menuItem(label='Middle')
+                        self.ui['renameBone'].append(intField(value=0,max=24))
+                        self.ui['renameBone'].append(intField(value=1))
+                        self.ui['renameBone'].append(textField(text='bon'))
+                        button(
+                            label='Rename',
+                            c=lambda x:ul.do_function_on('set')(
+                                    ru.rename_bone_Chain)(
+                                        self.ui['renameBone'][0].getText()+self.ui['renameBone'][1].getValue(),
+                                        self.ui['renameBone'][2].getValue(),
+                                        self.ui['renameBone'][3].getValue(),
+                                        self.ui['renameBone'][4].getText(),
+                                    ))
+
+                with rowColumnLayout(
+                    numberOfColumns=4,
+                    columnWidth=[(1,100),]):
+                    button(
+                        label='Freeze Skin Joint',
+                        annotation='Freeze transform for joint connect to Skin Cluster',
+                        c=Callback(
+                            ul.do_function_on()(
+                                ru.freeze_skin_joint)))
+                    button(
+                        label = 'Freeze Skin Joint Chain',
+                        annotation='Freeze transform for joint Chain connect to Skin Cluster',
+                        c = Callback(
+                            ul.do_function_on()(
+                                ru.freeze_skin_joint),
+                            hi=True))
+                    button(
+                        label = 'Transfer Weight',
+                        annotation='*Select 2 bone*. Transfer skin weight from one bone to another',
+                        c=Callback(
+                            ul.do_function_on('double')(
+                                ru.move_skin_weight)))
+                    button(
+                        label = 'Transfer Weight Chain',
+                        annotation='*Select 2 bone root*. Transfer skin weight from one bone Chain to another',
+                        c = Callback(
+                            ul.do_function_on('double')(
+                                ru.move_skin_weight),
+                            hi=True))
+                    button(
+                        label = 'Reset BindPose',
+                        annotation='Reset skin bind pose',
+                        c = Callback(
+                            ru.reset_bindPose_all))
+                separator(height=10, style='none')
+
+            with frameLayout(label='Status',borderVisible=True):
+                with columnLayout(adjustableColumn=1):
+                    with rowColumnLayout(
+                        numberOfColumns=2,
+                        columnWidth=[(1,100), (2, 300)]):
+                        text(label='Current Selection:',align='left')
+                        self.ui['messageLine'] = text(
+                            label='',
+                            align='left')
+                    separator(height=10, style='none')
+                    self.ui['helpLine'] = helpLine(
+                        annotation='copyright 2017 by Nguyen Phi Hung')
         self.autoUpdateUI()
 
     @classmethod

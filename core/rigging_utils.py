@@ -11,6 +11,7 @@ import general_utils as ul
 import pymel.core as pm
 import rig_class as rcl
 import math
+from string import ascii_uppercase as alphabet
 import logging
 import copy
 import maya.mel as mm
@@ -396,6 +397,8 @@ def dup_bone_chain(boneRoot,suffix='dup'):
     while True:
         bone = boneChain.next()
         dupBone= pm.duplicate(bone,po=True,rr=True)[0]
+        #dupBone = pm.nt.Joint()
+        #xformTo(dupBone, bone)
         dupBone.rename(ul.get_name(bone)+'_%s'%suffix)
         if newChain:
             dupBone.setParent(newChain[-1])
@@ -406,7 +409,7 @@ def dup_bone_chain(boneRoot,suffix='dup'):
             break
     return newChain
     
-def create_long_hair(boneRoot, hairSystem=''):
+def create_long_hair(boneRoot, hairSystem='', circle=True):
     dynamicBones = dup_bone_chain(boneRoot, suffix='dynamic')
     boneGp = create_parent(boneRoot)
     dupBoneGp = create_parent(dynamicBones[0])
@@ -430,23 +433,26 @@ def create_long_hair(boneRoot, hairSystem=''):
     ikhandle, ikeffector, ikcurve = pm.ikHandle(
         sj=dynamicBones[0], ee=dynamicBones[-1], solver='ikSplineSolver')
     ikhandle.setParent(dupBoneGp)
+    ikcurve.rename(ul.get_name(boneRoot).replace('bon','ikCurve'))
     hairSystem = make_curve_dynamic(ikcurve, hairSystem=hairSystem)
     dynamicCurve, follicle, hairSys = [i for i in hairSystem]
     dynamicCurve.worldSpace[0] >> ikhandle.inCurve
     controls = create_parent_control(boneRoot, parent='')
-    for control in controls:
-        tempShape = createPinCircle(
-            control.name(),
-            axis='YZ',
-            radius=2,
-            length=0)
-        ul.parent_shape(tempShape, control)
-        #pm.delete(tempShape)
+    if circle:
+        for control in controls:
+            tempShape = createPinCircle(
+                control.name(),
+                axis='YZ',
+                radius=2,
+                length=0)
+            ul.parent_shape(tempShape, control)
+            #pm.delete(tempShape)
     controlGp = create_parent(controls[0].getParent())
     controlGp = controlGp.rename(controlGp.name().split('_')[0]+'_root_ctlGp')
     controlRoot = createPinCircle(controlGp.name(),axis='YZ',radius=3,length=0)
     xformTo(controlRoot, controlGp)
     controlRoot.setParent(controlGp)
+    dupBoneGp.setParent(controlGp)
     focGp = follicle.getParent().getParent()
     follicle.getParent().setParent(controlRoot)
     pm.delete(focGp)
@@ -462,7 +468,11 @@ def create_long_hair(boneRoot, hairSystem=''):
         'tx','ty','tz',
         'sx','sy','sz',]:
         controlRoot.setAttr(atr, lock=True, keyable=False, channelBox=False)
-    hairMiscGp = pm.group([dupBoneGp,hairSys.getParent(),dynamicCurve.getParent().getParent()], name='hairSystem_miscGp')
+    if not pm.objExists('hairSystem_miscGp'):
+        hairMiscGp = pm.group([hairSys.getParent(),dynamicCurve.getParent().getParent()], name='hairSystem_miscGp')
+    else:
+        hairMiscGp = pm.PyNode("hairSystem_miscGp")
+        dynamicCurve.getParent().getParent().setParent(hairMiscGp)
     if pm.objExists('ctlGp'):
         controlGp.setParent('ctlGp')
     else:
@@ -1187,6 +1197,22 @@ def mirror_joint_tranform(bone, translate=False, rotate=True, **kwargs):
                      ch=kwargs['ch'] if kwargs.has_key('ch') else False,
                      co=not kwargs['ch'] if kwargs.has_key('ch') else True)
 
+def rename_bone_Chain(boneRoots, newName, startcollumn=0, startNum=1, suffix='bon'):
+    for id, boneRoot in enumerate(boneRoots):
+        boneChain = ul.iter_hierachy(boneRoot)
+        i = startNum
+        collumnName = alphabet[startcollumn+id]
+        while True:
+            bone = boneChain.next()
+            bone.rename('{}{}{:02d}_{}'.format(
+                newName,
+                collumnName,
+                i,
+                suffix))
+            i += 1
+            if not bone.getChildren(type='joint'):
+                break
+
 def get_opposite_joint(bone, select=False, opBoneOnly=True, customPrefix=None):
     "get opposite Bone"
     mirrorPrefixes_list = [
@@ -1211,13 +1237,7 @@ def get_opposite_joint(bone, select=False, opBoneOnly=True, customPrefix=None):
                 print opBoneName
                 return opBone
 
-def reset_bindPose(joint_root):
-    joint_childs = joint_root.listRelatives(type=pm.nt.Joint, ad=True)
-    for joint in joint_childs:
-        if joint.rotate.get() != pm.dt.Vector(0, 0, 0):
-            # print type(joint.rotate.get())
-            joint.jointOrient.set(joint.rotate.get())
-            joint.rotate.set(pm.dt.Vector(0, 0, 0))
+def reset_bindPose_all():
     newbp = pm.dagPose(bp=True, save=True)
     bindPoses = pm.ls(type=pm.nt.DagPose)
     for bp in bindPoses:
@@ -1225,6 +1245,15 @@ def reset_bindPose(joint_root):
             pm.delete(bp)
     print "All bindPose has been reseted to %s" % newbp
     return newbp
+
+def reset_bindPose_root(joint_root):
+    joint_childs = joint_root.listRelatives(type=pm.nt.Joint, ad=True)
+    for joint in joint_childs:
+        if joint.rotate.get() != pm.dt.Vector(0, 0, 0):
+            # print type(joint.rotate.get())
+            joint.jointOrient.set(joint.rotate.get())
+            joint.rotate.set(pm.dt.Vector(0, 0, 0))
+    reset_bindPose_all()
 
 def assign_curve_to_hair(abc_curve,hair_system="",preserve=False):
     '''assign Alembic curve Shape or tranform contain multi curve Shape to hairSystem'''
@@ -1255,8 +1284,9 @@ def create_hair_system(name=''):
 
 def make_curve_dynamic(inputcurve, hairSystem=''):
     if hairSystem and pm.objExists(hairSystem):
-        if isinstance(pm.PyNode(hairSystem)):
-            hairSys = pm.PyNode(hairSystem)
+        allHairSys = pm.ls(type='hairSystem')
+        if pm.PyNode(hairSystem).getShape() in allHairSys:
+            hairSys = pm.PyNode(hairSystem).getShape()
     if 'hairSys' not in locals():
         if hairSystem:
             hairSys = create_hair_system(name=hairSystem)[0]
@@ -1267,11 +1297,20 @@ def make_curve_dynamic(inputcurve, hairSystem=''):
                 hairSys = create_hair_system()[0]
     hair_id = len(hairSys.inputHair.listConnections())
     outputcurve = pm.duplicate(inputcurve,name=inputcurve.name()+'_dynamic',rr=1)[0]
-    outputcurveGp = pm.nt.Transform(name=inputcurve.name()+'_outputCurveGp')
-    outputcurve.setParent(outputcurveGp)
-    pm.makeIdentity(outputcurve,apply=True)
+    #outputcurveGp = pm.nt.Transform(name=inputcurve.name()+'_outputCurveGp')
+    #outputcurve.duplicate()
+    #outputcurve.setParent(outputcurveGp)
+    #pm.makeIdentity(outputcurve,apply=True)
     outputcurve_shape = outputcurve.getShape()
     follicle  = pm.nt.Follicle()
+    inputcurve_shape = inputcurve.getShape()
+    inputcurve_shape.local >> follicle.startPosition
+    inputcurve.worldMatrix >> follicle.startPositionMatrix
+    follicle.outHair >> hairSys.inputHair[hair_id]
+    hairSys.outputHair[hair_id] >> follicle.currentPosition
+    pm.refresh()
+    follicle.outCurve >> outputcurve_shape.create
+    pm.refresh()
     follicle.startDirection.set(1)
     follicle.restPose.set(1)
     follicle.fixedSegmentLength.set(1)
@@ -1279,9 +1318,4 @@ def make_curve_dynamic(inputcurve, hairSystem=''):
     follicleGp = pm.nt.Transform(name=inputcurve.name()+'_follicleGp')
     follicle.getParent().setParent(follicleGp)
     inputcurve.setParent(follicle.getParent())
-    inputcurve_shape = inputcurve.getShape()
-    inputcurve_shape.worldSpace[0] >> follicle.startPosition
-    follicle.outCurve >> outputcurve_shape.create
-    follicle.outHair >> hairSys.inputHair[hair_id]
-    hairSys.outputHair[hair_id] >> follicle.currentPosition
     return (outputcurve_shape, follicle, hairSys)

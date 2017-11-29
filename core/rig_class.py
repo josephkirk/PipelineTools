@@ -1074,9 +1074,14 @@ class ControlObject(object):
                                self._uiElement['ctlOption'].getValueArray4()):
             self._uiOption[name] = value
 
+    def reset_window_height(self):
+        #self._window.setSizeable(True)
+        self._window.setResizeToFitChildren(True)
+        #self._window.setSizeable(False)
+
     def _showUI(self, parent=None):
         self._uiName = 'CreateControlUI'
-        self._windowSize = (250, 100)
+        self._windowSize = (250, 10)
         if pm.window(self._uiName + 'Window', ex=True):
             pm.deleteUI(self._uiName + 'Window', window=True)
             pm.windowPref(self._uiName + 'Window', remove=True)
@@ -1085,7 +1090,7 @@ class ControlObject(object):
         else:
             self._window = pm.window(
                 self._uiName + 'Window', title=self._uiName,
-                rtf=True, widthHeight=self._windowSize, sizeable=True)
+                rtf=True, widthHeight=self._windowSize)
         self._uiTemplate = pm.uiTemplate('CreateControlUITemplace', force=True)
         self._uiTemplate.define(pm.button, width=5, height=40, align='left')
         self._uiTemplate.define(pm.columnLayout, adjustableColumn=1, w=10)
@@ -1165,3 +1170,5 @@ class ControlObject(object):
                         pm.menuItem(label='Change Current Select', c=ul.do_function_on()(self.changeControlShape))
                         pm.menuItem(label='Set Color Select', c=ul.do_function_on()(self.setColor))
         self._getUIValue()
+        self.reset_window_height()
+        #self._window.setHeight(10)
