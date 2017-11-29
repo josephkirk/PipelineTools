@@ -398,8 +398,8 @@ def dup_bone_chain(boneRoot,suffix='dup'):
     while True:
         bone = boneChain.next()
         dupBone= pm.duplicate(bone,po=True,rr=True)[0]
-        #dupBone = pm.nt.Joint()
-        #xformTo(dupBone, bone)
+        # dupBone = pm.nt.Joint()
+        # xformTo(dupBone, bone)
         dupBone.rename(ul.get_name(bone)+'_%s'%suffix)
         if newChain:
             dupBone.setParent(newChain[-1])
@@ -448,12 +448,15 @@ def create_long_hair(boneRoot, hairSystem='', circle=True):
                 length=0)
             ul.parent_shape(tempShape, control)
             #pm.delete(tempShape)
+    boneRoot = controls[0].outputs(type='joint')[0]
+    loc = connect_with_loc(controls[0], boneRoot, all=True)[0]
     controlGp = create_parent(controls[0].getParent())
     controlGp = controlGp.rename(controlGp.name().split('_')[0]+'_root_ctlGp')
     controlRoot = createPinCircle(controlGp.name(),axis='YZ',radius=3,length=0)
     xformTo(controlRoot, controlGp)
     controlRoot.setParent(controlGp)
-    dupBoneGp.setParent(controlGp)
+    loc.getParent().setParent(controlGp)
+    dupBoneGp.setParent(controlRoot)
     focGp = follicle.getParent().getParent()
     follicle.getParent().setParent(controlRoot)
     pm.delete(focGp)
@@ -470,10 +473,10 @@ def create_long_hair(boneRoot, hairSystem='', circle=True):
         'sx','sy','sz',]:
         controlRoot.setAttr(atr, lock=True, keyable=False, channelBox=False)
     if not pm.objExists('hairSystem_miscGp'):
-        hairMiscGp = pm.group([hairSys.getParent(),dynamicCurve.getParent().getParent()], name='hairSystem_miscGp')
-    else:
-        hairMiscGp = pm.PyNode("hairSystem_miscGp")
-        dynamicCurve.getParent().getParent().setParent(hairMiscGp)
+        hairMiscGp = pm.nt.Transform(name='hairSystem_miscGp')
+    hairMiscGp = pm.PyNode("hairSystem_miscGp")
+    hairSys.getParent().setParent(hairMiscGp)
+    dynamicCurve.getParent().getParent().setParent(hairMiscGp)
     if pm.objExists('ctlGp'):
         controlGp.setParent('ctlGp')
     else:
@@ -1303,25 +1306,27 @@ def make_curve_dynamic(inputcurve, hairSystem=''):
                 hairSys = create_hair_system()[0]
     hair_id = len(hairSys.inputHair.listConnections())
     outputcurve = pm.duplicate(inputcurve,name=inputcurve.name()+'_dynamic',rr=1)[0]
-    #outputcurveGp = pm.nt.Transform(name=inputcurve.name()+'_outputCurveGp')
+    outputcurveGp = pm.nt.Transform(name=inputcurve.name()+'_outputCurveGp')
     #outputcurve.duplicate()
-    #outputcurve.setParent(outputcurveGp)
-    #pm.makeIdentity(outputcurve,apply=True)
+    outputcurve.setParent(outputcurveGp)
+    pm.makeIdentity(outputcurve,apply=True)
     outputcurve_shape = outputcurve.getShape()
     follicle  = pm.nt.Follicle()
+    #pm.refresh()
     inputcurve_shape = inputcurve.getShape()
     inputcurve_shape.local >> follicle.startPosition
     inputcurve.worldMatrix >> follicle.startPositionMatrix
     follicle.outHair >> hairSys.inputHair[hair_id]
     hairSys.outputHair[hair_id] >> follicle.currentPosition
-    pm.refresh()
+    #pm.refresh()
     follicle.outCurve >> outputcurve_shape.create
-    pm.refresh()
+    #pm.refresh()
     follicle.startDirection.set(1)
     follicle.restPose.set(1)
-    follicle.fixedSegmentLength.set(1)
-    follicle.segmentLength.set(5)
+    #follicle.fixedSegmentLength.set(1)
+    #follicle.segmentLength.set(5)
     follicleGp = pm.nt.Transform(name=inputcurve.name()+'_follicleGp')
     follicle.getParent().setParent(follicleGp)
     inputcurve.setParent(follicle.getParent())
+    pm.refresh()
     return (outputcurve_shape, follicle, hairSys)
