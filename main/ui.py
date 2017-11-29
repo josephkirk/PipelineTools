@@ -827,7 +827,7 @@ class SkinWeightSetter(object):
                             menuItem(label='Back')
                             menuItem(label='Middle')
                             menuItem(label='')
-                        self.ui['renameBone'].append(intField(value=0,max=24))
+                        self.ui['renameBone'].append(intField(value=0))
                         self.ui['renameBone'].append(intField(value=1))
                         self.ui['renameBone'].append(textField(text='bon'))
                         button(

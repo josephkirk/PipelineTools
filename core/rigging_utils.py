@@ -12,6 +12,7 @@ import pymel.core as pm
 import rig_class as rcl
 import math
 from string import ascii_uppercase as alphabet
+from itertools import product
 import logging
 import copy
 import maya.mel as mm
@@ -1198,10 +1199,14 @@ def mirror_joint_tranform(bone, translate=False, rotate=True, **kwargs):
                      co=not kwargs['ch'] if kwargs.has_key('ch') else True)
 
 def rename_bone_Chain(boneRoots, newName, startcollumn=0, startNum=1, suffix='bon'):
+    collumNames = alphabet.extend(
+        [''.join(list(i)) for i in list(
+            itertools.product(alphabet, repeat=2))])
     for id, boneRoot in enumerate(boneRoots):
         boneChain = ul.iter_hierachy(boneRoot)
         i = startNum
-        collumnName = alphabet[startcollumn+id]
+        assert ((startcollumn+id)>len(collumNames)), 'Maximum Bone Collumn reach, maximum: %d'%len(collumNames)
+        collumnName = collumNames[startcollumn+id]
         while True:
             bone = boneChain.next()
             bone.rename('{}{}{:02d}_{}'.format(
