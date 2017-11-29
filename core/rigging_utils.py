@@ -1199,13 +1199,14 @@ def mirror_joint_tranform(bone, translate=False, rotate=True, **kwargs):
                      co=not kwargs['ch'] if kwargs.has_key('ch') else True)
 
 def rename_bone_Chain(boneRoots, newName, startcollumn=0, startNum=1, suffix='bon'):
-    collumNames = alphabet.extend(
+    collumNames = list(alphabet)
+    collumNames.extend(
         [''.join(list(i)) for i in list(
-            itertools.product(alphabet, repeat=2))])
+            product(alphabet, repeat=2))])
     for id, boneRoot in enumerate(boneRoots):
         boneChain = ul.iter_hierachy(boneRoot)
         i = startNum
-        assert ((startcollumn+id)>len(collumNames)), 'Maximum Bone Collumn reach, maximum: %d'%len(collumNames)
+        assert ((startcollumn+id)<len(collumNames)), 'Maximum Bone Collumn reach, maximum: %d'%len(collumNames)
         collumnName = collumNames[startcollumn+id]
         while True:
             bone = boneChain.next()
