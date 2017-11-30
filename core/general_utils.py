@@ -542,8 +542,11 @@ def convert_edge_to_curve(edge):
 
 def reset_transform(ob):
     for atr in ['translate', 'rotate', 'scale']:
-        reset_value = [0,0,0] if atr is not 'scale' else [1,1,1]
-        ob.attr(atr).set(reset_value)
+        try:
+            reset_value = [0,0,0] if atr is not 'scale' else [1,1,1]
+            ob.attr(atr).set(reset_value)
+        except RuntimeError as why:
+            log.warning(why)
 
 def set_Vray_material(mat,mat_type='dielectric',**kwargs):
     '''set Material Attribute'''
