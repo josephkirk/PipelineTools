@@ -17,8 +17,8 @@ core._reload()
 ul = core.ul
 ru = core.rul
 rcl = core.rcl
-###Global Var
-###Function
+# Global Var
+# Function
 def batch_export_cam():
     '''Export all Baked Cam to Fbx Files'''
     Filters = "Maya Files (*.ma *.mb);;Maya ASCII (*.ma);;Maya Binary (*.mb);;All Files (*.*)"
@@ -36,6 +36,7 @@ def batch_export_cam():
         cm.file(f=True, new=True)
         mm.eval("paneLayout -e -m true $gMainPane")
 
+# UI Class
 class RigTools(object):
     def __init__(self):
         self._name = 'Rig Tools'
@@ -207,7 +208,7 @@ class RigTools(object):
                             cl2=('left', 'right'),
                             co2=(80, 10),
                             cw2=(70, 110),
-                            label='Hair System:', text='hairSystem1')
+                            label='Hair System:', text='%s_hairSystem'%ul.get_character_infos()[1])
                         button(
                             label='Get',
                             h=20,
@@ -247,35 +248,26 @@ class RigTools(object):
                     button(
                         label='Tag as controller',
                         c=Callback(
-                            ul.do_function_on()(ru.add_control_tag)))
+                            ul.do_function_on()(ru.control_tagging)))
                     button(
                         label='Remove tag',
                         c=Callback(
-                            ru.remove_control_tag))
-                    with popupMenu(b=3):
-                        menuItem(
-                            label='Remove all tag',
-                            c=Callback(
-                                ru.remove_control_tag,
-                                all=True))
-                    button(
-                        label='Parent controller',
-                        c=Callback(
-                            ul.do_function_on('singlelast')(ru.parent_control_tag)))
-                    with popupMenu(b=3):
-                        menuItem(
-                            label='Parent hierarchy',
-                            c=Callback(
-                                ul.do_function_on('set')(ru.parent_hierachy)))
-                        menuItem(
-                            label='Unparent controller',
-                            c=Callback(
-                                ul.do_function_on()(ru.unparent_control_tag)))
+                            ul.do_function_on()(ru.control_tagging),
+                            remove=True))
                     button(
                         label='Select all controllers',
                         c=Callback(
-                            ru.remove_control_tag,
-                            q=True,all=True))
+                            ru.remove_all_control_tags,
+                            select=True))
+                    with popupMenu(b=3):
+                        menuItem(
+                            label='Select controller meta',
+                            c=Callback(
+                                ru.select_controller_metanode))
+                    button(
+                        label='Remove all tag',
+                        c=Callback(
+                            ru.remove_all_control_tags))
                 button(
                         label='Reset all controllers transform',
                         c=Callback(
@@ -808,14 +800,11 @@ class SkinWeightSetter(object):
                 with columnLayout():
                     text(label='Bone Naming Tool:')
                     with rowColumnLayout(
-                        numberOfColumns=6,
+                        numberOfColumns=7,
                         columnWidth=[
                             (1,150),
-                            (2,80),
-                            (3,50),
-                            (4,50),
-                            (5,50),
-                            (6,50)]):
+                            (2,60),
+                            (3,40),]):
                         self.ui['renameBone']=[]
                         self.ui['renameBone'].append(textField())
                         self.ui['renameBone'].append(optionMenu())
@@ -839,10 +828,21 @@ class SkinWeightSetter(object):
                                         self.ui['renameBone'][3].getValue(),
                                         self.ui['renameBone'][4].getText(),
                                     ))
-
+                        button(
+                            label='Label',
+                            annotation='use joint name as label',
+                            c=Callback(
+                                ul.do_function_on()(
+                                    ru.label_joint)))
                 with rowColumnLayout(
                     numberOfColumns=4,
                     columnWidth=[(1,100),]):
+                    button(
+                        label='add Influence',
+                        annotation='add influence to skin mesh',
+                        c=Callback(
+                            ul.do_function_on('singlelast')(
+                                ru.add_joint_influence)))
                     button(
                         label='Freeze Skin Joint',
                         annotation='Freeze transform for joint connect to Skin Cluster',
@@ -860,7 +860,7 @@ class SkinWeightSetter(object):
                         label = 'Transfer Weight',
                         annotation='*Select 2 bone*. Transfer skin weight from one bone to another',
                         c=Callback(
-                            ul.do_function_on('double')(
+                            ul.do_function_on('singlelast')(
                                 ru.move_skin_weight)))
                     button(
                         label = 'Transfer Weight Chain',

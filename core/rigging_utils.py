@@ -247,53 +247,49 @@ def connect_visibility(ob, target, attrname='Vis'):
     pm.addAttr(ob, ln=attrname,at='bool',k=1)
     ob.attr(attrname) >> target.visibility
 
-def add_control_tag(ob):
-    pm.controller(ob)
-
-def remove_control_tag(q=False, all=False):
-    if all:
-        allControls = pm.controller(q=1, ac=1)
-        if q:
-            pm.select(allControls,r=True)
-            return
-        for control in allControls:
-            control_tag = pm.controller(control, q=1)
-            pm.delete(control_tag)
-        return
+def get_controller_metanode(metaname='ControllersMeta'):
+    if pm.ls(metaname):
+        controlmeta = meta.MetaClass(metaname)
     else:
-        for ob in pm.selected():
-            control_tag = pm.controller(ob, q=1)
-            if control_tag:
-                pm.delete(control_tag)
+        controlmeta = meta.MetaClass(name=metaname)
+    return controlmeta
 
-def unparent_control_tag(ob):
-    if not pm.controller(ob,q=1, ic=1):
-        log.error('%s is not a controller'%ob)
-        return
-    pm.controller(ob,unp=True)
+def select_controller_metanode(metaname='ControllersMeta'):
+    if pm.ls(metaname):
+        pm.select(metaname)
+    else:
+        log.error('No controller metaNode exists')
 
-def parent_hierachy(obs):
-    obList = obs
-    while obList:
-        obChild = obList.pop()
-        if obList:
-            parent_control_tag(obChild, obList[-1])
+def control_tagging(ob, metaname='ControllersMeta', remove=False):
+    controlmeta = get_controller_metanode(metaname)
+    if ob.name() not in controlmeta.getChildren() and not remove:
+        if ob.inputs(type='network'):
+            control_tagging(
+                ob,
+                metaname=ob.inputs(type='network')[0].name(),
+                remove=True)
+        controlmeta.connectChildren(ob.name(), attr='controls',srcSimple=True)
+    else:
+        if remove:
+            controlmeta.disconnectChild(ob.name(), deleteDestPlug=True)
+    return controlmeta
 
-def parent_control_tag(ob, target):
-    if not pm.controller(ob,q=1, ic=1):
-        add_control_tag(ob)
-    if not pm.controller(target, q=1, ic=1):
-        add_control_tag(target)
-    unparent_control_tag(ob)
-    pm.controller(ob,target, p=1)
+def remove_all_control_tags(metaname='ControllersMeta', select=False):
+    if pm.ls(metaname):
+        controlmeta = meta.MetaClass(metaname)
+        controls = controlmeta.getChildren()
+        if select:
+            pm.select(controls)
+            return controls
+        for control in controls:
+            controlmeta.disconnectChild(control, deleteDestPlug=True)
+        return controls
 
-def reset_controller_transform(*args):
-    controllers = pm.ls(type='controller')
+def reset_controller_transform():
+    controlmeta = get_controller_metanode()
+    controllers = controlmeta.getChildren()
     for controller in controllers:
-        if controller.controllerObject.get():
-            ul.reset_transform(controller.controllerObject.get())
-        else:
-            pm.delete(controller)
+        ul.reset_transform(pm.PyNode(controller))
 
 def create_prop_control(bone, parent='ctlGp', **kws):
     if 'gp' not in bone.name().lower():
@@ -308,7 +304,7 @@ def create_prop_control(bone, parent='ctlGp', **kws):
     ctlGp = create_parent(ctl)
     xformTo(ctlGp, bone)
     connect_transform(ctl, bone, all=True)
-    add_control_tag(ctl)
+    control_tagging(ctl, metaname='PropControlsSet_MetaNode')
     if parent:
         if pm.objExists(parent):
             ctlGp.setParent(parent)
@@ -324,7 +320,7 @@ def create_free_control(bone, parent='ctlGp', **kws):
     ctlGp = create_parent(ctl)
     xformTo(ctlGp, bone)
     connect_transform(ctl, bone, all=True)
-    add_control_tag(ctl)
+    control_tagging(ctl, metaname='FreeControlsSet_MetaNode')
     if parent:
         if pm.objExists(parent):
           ctlGp.setParent(parent)
@@ -350,10 +346,9 @@ def create_parent_control(boneRoot, parent='ctlGp', **kws):
             ctlGp = create_parent(ctl)
             ctlGp.rename(name + '_ctlGp')
             match_transform(ctlGp,bone)
-            add_control_tag(ctl)
+            control_tagging(ctl, metaname='ParentControlsSet_MetaNode')
             if ctls:
                 ctlGp.setParent(ctls[-1])
-                parent_control_tag(ctl,ctls[-1])
             ctls.append(ctl)
             connect_transform(ctl, bone, all=True )
         if not bone.getChildren(type='joint'):
@@ -465,6 +460,7 @@ def create_long_hair(boneRoot, hairSystem='', circle=True):
     hairSysMeta.connectChildren([c.name() for c in controls], 'boneControl', 'hairSystem', srcSimple=True)
     for ctl, dynamicBone in zip(controls[1:], dynamicBones[1:]):
         offset = create_parent(ctl)
+        control_tagging(ctl, metaname='DynamicHairControlsSet_MetaNode')
         loc = connect_with_loc(dynamicBone, offset,all=True)[0]
         loc.getParent().setParent(dynamicBone.getParent())
     #lock ctlRoot translate and scale
@@ -486,8 +482,7 @@ def create_long_hair(boneRoot, hairSystem='', circle=True):
     else:
         pm.group(hairMiscGp,name='miscGp')
     # add ctl tag
-    add_control_tag(controlRoot)
-    parent_control_tag(controls[0], controlRoot)
+    control_tagging(controlRoot, metaname='DynamicHairControlsSet_MetaNode')
 
 def create_short_hair(bone, parent='miscGp'):
     bones = get_current_chain(bone)
@@ -514,7 +509,8 @@ def create_short_hair(bone, parent='miscGp'):
     curveSkin = pm.skinCluster(sbonetop,mbonetop,ebonetop,ikcurve)
     ectl = create_free_control(ebonetop)
     mctl = create_free_control(mbonetop)
-    parent_control_tag(mctl,ectl)
+    control_tagging(ectl, metaname='ShortHairControlsSet_MetaNode')
+    control_tagging(mctl, metaname='ShortHairControlsSet_MetaNode')
     pm.select([mbonetop.getParent(), ebonetop.getParent(), ikcurve, ikhandle], r=True)
     ikmiscGp = pm.group(name=bonename+'_ikMisc')
     pm.group([ectl.getParent(), mctl.getParent()], name=bonename+'_ctlGp')
@@ -541,6 +537,7 @@ def create_short_hair_simple(bone, parent='miscGp'):
         b.radius.set(b.radius.get()*1.2)
     curveSkin = pm.skinCluster(sbonetop ,ebonetop,ikcurve)
     create_free_control(ebonetop)
+    control_tagging(ectl, metaname='ShortHairControlsSet_MetaNode')
     pm.select([ebonetop.getParent(), ikcurve, ikhandle], r=True)
     #sbonetop.setParent(bone.getParent())
     ikmiscGp = pm.group(name=bonename+'_ikMisc')
@@ -907,6 +904,13 @@ def move_skin_weight(bon, targetBon, hi=False, reset_bindPose=False):
                 not targetBon.getChildren(type='joint'):
                 break
 
+def add_joint_influence(bone, skinmesh):
+    skin_cluster = ul.get_skin_cluster(skinmesh)
+    assert(skin_cluster), '%s have no skin bind'%skinmesh  
+    inflList = skin_cluster.getInfluence()
+    if bone not in inflList:
+        skin_cluster.addInfluence(bone, wt=0)
+
 def skin_weight_filter(ob, joint, min=0.0, max=0.1, select=False):
     '''return vertex with weight less than theshold'''
     skin_cluster = ul.get_skin_cluster(ob)
@@ -1136,7 +1140,7 @@ def label_joint(
                     break
             if wildcard:
                 break
-        print wildcard
+        #print wildcard
         label_name = ob.name().replace(wildcard, '')
         if '|' in label_name:
             label_name = label_name.split('|')[-1]
@@ -1145,9 +1149,9 @@ def label_joint(
                 label_name = label_name.replace(prefix, '')
         ob.otherType.set(label_name)
         ob.side.set(sideid)
-        print 'set {} joint label to {}'.format(ob, label_name)
+        log.info('set {} joint label to {}'.format(ob, label_name))
     except AttributeError as why:
-        print ob, why
+        log.error(why)
 
 def create_roll_joint(oldJoint):
     newJoint = pm.duplicate(oldJoint, rr=1, po=1)[0]

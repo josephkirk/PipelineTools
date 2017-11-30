@@ -350,9 +350,19 @@ def do_function_on(
     return decorator
 
 #### utility function
+def get_character_infos():
+    scene_name = pm.sceneName()
+    while True:
+        scene_name = scene_name.parent
+        if scene_name.parent.endswith('CH'):
+            break
+    ch_infos = scene_name.basename().split('_')
+    return ch_infos
+
 def get_name(ob):
     assert hasattr(ob,'name'), 'Cannot get name for %s'%ob
     return ob.name().split('|')[-1] 
+
 def recurse_hierachy(root, callback,*args,**kwargs):
     '''Recursive do a callback function'''
     def recurse(node):
