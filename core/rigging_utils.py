@@ -65,7 +65,7 @@ def get_current_chain(ob):
         childsCount = len(ob.getChildren(type='joint'))
         assert (childsCount==1), 'Joint split to {} at {}'.format(childsCount,ob)
         boneChains.append(ob)
-        ob=ob.getChildren(type='joint')[0]
+        ob = ob.getChildren(type='joint')[0]
     else:
         boneChains.append(ob)
     return boneChains
@@ -291,7 +291,7 @@ def reset_controller_transform():
     for controller in controllers:
         ul.reset_transform(pm.PyNode(controller))
 
-def create_prop_control(bone, parent='ctlGp', **kws):
+def create_prop_control(bone, parent='ctlGp',useLoc=False, **kws):
     if 'gp' not in bone.name().lower():
         bonGp = create_parent(bone)
     ctlname = ul.get_name(bone).replace('bon', 'ctl')
@@ -303,7 +303,10 @@ def create_prop_control(bone, parent='ctlGp', **kws):
             length=0)
     ctlGp = create_parent(ctl)
     xformTo(ctlGp, bone)
-    connect_transform(ctl, bone, all=True)
+    if useLoc:
+        connect_with_loc(ctl, bone, all=True)
+    else:
+        connect_transform(ctl, bone, all=True)
     control_tagging(ctl, metaname='PropControlsSet_MetaNode')
     if parent:
         if pm.objExists(parent):
@@ -312,14 +315,17 @@ def create_prop_control(bone, parent='ctlGp', **kws):
             pm.group(ctlGp,name=parent)
     return ctl
 
-def create_free_control(bone, parent='ctlGp', **kws):
+def create_free_control(bone, parent='ctlGp',useLoc=False, **kws):
     if 'gp' not in bone.name().lower():
         bonGp = create_parent(bone)
     ctlname = bone.name().replace('bon', 'ctl')
     ctl = createPinCircle(ctlname,length=0,sphere=True)
     ctlGp = create_parent(ctl)
     xformTo(ctlGp, bone)
-    connect_transform(ctl, bone, all=True)
+    if useLoc:
+        connect_with_loc(ctl, bone, all=True)
+    else:
+        connect_transform(ctl, bone, all=True)
     control_tagging(ctl, metaname='FreeControlsSet_MetaNode')
     if parent:
         if pm.objExists(parent):
@@ -328,12 +334,10 @@ def create_free_control(bone, parent='ctlGp', **kws):
             pm.group(ctlGp,name=parent)
     return ctl
 
-def create_parent_control(boneRoot, parent='ctlGp', **kws):
+def create_parent_control(boneRoot, parent='ctlGp',useLoc=False, **kws):
     ctls = []
     boneChain = ul.iter_hierachy(boneRoot)
-    while True:
-        bone = boneChain.next()
-        print bone
+    for bon in iter(boneChain):
         if 'offset' not in ul.get_name(bone):
             if bone.getParent():
                 if 'offset' not in ul.get_name(bone.getParent()):
@@ -351,9 +355,11 @@ def create_parent_control(boneRoot, parent='ctlGp', **kws):
                 ctlGp.setParent(ctls[-1])
             ctls.append(ctl)
             connect_transform(ctl, bone, all=True )
-        if not bone.getChildren(type='joint'):
-            break
     ctlRoot = ctls[0].getParent()
+    if useLoc:
+        connect_with_loc(
+            ctls[0],
+            ctls[0].outputs(type='joint')[0], all=True)
     if parent:
         if pm.objExists(parent):
             ctlRoot.setParent(parent)
@@ -390,8 +396,7 @@ def aim_setup(ctl,loc):
 def dup_bone_chain(boneRoot,suffix='dup'):
     boneChain = ul.iter_hierachy(boneRoot)
     newChain = []
-    while True:
-        bone = boneChain.next()
+    for bone in iter(boneChain):
         dupBone= pm.duplicate(bone,po=True,rr=True)[0]
         # dupBone = pm.nt.Joint()
         # xformTo(dupBone, bone)
@@ -401,8 +406,6 @@ def dup_bone_chain(boneRoot,suffix='dup'):
         else:
             dupBone.setParent(None)
         newChain.append(dupBone)
-        if not bone.getChildren(type='joint'):
-            break
     return newChain
     
 def create_long_hair(boneRoot, hairSystem='', circle=True):
@@ -411,9 +414,7 @@ def create_long_hair(boneRoot, hairSystem='', circle=True):
     dupBoneGp = create_parent(dynamicBones[0])
     bonChain = ul.iter_hierachy(boneRoot)
     dupBoneChain = ul.iter_hierachy(dynamicBones[0])
-    while True:
-        bone = bonChain.next()
-        dupbone = dupBoneChain.next()
+    for bone, dupbone in zip(iter(bonChain),iter(dupBoneChain)):
         tranformBool = any([0<bone.attr(atr).get() or bone.attr(atr).get()>0 for atr in ['rx','ry','rz', 'sx','sy','sz']])
         if tranformBool:
             log.info('%s contain value in rotate or scale. Commencing freeze transform'%bone)
@@ -424,8 +425,6 @@ def create_long_hair(boneRoot, hairSystem='', circle=True):
         offsetMeta.connectChild(dupbone.name(), 'dynamicBone', 'drivenBone')
         #pm.orientConstraint(dupbone, offsetBone, mo=True)
         connect_transform(dupbone, offsetBone,rotate=True)
-        if not bone.getChildren(type='joint'):
-            break
     ikhandle, ikeffector, ikcurve = pm.ikHandle(
         sj=dynamicBones[0], ee=dynamicBones[-1], solver='ikSplineSolver')
     ikhandle.setParent(dupBoneGp)
@@ -433,7 +432,7 @@ def create_long_hair(boneRoot, hairSystem='', circle=True):
     hairSystem = make_curve_dynamic(ikcurve, hairSystem=hairSystem)
     dynamicCurve, follicle, hairSys = [i for i in hairSystem]
     dynamicCurve.worldSpace[0] >> ikhandle.inCurve
-    controls = create_parent_control(boneRoot, parent='')
+    controls = create_parent_control(boneRoot, parent='',useLoc=True)
     if circle:
         for control in controls:
             tempShape = createPinCircle(
@@ -443,8 +442,6 @@ def create_long_hair(boneRoot, hairSystem='', circle=True):
                 length=0)
             ul.parent_shape(tempShape, control)
             #pm.delete(tempShape)
-    boneRoot = controls[0].outputs(type='joint')[0]
-    loc = connect_with_loc(controls[0], boneRoot, all=True)[0]
     controlGp = create_parent(controls[0].getParent())
     controlGp = controlGp.rename(controlGp.name().split('_')[0]+'_root_ctlGp')
     controlRoot = createPinCircle(controlGp.name(),axis='YZ',radius=3,length=0)
@@ -507,8 +504,8 @@ def create_short_hair(bone, parent='miscGp'):
         b.setParent(None)
         b.radius.set(b.radius.get()*1.2)
     curveSkin = pm.skinCluster(sbonetop,mbonetop,ebonetop,ikcurve)
-    ectl = create_free_control(ebonetop)
-    mctl = create_free_control(mbonetop)
+    ectl = create_free_control(ebonetop,useLoc=True)
+    mctl = create_free_control(mbonetop,useLoc=True)
     control_tagging(ectl, metaname='ShortHairControlsSet_MetaNode')
     control_tagging(mctl, metaname='ShortHairControlsSet_MetaNode')
     pm.select([mbonetop.getParent(), ebonetop.getParent(), ikcurve, ikhandle], r=True)
@@ -534,11 +531,12 @@ def create_short_hair_simple(bone, parent='miscGp'):
     sbonetop, ebonetop = [
         dup_bone(b,name = b.name()+'_'+suffix) for b,suffix in zip([startBone,endBone],['root','top'])]
     for b in [sbonetop, ebonetop]:
-        b.radius.set(b.radius.get()*1.2)
+        b.radius.set(b.radius.get()*1.1)
+        b.setParent(bone.getParent().getParent())
     curveSkin = pm.skinCluster(sbonetop ,ebonetop,ikcurve)
-    create_free_control(ebonetop)
+    create_free_control(ebonetop, useLoc=True)
     control_tagging(ectl, metaname='ShortHairControlsSet_MetaNode')
-    pm.select([ebonetop.getParent(), ikcurve, ikhandle], r=True)
+    pm.select([ikcurve, ikhandle], r=True)
     #sbonetop.setParent(bone.getParent())
     ikmiscGp = pm.group(name=bonename+'_ikMisc')
     if parent:
@@ -855,11 +853,9 @@ def freeze_skin_joint(bon, hi=False):
     if hi:
         bonChain = ul.iter_hierachy(bon)
         bonChain.next()
-        while True:
+        for bon in iter(bonChain):
             bon = bonChain.next()
             freeze_skin_joint(bon)
-            if not bon.getChildren(type='joint'):
-                    break
 
 def move_skin_weight(bon, targetBon, hi=False, reset_bindPose=False):
     skinClusters = bon.outputs(type='skinCluster')
@@ -896,13 +892,8 @@ def move_skin_weight(bon, targetBon, hi=False, reset_bindPose=False):
     if hi:
         bonChain = ul.iter_hierachy(bon)
         targetBonChain = ul.iter_hierachy(targetBon)
-        while True:
-            bon = bonChain.next()
-            targetBon = targetBonChain.next()
+        for bon,targetBon in zip(iter(bonChain), iter(targetBonChain)):
             move_skin_weight(bon,targetBon)
-            if not bon.getChildren(type='joint') or \
-                not targetBon.getChildren(type='joint'):
-                break
 
 def add_joint_influence(bone, skinmesh):
     skin_cluster = ul.get_skin_cluster(skinmesh)
@@ -1215,16 +1206,13 @@ def rename_bone_Chain(boneRoots, newName, startcollumn=0, startNum=1, suffix='bo
         i = startNum
         assert ((startcollumn+id)<len(collumNames)), 'Maximum Bone Collumn reach, maximum: %d'%len(collumNames)
         collumnName = collumNames[startcollumn+id]
-        while True:
-            bone = boneChain.next()
+        for bone in iter(boneChain):
             bone.rename('{}{}{:02d}_{}'.format(
                 newName,
                 collumnName,
                 i,
                 suffix))
             i += 1
-            if not bone.getChildren(type='joint'):
-                break
 
 def get_opposite_joint(bone, select=False, opBoneOnly=True, customPrefix=None):
     "get opposite Bone"
