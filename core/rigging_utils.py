@@ -337,7 +337,7 @@ def create_free_control(bone, parent='ctlGp',useLoc=False, **kws):
 def create_parent_control(boneRoot, parent='ctlGp',useLoc=False, **kws):
     ctls = []
     boneChain = ul.iter_hierachy(boneRoot)
-    for bon in iter(boneChain):
+    for bone in iter(boneChain):
         if 'offset' not in ul.get_name(bone):
             if bone.getParent():
                 if 'offset' not in ul.get_name(bone.getParent()):
@@ -447,7 +447,7 @@ def create_long_hair(boneRoot, hairSystem='', circle=True):
     controlRoot = createPinCircle(controlGp.name(),axis='YZ',radius=3,length=0)
     xformTo(controlRoot, controlGp)
     controlRoot.setParent(controlGp)
-    loc.getParent().setParent(controlGp)
+    #loc.getParent().setParent(controlGp)
     dupBoneGp.setParent(controlRoot)
     focGp = follicle.getParent().getParent()
     follicle.getParent().setParent(controlRoot)

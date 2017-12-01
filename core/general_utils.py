@@ -353,6 +353,8 @@ def do_function_on(
 def get_character_infos():
     scene_name = pm.sceneName()
     while True:
+        if scene_name == scene_name.parent:
+            break
         scene_name = scene_name.parent
         if scene_name.parent.endswith('CH'):
             break

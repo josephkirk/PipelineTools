@@ -100,9 +100,6 @@ class RigTools(object):
             self._uiElement['Hair System'].setText(hairSystem[-1].getParent().name())
             select(hairSystem[-1])
 
-    def ui_update(self):
-        self._callback = scriptJob( e=["SceneOpened", self._ui_update], parent=self._windowname)
-
     def _delete_tracknode(self):
         scriptJob(ka=True)
         self.nodetrack.endTrack()
@@ -180,7 +177,7 @@ class RigTools(object):
                             collapsable=False,
                             borderVisible=False):
                         with rowColumnLayout( rs=[(1,1),], numberOfColumns=2):
-                            text(label='Connect usin Loc: ', align='right')
+                            text(label='Connect using Loc: ', align='right')
                             self._uiElement['useLoc'] = checkBox(label='')
                     separator()
                     center_text(label='Create Single Bone Control:')
@@ -219,7 +216,7 @@ class RigTools(object):
                             cl2=('left', 'right'),
                             co2=(80, 10),
                             cw2=(70, 110),
-                            label='Hair System:', text='%s_hairSystem'%ul.get_character_infos()[1])
+                            label='Hair System:', text='%s_hairSystem'%ul.get_character_infos()[-1])
                         button(
                             label='Get',
                             h=20,
