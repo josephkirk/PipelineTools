@@ -175,18 +175,28 @@ class RigTools(object):
                         label='Create Control Shape',
                         c=Callback(rcl.ControlObject.show))
                     separator()
+                    with frameLayout(
+                            label='Options:',
+                            collapsable=False,
+                            borderVisible=False):
+                        with rowColumnLayout( rs=[(1,1),], numberOfColumns=2):
+                            text(label='Connect usin Loc: ', align='right')
+                            self._uiElement['useLoc'] = checkBox(label='')
+                    separator()
                     center_text(label='Create Single Bone Control:')
                     with rowColumnLayout( rs=[(1,1),], numberOfColumns=2):
                         button(
                             label='Prop Control',
                             c=Callback(
                                 self.do_func,
-                                ru.create_prop_control))
+                                ru.create_prop_control,
+                                useLoc=self._uiElement['useLoc'].getValue))
                         button(
                             label='Free Control',
                             c=Callback(
                                 self.do_func,
-                                ru.create_free_control))
+                                ru.create_free_control,
+                                useLoc=self._uiElement['useLoc'].getValue))
                     separator()
                     center_text(label='Create Bone Chain Controls:')
                     with rowColumnLayout(rs=[(1,1),], numberOfColumns=2):
@@ -194,7 +204,8 @@ class RigTools(object):
                             label='Parent Control',
                             c=Callback(
                                 self.do_func,
-                                ru.create_parent_control))
+                                ru.create_parent_control,
+                                useLoc=self._uiElement['useLoc'].getValue))
                         button(
                             label='Aim Setup',
                             c=Callback(
@@ -408,7 +419,7 @@ class RigTools(object):
             with self.template:
                 self.create_rig_util_ui()
         self.nodetrack.startTrack()
-        self.ui_update()
+        #self.ui_update()
 
     @classmethod
     def show(cls):
