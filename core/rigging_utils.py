@@ -534,7 +534,7 @@ def create_short_hair_simple(bone, parent='miscGp'):
         b.radius.set(b.radius.get()*1.1)
         b.setParent(bone.getParent().getParent())
     curveSkin = pm.skinCluster(sbonetop ,ebonetop,ikcurve)
-    create_free_control(ebonetop, useLoc=True)
+    ectl = create_free_control(ebonetop, useLoc=True)
     control_tagging(ectl, metaname='ShortHairControlsSet_MetaNode')
     pm.select([ikcurve, ikhandle], r=True)
     #sbonetop.setParent(bone.getParent())
