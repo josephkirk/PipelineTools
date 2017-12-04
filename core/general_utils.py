@@ -49,31 +49,38 @@ def clean_userprefs(path_to_userprefs=prefpath, searchlines=[1000, 3000]):
     '''
     Disappearing shelf buttons in Maya 2016 and up?
 
-    One reason for disappearing shelf buttons its entry exists multiple times in userPrefs.mel
-    what confuses the loading. There might be a shelf entry with ; at the end and one without. Both valid
+    One reason for disappearing shelf buttons its entry exists
+    multiple times in userPrefs.mel what confuses the loading.
+    There might be a shelf entry with ;
+    at the end and one without. Both valid
     but overwriting each other.
 
-    This script runs through the .mel file and tries to remove any line with duplicates.
-    Besides "shelfName" entries that are filtered are associated "shelfVersion", "shelfFile", "shelfLoad and
-    "shelfAlign" entries
+    This script runs through the .mel file and
+    tries to remove any line with duplicates.
+    Besides "shelfName" entries that are filtered are associated
+    "shelfVersion", "shelfFile", "shelfLoad and "shelfAlign" entries
     Args:
-        path_to_userprefs: file path to userPrefs.mel. Windows usually "C:/Users/username/Documents/maya/20xx/prefs/userPrefs.mel"
+        path_to_userprefs: file path to userPrefs.mel.
+        Windows usually "C:/Users/username/Documents/maya/20xx/prefs/userPrefs.mel"
         searchlines:
             Limited to speed up script, if you need to modify will depend on  our file.
-            Start and end line of  to process for search process. You can search "shelf" in userPrefs.mel
+            Start and end line of  to process for search process.
+            You can search "shelf" in userPrefs.mel
             in text editor to find the section
     Usage:
         Run the script, then reopen shelf (or restart maya)
 
         import mo_Utils.mo_fileSystemUtils as sysUtils
-        sysUtils.clean_disappearingshelf_userprefs("C:/Users/monika/Documents/maya/2017/prefs/userPrefs.mel", searchlines=[2000, 2200])
+        sysUtils.clean_disappearingshelf_userprefs(
+            "C:/Users/monika/Documents/maya/2017/prefs/userPrefs.mel", searchlines=[2000, 2200])
 
     Returns: Error warning text or True
 
     '''
     if not os.path.isfile(path_to_userprefs):
         return pm.warning('Error. File not found (%s). Windows usually '
-                          '"C:/Users/username/Documents/maya/20xx/prefs/userPrefs.mel"'%path_to_userprefs)
+                          '"C:/Users/username/Documents/maya/20xx/prefs/userPrefs.mel"'% \
+                          path_to_userprefs)
 
     # start and end line to filter search
     startline = searchlines[0]
@@ -82,7 +89,7 @@ def clean_userprefs(path_to_userprefs=prefpath, searchlines=[1000, 3000]):
     filepathnew = filepath.split('.mel')[0] + "New.mel"
 
     # this can be turned off for debugging and will leave the filtered file as filepath New.mel
-    replace_with_backup=True
+    replace_with_backup = True
 
     # create new file
     open(filepathnew, "w+").close()
@@ -198,7 +205,7 @@ def error_alert(func):
             raise
     return wrapper
 
-def do_function_on( mode='single', type_filter=[] ):
+def do_function_on(mode='single', type_filter=[]):
     """Decorator that feed function with selected object
     :Parameter mode: String indicate how to feed selecled object
         to function. Valid String value is:
@@ -218,7 +225,7 @@ def do_function_on( mode='single', type_filter=[] ):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            # test keywords for 'selected' or 'sl' keyword 
+            # test keywords for 'selected' or 'sl' keyword
             try:
                 selected = kwargs['selected']
             except KeyError:
@@ -247,7 +254,7 @@ def do_function_on( mode='single', type_filter=[] ):
             def do_single():
                 '''Feed function with each valid selected object and yield result'''
                 for ob in object_list:
-                    yield func(ob,*args, **kwargs)
+                    yield func(ob, *args, **kwargs)
 
             def do_hierachy():
                 '''Feed function with each object and all its childrens and yield result'''
@@ -260,17 +267,20 @@ def do_function_on( mode='single', type_filter=[] ):
             def do_one_to_one():
                 '''Feed function with a set of first and last selected object and yield result'''
                 if len(object_list)%2:
-                    msg = 'Selected Object Count should be power of 2.\nCurrent Object Counts:%d'%(len(object_list))
+                    msg = 'Selected Object Count should be power of 2.\n \
+                           Current Object Counts:%d'%(len(object_list))
                     log.warning(msg)
                     raise RuntimeWarning(msg)
-                objects_set1 = [o for id,o in enumerate(object_list) if id%2]
-                objects_set2 = [o for id,o in enumerate(object_list) if not id%2]
-                for ob1, ob2 in zip( objects_set1, objects_set2 ):
-                    yield func( ob1, ob2, *args, **kwargs)
+                objects_set1 = [o for id, o in enumerate(object_list)
+                                if id%2]
+                objects_set2 = [o for id, o in enumerate(object_list)
+                                if not id%2]
+                for ob1, ob2 in zip(objects_set1, objects_set2):
+                    yield func(ob1, ob2, *args, **kwargs)
 
             def do_set():
                 '''Feed function directly with list of selected objects'''
-                return func(object_list,*args, **kwargs)
+                return func(object_list, *args, **kwargs)
 
             def do_to_last(singlelast=False):
                 '''Feed function list of selected objects before the last select object and
@@ -283,15 +293,16 @@ def do_function_on( mode='single', type_filter=[] ):
                 target = object_list[-1]
                 if singlelast:
                     for op in op_list:
-                        yield func(op, target,*args, **kwargs)
+                        yield func(op, target, *args, **kwargs)
                 else:
-                    yield func(op_list, target,*args, **kwargs)
+                    yield func(op_list, target, *args, **kwargs)
 
             def do_to_last_type():
                 '''like 'last' mode but last object must be a different type from other'''
                 if len(object_list) < 2 or len(type_filter) < 2:
-                    log.error('Select more than two objects of diffent type!')
-                    raise
+                    msg = 'Select more than two objects of diffent type!'
+                    log.error(msg)
+                    raise RuntimeWarning(msg)
                 source_type_set = [o for o in object_list if o.nodeType() !=  type_filter[-1]]
                 target_type_set = [o for o in object_list if o.nodeType() == type_filter[-1]]
                 return func(source_type_set, target_type_set,*args, **kwargs)

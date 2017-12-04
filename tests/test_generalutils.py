@@ -11,8 +11,8 @@ print '='*20, 'Initialize Finished ', '='*20, '\n'
 # Set up & tear down
 
 def setup():
-    print '\n'*2,'='*20, 'Set up new Scene', '='*20 
-    pm.newFile(f=True) 
+    print '\n'*2,'='*20, 'Set up new Scene', '='*20
+    pm.newFile(f=True)
 
 def teardown():
     pm.newFile(f=True)
@@ -221,16 +221,23 @@ class TestDecorator(unittest.TestCase):
         self.general_test(pm.ls(type='parentConstraint'),test_results)
     
     def test_do_function_on_lastType_mode(self):
-        def test_func(ob,target):
-            pc = pm.parentConstraint(target, ob)
+        def test_func(obs,targets):
+            for ob in obs:
+                pm.select(ob, r=True)
+                pm.select(target, add=True)
+                pc = pm.skinCluster()
             return pc
         try:
             pm.select(self.selected)
+            joints = []
+            for i in range(5):
+                joints.append(pm.joint(p=[0,i,0]))
+            pm.select(joints, add=True)
             test_results = self.test_func['lastType'](test_func)(sl=True)
         except TypeError as why:
             print 'do_function_on did not feed selected object to function'
             raise why
-        self.general_test(pm.ls(type='parentConstraint'),test_results)
+        self.general_test(pm.ls(type='skinCluster'),test_results)
 
 class TestUtility(unittest.TestCase):
     def test_iter_hierachy(self):
