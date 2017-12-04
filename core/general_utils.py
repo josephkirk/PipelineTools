@@ -1,12 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-"""
-written by Nguyen Phi Hung 2017
-email: josephkirk.art@gmail.com
-All code written by me unless specify
-"""
-
 import pymel.core as pm
 import pymel.util as pu
 import pymel.util.path as pp
@@ -14,8 +8,8 @@ import maya.cmds as cm
 import maya.mel as mm
 import shutil
 import os
+import types
 import random as rand
-import asset_class as asset
 from pymel.util.enum import Enum
 import maya.OpenMayaUI as OpenMayaUI
 from PySide2 import QtCore, QtWidgets
@@ -24,41 +18,23 @@ from functools import wraps, partial
 from time import sleep, time
 import logging
 from string import ascii_uppercase as alphabet
+
+# Logging initialize #
+
 logging.basicConfig()
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
-#reload(ac)
+# Global var #
 
-#global var
 prefpath = 'C:/Users/nphung/Documents/maya/2017/prefs/userPrefs.mel'
 
-#misc function
-def reloadTexture(udim=True):
+# Global misc function #
+
+def reload_texture(udim=True):
     mm.eval('AEReloadAllTextures;')
     if udim:
         mm.eval('generateAllUvTilePreviews;')
-
-def list_join(*args):
-    newList = []
-    for arg in args:
-        if type(arg) is not list:
-            arg = list(arg)
-        newList.extend(arg)
-    return newList
-
-def assert_key(key,message, **kws):
-    assert kws.has_key, message
-
-def assert_type(ob, typelist=[]):
-    assert(any([isinstance(ob, typ) for typ in typelist])),"Object %s does not match any in type:%s"%(ob, ",".join([str(t) for t in typelist]))
-    #return ''.join([ob,'match one of:',','.join(types)])
-
-#global misc function
-def offcastshadow(wc='*eyeref*'):
-    ob_list = pm.ls(wc,s=True)
-    for ob in ob_list:
-        eye.castsShadows.set(False)
 
 def get_maya_window():
     '''Return QMainWindow for the main maya window'''
@@ -187,10 +163,8 @@ def reset_floating_window():
             pm.windowPref(window, remove=True)
             print window, " reset"
 
-def add_suffix(ob, suff="_skinDeform"):
-    pm.rename(ob, ob.name()+str(suff))
+# Decorators #
 
-### decorator
 def timeit(func):
     """time a function"""
     @wraps(func)
@@ -221,109 +195,119 @@ def error_alert(func):
                 msg.append(str(why))
             msg = '\n'.join(msg)
             log.error(msg)
+            raise
     return wrapper
 
-
-def do_function_on(
-    mode='single',
-    type_filter=[],
-    return_list=True,
-    return_args=False):
-    """wrap a function to operate on
-    select object or object name string according to mode:
-    single, double, set, singlelast, last, doubleType"""
-
+def do_function_on( mode='single', type_filter=[] ):
+    """Decorator that feed function with selected object
+    :Parameter mode: String indicate how to feed selecled object
+        to function. Valid String value is:
+            'single': feed each selected object to function
+            'oneToOne': feed first and last selected to function
+            'hierachy': feed all children of selected object to function
+            'set': feed selected objects as a list to function
+            'singlelast': feed each selected object
+                that is not the last selected and
+                the last selected object to function
+            'last': feed a list of selected object
+                that is not the last selected and
+                the last selected object to function
+            'lastType': feed each member of 2 sets of different type
+            'multitype': feed list of object of different type
+    """
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            if ((kwargs.has_key('clearSelect') and kwargs['clearSelect'] == True) or
-                (kwargs.has_key('cl') and kwargs['cl'] == True)):
-                pm.select(cl=True)
+            # test keywords for 'selected' or 'sl' keyword 
+            try:
+                selected = kwargs['selected']
+            except KeyError:
                 try:
-                    del kwargs['clearSelect']
+                    selected = kwargs['sl']
+                except KeyError:
+                    # both 'selected' and 'sl' are not found in keyword
+                    return func(*args, **kwargs)
+            for k in ['selected', 'sl']:
+                try:
+                    del kwargs[k]
                 except:
                     pass
-                try:
-                    del kwargs['cl']
-                except:
-                    pass
-            nargs = []
-            for arg in args:
-                if any([isinstance(arg,t) for t in [list, tuple, set]]):
-                    nargs.extend(list(arg))
-                else:
-                    nargs.append(arg)
-            args=nargs
-            ########
-            #Extend Arguments with selection object
-            ########
-            sel=[]
-            for arg in args:
-                if isinstance(arg,str):
-                    arg = get_node(arg)
-                if isinstance(arg,pm.PyNode):
-                    sel.append(arg)
-                    args.pop()
-            sel.extend(pm.selected())
-            object_list = []
-            for ob in sel:
-                try:
-                    if type_filter:
-                        assert any([isinstance(ob,typ) for type in type_filter]), '{} not match type {}'.format(ob,str(type_filter))
-                except:
-                    log.debug('{} not match type {}'.format(ob,str(type_filter)))
-                    continue
-                if ob not in object_list:
-                    object_list.append(ob) ### search if arg is valid object
+            if not selected:
+                # if selected keyword are False
+                return func(*args, **kwargs)
+            # get selected object as PyNode
+            object_list = pm.selected(type=type_filter)
             if not object_list:
-                log.error('no object select')
-                #print sel
-                return
-            #print object_list
-            #print arg
+                log.error('No selected objects or type input in type_filter is unknown!')
+                raise
             ##########
             #Define function mode
             ##########
 
-            def do_single(): # do function for every object in object_list
-                #print object_list
+            def do_single():
+                '''Feed function with each valid selected object and yield result'''
                 for ob in object_list:
-                    #print ob
                     yield func(ob,*args, **kwargs)
 
-            def do_hierachy(): # do function for every object and childs in object_list
+            def do_hierachy():
+                '''Feed function with each object and all its childrens and yield result'''
                 for ob in object_list:
+                    print ob
                     for child in iter_hierachy(ob):
+                        print child
                         yield func(child, *args, **kwargs)
 
-            def do_double(): # do function for first in object_list to affect last
-                if len(object_list)>1:
-                    yield func(sel[0], sel[-1],*args, **kwargs)
+            def do_one_to_one():
+                '''Feed function with a set of first and last selected object and yield result'''
+                if len(object_list)%2:
+                    msg = 'Selected Object Count should be power of 2.\nCurrent Object Counts:%d'%(len(object_list))
+                    log.warning(msg)
+                    raise RuntimeWarning(msg)
+                objects_set1 = [o for id,o in enumerate(object_list) if id%2]
+                objects_set2 = [o for id,o in enumerate(object_list) if not id%2]
+                for ob1, ob2 in zip( objects_set1, objects_set2 ):
+                    yield func( ob1, ob2, *args, **kwargs)
 
-            def do_set(): # do function directly to object_list
+            def do_set():
+                '''Feed function directly with list of selected objects'''
                 return func(object_list,*args, **kwargs)
 
-            def do_last(singlelast=False): # set last object in object_list to affect others
-                if len(object_list)>1:
-                    op_list = object_list[:-1]
-                    target = object_list[-1]
-                    if singlelast is True:
-                        for op in op_list:
-                            yield func(op, target,*args, **kwargs)
-                    else:
-                        yield func(op_list, target,*args, **kwargs)
+            def do_to_last(singlelast=False):
+                '''Feed function list of selected objects before the last select object and
+                the last object'''
+                if len(object_list) < 2:
+                    msg = 'Select more than two objects!'
+                    log.error(msg)
+                    raise RuntimeWarning(msg)
+                op_list = object_list[:-1]
+                target = object_list[-1]
+                if singlelast:
+                    for op in op_list:
+                        yield func(op, target,*args, **kwargs)
+                else:
+                    yield func(op_list, target,*args, **kwargs)
 
-            def do_double_type(): # like 'last' mode but last object must be a different type from other
-                if len(object_list) > 1:
-                    object_type2 = pm.ls(
-                        object_list,
-                        type=type_filter[-1],
-                        orderedSelection=True)
-                    if object_type2:
-                        object_type1 = [
-                            object for object in pm.ls(object_list, type=type_filter[:-1])
-                            if isinstance(object, object_type2[0].__base__)]
-                        yield func(object_type1, object_type2,*args, **kwargs)
+            def do_to_last_type():
+                '''like 'last' mode but last object must be a different type from other'''
+                if len(object_list) < 2 or len(type_filter) < 2:
+                    log.error('Select more than two objects of diffent type!')
+                    raise
+                source_type_set = [o for o in object_list if o.nodeType() !=  type_filter[-1]]
+                target_type_set = [o for o in object_list if o.nodeType() == type_filter[-1]]
+                return func(source_type_set, target_type_set,*args, **kwargs)
+
+            def do_different_type():
+                '''like 'last' mode but last object must be a different type from other'''
+                if len(object_list) < 2 or len(type_filter) < 2:
+                    log.error('Select more than two objects of diffent type!')
+                    raise
+                obtype_list = []
+                for t in type_filter:
+                    obtype_list.append([o for o in object_list if o.nodeType() == t])
+                for ob_set in zip(*nargs):
+                    nargs = list(ob_set)
+                    nargs.append(args)
+                    yield func(*nargs, **kwargs)
             ########
             #Define function mode dict
             ########
@@ -331,40 +315,158 @@ def do_function_on(
                 'single':do_single,
                 'set':do_set,
                 'hierachy':do_hierachy,
-                'double': do_double,
-                'last': do_last,
-                'singlelast': partial(do_last, True),
-                'doubletype': do_double_type
+                'oneToOne': do_one_to_one,
+                'last': do_to_last,
+                'singleLast': partial(do_to_last, True),
+                'lastType': do_to_last_type,
+                'multitype': do_different_type,
             }
             ########
             #Return function result
             ########
-            with pm.UndoChunk():
-                result = function_mode[mode]()
-            if return_list and result:
-                result = [r for r in list(result) if r!=None]
-            if return_args:
-                return (object_list,result)
+            result = function_mode[mode]()
+            if isinstance(result, types.GeneratorType):
+                result = list(result)
+            log.debug('%s Wrap by do_function_on decorator and return %s'%(func.__name__,str(result)))
             return result
         return wrapper
     return decorator
 
-#### utility function
-def get_character_infos():
-    scene_name = pm.sceneName()
-    while True:
-        if scene_name == scene_name.parent:
-            break
-        scene_name = scene_name.parent
-        if scene_name.parent.endswith('CH'):
-            break
-    ch_infos = scene_name.basename().split('_')
-    return ch_infos
+# Utility functions #
+# --- Path --- #
 
+def send_current_file(
+    scene=True,
+    suffix='_vn',
+    lastest=True,
+    render=False,
+    tex=True,
+    extras=['psd','uv', 'zbr', 'pattern'],
+    version=1,
+    verbose=True):
+    src = pm.sceneName()
+    scene_src = src.dirname()
+    status = []
+    todayFolder = pm.date(f='YYMMDD')
+    if version>1:
+        todayFolder = "{}_{:02d}".format(todayFolder,int(version))
+    status.append('Send File to {}'.format(todayFolder))
+    scene_dest = pm.util.path(scene_src.replace('Works','to/{}/Works'.format(todayFolder))).truepath()
+    files = scene_src.files('*.mb')
+    files.extend(scene_src.files('*.ma'))
+    #print files
+    files.sort(key=lambda f:f.getmtime())
+    lastestfile = files[-1]
+    try:
+        status.append('Scene Sending status:')
+        if lastest:
+            src = lastestfile
+            status.append('send latest file')
+        dest = scene_dest.__div__(src.basename().replace(src.ext,'{}{}'.format(suffix, src.ext)))
+        if scene:
+            check_dir(dest)
+            pm.sysFile(src, copy=dest)
+            status.append("%s copy to %s" % (src,dest))
+        if render:
+            render_str = ['rend','Render','render','Rend']
+            rend_src = []
+            print src.dirname().dirs()
+            for test_str in render_str:
+                for dir in src.dirname().dirs():
+                    if test_str in dir.basename():
+                        print dir.basename()
+                        rend_src = dir
+                        break
+                break
+            if rend_src:
+                rend_dest = dest.dirname().__div__(test_str)
+                status.append(sys_cop(rend_src, rend_dest))
+    except (IOError, OSError, shutil.Error) as why:
+        msg = "Scene Copy Error\n{}".format(','.join(why))
+        status.append(msg)
+    if tex or extras:
+        if all([src.dirname().dirname().dirname().basename() != d for d in ['CH','BG','CP']]) and src.dirname().dirname().basename()!='CP':
+            scene_src = scene_src.dirname()
+            scene_dest = scene_dest.dirname()
+            print scene_src
+        tex_src = pm.util.path(scene_src.replace('scenes','sourceimages')).truepath()
+        tex_files = tex_src.files('*.jpg')
+        tex_extra = {}
+        for extra in extras:
+            tex_extra[extra] = tex_src.__div__(extra)
+        tex_dest = pm.util.path(scene_dest.replace('scenes','sourceimages'))
+        status.append('Texture Sending status:')
+        try:
+            if tex:
+                for tex_file in tex_files:
+                    src = tex_file
+                    dest = tex_dest.__div__(tex_file.basename())
+                    check_dir(dest)
+                    pm.sysFile(src, copy=dest)
+                    status.append("%s copy to %s" % (src,dest))
+            if extras:
+                for name, path in tex_extra.items():
+                    status.append('%s Sending status:'%name)
+                    dest = tex_dest.__div__(name)
+                    status.append(sys_cop(path,dest))
+        except (IOError, OSError, shutil.Error) as why:
+            msg = "Tex Copy Error:\n{}".format(','.join(why))
+            status.append(msg)
+    pm.informBox(title='Send File Status', message = '\n'.join(status))
+
+def check_dir(pa,force=True):
+    msg = []
+    if not os.path.exists(os.path.dirname(pa)):
+        os.makedirs(os.path.dirname(pa))
+        msg.append("create directory %s"%pa)
+    else:
+        if force:
+            if os.path.isdir(pa):
+                shutil.rmtree(os.path.dirname(pa))
+                os.makedirs(os.path.dirname(pa))
+                msg.append("forcing remove and create directory %s"%pa)
+            elif os.path.isfile(pa):
+                os.remove(pa)
+                msg.append("forcing remove %s"%pa)
+        else:
+            msg.append("%s exists"%pa)
+    return '\n'.join(msg)
+
+def sys_cop(src, dest):
+    check_dir(dest)
+    status =[]
+    try:
+        if os.path.isdir(src):
+            shutil.copytree(src,dest)
+            msg = "copying " + dest
+            status.append(msg)
+            for file in os.listdir(dest):
+                if os.path.isdir(src+"/"+file):
+                    msg = "%s folder Copied" % file
+                    status.append(msg)
+                else:
+                    msg = "%s file Copied" % file
+                    status.append(msg)
+        elif os.path.isfile(src):
+            shutil.copy(src,dest)
+            msg = "%s copied" % dest
+            status.append(msg)
+        else:
+            msg = "%s does not exist" % src
+            status.append(msg)
+    except (IOError,OSError,WindowsError) as why:
+        msg = 'Copy Error\n{} to {}\n{}'.format(src,dest,why)
+        status.append(msg)
+    return ','.join(status)
+
+# --- Query Infos --- #
+
+@error_alert
 def get_name(ob):
     assert hasattr(ob,'name'), 'Cannot get name for %s'%ob
     return ob.name().split('|')[-1] 
 
+@error_alert
 def recurse_hierachy(root, callback,*args,**kwargs):
     '''Recursive do a callback function'''
     def recurse(node):
@@ -373,6 +475,7 @@ def recurse_hierachy(root, callback,*args,**kwargs):
             recurse(child)
     recurse(root)
 
+#@error_alert
 def iter_hierachy(root):
     '''yield hierachy generator object with stack method'''
     stack = [root]
@@ -383,15 +486,13 @@ def iter_hierachy(root):
         yield node
         childs = node.getChildren( type='transform' )
         if len(childs) > 1:
-            print '\nsplit to %s, %s'%(len(childs),str(childs))
+            log.debug('\nsplit to %s, %s'%(len(childs),str(childs)))
             for child in childs:
                 subStack = iter_hierachy(child)
                 for subChild in subStack:
                     yield subChild
         else:
-            for child in childs:
-                stack.append( child )
-
+            stack.extend( childs )
 
 @error_alert
 def get_closest_component(ob, mesh_node, uv=True, pos=False):
@@ -499,6 +600,55 @@ def get_skin_cluster(ob):
         msg = 'Cannot get skinCluster from {}'.format(ob)
         return pm.error(msg)
 
+@error_alert
+def get_shape(ob):
+    '''return shape from ob, if cannot find raise error'''
+    try:
+        return ob.getShape()
+    except AttributeError:
+        try:
+            assert issubclass(ob.node().__class__, pm.nt.Shape)
+            return ob.node()
+        except AttributeError, AssertionError:
+            log.error('%s have no shape'%ob)
+            raise
+
+def get_pos_center_from_edge(edge):
+    if type(edge) == pm.general.MeshEdge:
+        t_node = edge.node()
+        verts_set= set()
+        edge_loop_list = pm.ls(pm.polySelect(t_node, edgeLoop=edge.currentItemIndex(), ns=True, ass=True))
+        for ed in edge_loop_list:
+            unpack_edges = [t_node.e[edg] for edg in ed.indices()]
+            for true_edge in unpack_edges:
+                for vert in true_edge.connectedVertices():
+                    verts_set.add(vert)
+        vert_pos = sum([v.getPosition() for v in list(verts_set)])/len(verts_set)
+        return vert_pos
+
+# --- Transformation and Shape --- #
+
+def rename( ob, prefix="", suffix="" , separator='_'):
+    try:
+        pm.PyNode(ob)
+    except pm.MayaNodeError as why:
+        if pm.ls(ob):
+            warning_msg = \
+                'Scenes contain %d with name %s'%(
+                     len(pm.ls(ob)), ob )
+            log.warning( [why, warning_msg] )
+            for o in pm.ls(ob):
+                try:
+                   o.rename(separator.join([prefix, ob, suffix]))
+                except AttributeError:
+                    log.error("Can't perform rename for %s"%o)
+                    raise
+
+def remove_number(string):
+    for index, character in enumerate(string):
+        if character.isdigit():
+            return (string[:index], int(string[index:] if string[index:].isdigit() else string[index:]))
+
 def convert_component(components_list, toVertex=True, toEdge=False, toFace=False):
     test_type = [o for o in components_list if type(o) is pm.nt.Transform]
 
@@ -514,43 +664,43 @@ def convert_component(components_list, toVertex=True, toEdge=False, toFace=False
     print converts
     return pm.ls(converts)
 
-def remove_number(string):
-    for index, character in enumerate(string):
-        if character.isdigit():
-            return (string[:index], int(string[index:] if string[index:].isdigit() else string[index:]))
+def convert_edge_to_curve(edge):
+    pm.polySelect(edge.node(), el=edge.currentItemIndex())
+    pm.polyToCurve(degree=1)
 
-def get_pos_center_from_edge(edge):
-    if type(edge) == pm.general.MeshEdge:
-        t_node = edge.node()
-        verts_set= set()
-        edge_loop_list = pm.ls(pm.polySelect(t_node, edgeLoop=edge.currentItemIndex(), ns=True, ass=True))
-        for ed in edge_loop_list:
-            unpack_edges = [t_node.e[edg] for edg in ed.indices()]
-            for true_edge in unpack_edges:
-                for vert in true_edge.connectedVertices():
-                    verts_set.add(vert)
-        vert_pos = sum([v.getPosition() for v in list(verts_set)])/len(verts_set)
-        return vert_pos
-
-def get_shape(ob):
-    '''return shape from ob, if cannot find raise error'''
-    if hasattr(ob, 'getShape'):
-        return ob.getShape()
-    else:
-        try:
-            if issubclass(ob.node().__class__, pm.nt.Shape):
-                return ob.node()
-        except:
-            print('object have no shape')
-
-###function
 def snap_nearest(ob, mesh_node):
     closest_component_pos = get_closest_component(ob, mesh_node, uv=False, pos=True)
     ob.setTranslation(closest_component_pos,'world')
 
-def convert_edge_to_curve(edge):
-    pm.polySelect(edge.node(), el=edge.currentItemIndex())
-    pm.polyToCurve(degree=1)
+def mirror_transform(obs, axis="x",xform=[0,4]):
+    if not obs:
+        print "no object to mirror"
+        return
+    axisDict = {
+        "x":('tx', 'ry', 'rz', 'sx'),
+        "y":('ty', 'rx', 'rz', 'sy'),
+        "z":('tz', 'rx', 'ry', 'sz')}
+    #print obs
+    if type(obs) != list:
+        obs = [obs]
+    for ob in obs:
+        if type(ob) == pm.nt.Transform:
+            for at in axisDict[axis][xform[0]:xform[1]]:
+                ob.attr(at).set(ob.attr(at).get()*-1)
+
+def lock_transform(
+        ob,
+        lock=True,
+        pivotToOrigin=True):
+    '''reset pivot to 0 and toggle transform lock'''
+    for at in ['translate','rotate','scale','visibility','tx','ty','tz','rx','ry','rz','sx','sy','sz']:
+        ob.attr(at).unlock()
+    if pivotToOrigin:
+        pm.makeIdentity(ob, apply=True)
+        pm.xform(ob,pivots=(0,0,0),ws=True,dph=True,ztp=True)
+    if lock is True:
+        for at in ['translate','rotate','scale']:
+            ob.attr(at).lock()
 
 def reset_transform(ob):
     for atr in ['translate', 'rotate', 'scale']:
@@ -559,80 +709,6 @@ def reset_transform(ob):
             ob.attr(atr).set(reset_value)
         except RuntimeError as why:
             log.warning(why)
-
-def set_Vray_material(mat,mat_type='dielectric',**kwargs):
-    '''set Material Attribute'''
-    if type(mat) == pm.nt.VRayMtl:
-        dielectric_setting = {
-            'brdfType':1,
-            'reflectionGlossiness':0.805,
-            'reflectionColorAmount':1,
-            'useFresnel':1,
-            'lockFresnelIORToRefractionIOR':1,
-            'bumpMapType':1,
-            'bumpMult':2.2
-        }
-        metal_setting = {
-            'brdfType':1,
-            'reflectionGlossiness':0.743,
-            'reflectionColorAmount':1,
-            'useFresnel':0,
-            'lockFresnelIORToRefractionIOR':1,
-            'bumpMapType':1,
-            'bumpMult':1.8
-        }
-        shader_type = {
-            'metal':metal_setting,
-            'dielectric':dielectric_setting
-        }
-        if shader_type.has_key(mat_type):
-            for attr,value in shader_type[mat_type].items():
-                mat.attr(attr).set(value)
-    for key,value in kwargs.items():
-        try:
-            mat.attr(key).set(value)
-        except (IOError, OSError, AttributeError) as why:
-            print why
-
-def exportCam():
-    '''export allBake Camera to FBX files'''
-    FBXSettings = [
-        "FBXExportBakeComplexAnimation -v true;"
-        "FBXExportCameras -v true;"
-        "FBXProperty Export|AdvOptGrp|UI|ShowWarningsManager -v false;"
-        "FBXProperty Export|AdvOptGrp|UI|GenerateLogData -v false;"
-    ]
-    for s in FBXSettings:
-        mm.eval(s)
-    excludedList = ['frontShape', 'sideShape', 'perspShape', 'topShape']
-    cams = [
-        (cam, pm.listTransforms(cam)[0])
-        for cam in pm.ls(type='camera') if str(cam.name()) not in excludedList]
-    scenePath = [str(i) for i in pm.sceneName().split("/")]
-    stripScenePath = scenePath[:-1]
-    sceneName = scenePath[-1]
-    print sceneName
-    filename = "_".join([sceneName[:-3], 'ConvertCam.fbx'])
-    stripScenePath.append(filename)
-    filePath = "/".join(stripScenePath)
-    for c in cams:
-        pm.select(c[1])
-        oldcam = c[1]
-        newcam = pm.duplicate(oldcam, rr=True)[0]
-        startFrame = int(pm.playbackOptions(q=True, minTime=True))
-        endFrame = int(pm.playbackOptions(q=True, maxTime=True))
-        pm.parent(newcam, w=True)
-        for la in pm.listAttr(newcam, l=True):
-            attrName = '.'.join([newcam.name(), str(la)])
-            pm.setAttr(attrName, l=False)
-        camconstraint = pm.parentConstraint(oldcam, newcam)
-        pm.bakeResults(newcam, at=('translate', 'rotate'), t=(startFrame, endFrame), sm=True)
-        pm.delete(camconstraint)
-        pm.select(newcam, r=True)
-        cc = 'FBXExport -f "%s" -s' % filePath
-        mm.eval(cc)
-
-#@error_alert
 
 def parent_shape(src, target, delete_src=True, delete_oldShape=True):
     '''parent shape from source to target'''
@@ -673,21 +749,7 @@ def detach_shape(ob, preserve=False):
             result.append(newTransform)
     return result
 
-def mirror_transform(obs, axis="x",xform=[0,4]):
-    if not obs:
-        print "no object to mirror"
-        return
-    axisDict = {
-        "x":('tx', 'ry', 'rz', 'sx'),
-        "y":('ty', 'rx', 'rz', 'sy'),
-        "z":('tz', 'rx', 'ry', 'sz')}
-    #print obs
-    if type(obs) != list:
-        obs = [obs]
-    for ob in obs:
-        if type(ob) == pm.nt.Transform:
-            for at in axisDict[axis][xform[0]:xform[1]]:
-                ob.attr(at).set(ob.attr(at).get()*-1)
+# --- Scenes Mangement --- #
 
 def transfer_material(obs, obSrc):
     try:
@@ -698,7 +760,6 @@ def transfer_material(obs, obSrc):
         for ob in obs:
             set_material(ob,obSrc_SG)
 
-#@do_function_on(mode='single')
 def set_material(ob, SG):
     if type(SG) == pm.nt.ShadingEngine:
         try:
@@ -707,20 +768,6 @@ def set_material(ob, SG):
             print "cannot apply %s to %s" % (SG.name(), ob.name())
     else:
         print "There is no %s" % SG.name()
-
-def lock_transform(
-    ob,
-    lock=True,
-    pivotToOrigin=True):
-    '''reset pivot to 0 and toggle transform lock'''
-    for at in ['translate','rotate','scale','visibility','tx','ty','tz','rx','ry','rz','sx','sy','sz']:
-        ob.attr(at).unlock()
-    if pivotToOrigin:
-        pm.makeIdentity(ob, apply=True)
-        pm.xform(ob,pivots=(0,0,0),ws=True,dph=True,ztp=True)
-    if lock is True:
-        for at in ['translate','rotate','scale']:
-            ob.attr(at).lock()
 
 def add_vray_opensubdiv(ob):
     '''add Vray OpenSubdiv attr to enable smooth mesh render'''
@@ -759,266 +806,6 @@ def find_instances(
     pm.select(instanceShapes,add=True)
     return instanceShapes
 
-def send_current_file(
-    scene=True,
-    suffix='_vn',
-    lastest=True,
-    render=False,
-    tex=True,
-    extras=['psd','uv', 'zbr', 'pattern'],
-    version=1,
-    verbose=True):
-    src = pm.sceneName()
-    scene_src = src.dirname()
-    status = []
-    todayFolder = pm.date(f='YYMMDD')
-    if version>1:
-        todayFolder = "{}_{:02d}".format(todayFolder,int(version))
-    status.append('Send File to {}'.format(todayFolder))
-    scene_dest = pm.util.path(scene_src.replace('Works','to/{}/Works'.format(todayFolder))).truepath()
-    files = scene_src.files('*.mb')
-    files.extend(scene_src.files('*.ma'))
-    #print files
-    files.sort(key=lambda f:f.getmtime())
-    lastestfile = files[-1]
-    try:
-        status.append('Scene Sending status:')
-        if lastest:
-            src = lastestfile
-            status.append('send latest file')
-        dest = scene_dest.__div__(src.basename().replace(src.ext,'{}{}'.format(suffix, src.ext)))
-        if scene:
-            check_dir(dest)
-            pm.sysFile(src, copy=dest)
-            status.append("%s copy to %s" % (src,dest))
-        if render:
-            render_str = ['rend','Render','render','Rend']
-            rend_src = []
-            print src.dirname().dirs()
-            for test_str in render_str:
-                for dir in src.dirname().dirs():
-                    if test_str in dir.basename():
-                        print dir.basename()
-                        rend_src = dir
-                        break
-                break
-            if rend_src:
-                rend_dest = dest.dirname().__div__(test_str)
-                status.append(sys_cop(rend_src, rend_dest))
-    except (IOError, OSError, shutil.Error) as why:
-        msg = "Scene Copy Error\n{}".format(','.join(why))
-        status.append(msg)
-    if tex or extras:
-        if all([src.dirname().dirname().dirname().basename() != d for d in ['CH','BG','CP']]) and src.dirname().dirname().basename()!='CP':
-            scene_src = scene_src.dirname()
-            scene_dest = scene_dest.dirname()
-            print scene_src
-        tex_src = pm.util.path(scene_src.replace('scenes','sourceimages')).truepath()
-        tex_files = tex_src.files('*.jpg')
-        tex_extra = {}
-        for extra in extras:
-            tex_extra[extra] = tex_src.__div__(extra)
-        tex_dest = pm.util.path(scene_dest.replace('scenes','sourceimages'))
-        status.append('Texture Sending status:')
-        try:
-            if tex:
-                for tex_file in tex_files:
-                    src = tex_file
-                    dest = tex_dest.__div__(tex_file.basename())
-                    check_dir(dest)
-                    pm.sysFile(src, copy=dest)
-                    status.append("%s copy to %s" % (src,dest))
-            if extras:
-                for name, path in tex_extra.items():
-                    status.append('%s Sending status:'%name)
-                    dest = tex_dest.__div__(name)
-                    status.append(sys_cop(path,dest))
-        except (IOError, OSError, shutil.Error) as why:
-            msg = "Tex Copy Error:\n{}".format(','.join(why))
-            status.append(msg)
-    pm.informBox(title='Send File Status', message = '\n'.join(status))
-
-def get_asset_path(Assetname, versionNum):
-    ''' get AssetPath Relate to Character'''
-    try:
-        CH = asset.Character(Assetname)
-    except:
-        print "get Asset not possible"
-        return
-    CHPath = {}
-    CHPath['_common'] = pp(CH.texCommon)
-    try:
-        CHversion = CH[versionNum-1]
-        if CHversion.path.has_key('..'):
-            CHHairFiles = pp(CHversion.path['hair']).files('*.mb')
-            if CHHairFiles:
-                CHHairFiles.sort(key=os.path.getmtime)
-                CHPath['hair'] = CHHairFiles[-1]
-            if CHversion.path.has_key('clothes'):
-                CHClothFiles = pp(CHversion.path['clothes']).files('*.mb')
-                if CHClothFiles:
-                    CHClothFiles.sort(key=os.path.getmtime)
-                    CHPath['cloth'] = CHClothFiles[-1]
-                    # print "No folder 'clothes' in %s " % CH.path
-            try:
-                CHPath['clothRender'] = CHversion.path['clothRender']
-                CHPath['hairRender'] = CHversion.path['hairRender']
-            except:
-                pass
-                # print "No folder 'render' in %s " % CHversion.path['..']
-        if CHversion.texPath.has_key('..'):
-            CHPath['tex'] = CHversion.texPath['..']
-            for k in ['pattern','uv','zbr']:
-                try:
-                    CHPath[k] = pp(CHversion.texPath[k])
-                except:
-                    pass
-                    # print "no folder '%s' in %s " % (k, CHPath['tex'])
-    except (IOError, OSError) as why:
-        print "Character %s has no version or \n\%s" % (Assetname,why)
-    return CHPath
-
-def send_file(CH,
-             ver,
-             num=0,
-             destdrive="",
-             sendFile={
-                 'Send':False,
-                 'hair':False,
-                 'cloth':False,
-                 'xgen':False,
-                 'uv':False,
-                 'zbr':False,
-                 'tex':False,
-                 'pattern':False,
-                 '_common':False}):
-    '''send NS57 File'''
-    def getDest(pa):
-        paSplit = pa.splitall()[1:]
-        projectSplit = pm.workspace.path.splitall()[1:-2]
-        return "/".join([element for element in paSplit
-                         if element not in projectSplit])
-    def doCop(fodPath):
-        if destdrive:
-            drive = destdrive+":"
-        else:
-            drive = fodPath.drive
-        dest = os.path.normpath("/".join([
-            drive,
-            "to",
-            todayFolder,
-            getDest(fodPath)]))
-        #print fodPath,'-->',dest
-        sys_cop(fodPath, dest)
-
-    def sendDir(k):
-        if AllPath.has_key(k):
-            doCop(pp(AllPath[k]))
-        else:
-            print "no %s folder" % k
-
-    def sendTexFile():
-        def copFiles(fileList):
-            for t in fileList:
-                doCop(t)
-        if AllPath.has_key(k):
-            try:
-                # texFiles = [f for f in os.listdir(AllPath[k])
-                #             if (os.path.isfile(os.path.join(AllPath[k],f))
-                #                 and CH in f)]
-                # texPath = r'%s' % unicode(AllPath[k])
-                # print os.listdir(texPath)
-                texFiles = [f for f in pp(AllPath[k]).files()
-                        if (any([f.endswith(c) for c in ['jpg',
-                                                         'png',
-                                                         'tif',
-                                                         'tiff']])
-                            and CH in f.basename())]
-                if texFiles:
-                    copFiles(texFiles)
-                else:
-                    print "no Texture Files"
-                psdDir = [d for d in pp(AllPath[k]).dirs()
-                          if 'psd' in d]
-                if psdDir:
-                    psdDir = psdDir[0]
-                    psdFiles = [f for f in psdDir.files()
-                                if(any([f.endswith(c) for c in ['psd', 'psb']])
-                                and CH in f.basename())]
-                    copFiles(psdFiles)
-                else:
-                    print "no Psd Files"
-            except (IOError, OSError) as why:
-                #print AllPath[k]
-                print why
-        else:
-            print "no %s folder" % k
-    if sendFile['cloth']:
-        sendFile['clothRender'] = True
-    if sendFile['hair']:
-        sendFile['hairRender'] = True
-    if sendFile['Send'] == True:
-        AllPath = GetAssetPath(CH, ver)
-        #print AllPath
-        todayFolder = pm.date(f='YYMMDD')
-        if num and num != 1:
-            todayFolder = "_".join([todayFolder, ('%02d' % num)])
-        for key, value in sendFile.iteritems():
-            if key == 'tex' or key == '_common':
-                if value and key == 'tex':
-                    sendTexFile('tex')
-                if value and key == '_common':
-                    sendTexFile('_common')
-            elif key != 'Send':
-                if value:
-                    sendDir(key)
-
-def check_dir(pa,force=True):
-    msg = []
-    if not os.path.exists(os.path.dirname(pa)):
-        os.makedirs(os.path.dirname(pa))
-        msg.append("create directory %s"%pa)
-    else:
-        if force:
-            if os.path.isdir(pa):
-                shutil.rmtree(os.path.dirname(pa))
-                os.makedirs(os.path.dirname(pa))
-                msg.append("forcing remove and create directory %s"%pa)
-            elif os.path.isfile(pa):
-                os.remove(pa)
-                msg.append("forcing remove %s"%pa)
-        else:
-            msg.append("%s exists"%pa)
-    return '\n'.join(msg)
-
-def sys_cop(src, dest):
-    check_dir(dest)
-    status =[]
-    try:
-        if os.path.isdir(src):
-            shutil.copytree(src,dest)
-            msg = "copying " + dest
-            status.append(msg)
-            for file in os.listdir(dest):
-                if os.path.isdir(src+"/"+file):
-                    msg = "%s folder Copied" % file
-                    status.append(msg)
-                else:
-                    msg = "%s file Copied" % file
-                    status.append(msg)
-        elif os.path.isfile(src):
-            shutil.copy(src,dest)
-            msg = "%s copied" % dest
-            status.append(msg)
-        else:
-            msg = "%s does not exist" % src
-            status.append(msg)
-    except (IOError,OSError,WindowsError) as why:
-        msg = 'Copy Error\n{} to {}\n{}'.format(src,dest,why)
-        status.append(msg)
-    return ','.join(status)
-
-
 def setTexture():
     for m in oHairSG:
         fileList=[file for file in m.listConnections()
@@ -1032,3 +819,41 @@ def setTexture():
                     print d.get()
             except:
                 continue
+
+def export_cameras_to_fbx():
+    '''export allBake Camera to FBX files'''
+    FBXSettings = [
+        "FBXExportBakeComplexAnimation -v true;"
+        "FBXExportCameras -v true;"
+        "FBXProperty Export|AdvOptGrp|UI|ShowWarningsManager -v false;"
+        "FBXProperty Export|AdvOptGrp|UI|GenerateLogData -v false;"
+    ]
+    for s in FBXSettings:
+        mm.eval(s)
+    excludedList = ['frontShape', 'sideShape', 'perspShape', 'topShape']
+    cams = [
+        (cam, pm.listTransforms(cam)[0])
+        for cam in pm.ls(type='camera') if str(cam.name()) not in excludedList]
+    scenePath = [str(i) for i in pm.sceneName().split("/")]
+    stripScenePath = scenePath[:-1]
+    sceneName = scenePath[-1]
+    print sceneName
+    filename = "_".join([sceneName[:-3], 'ConvertCam.fbx'])
+    stripScenePath.append(filename)
+    filePath = "/".join(stripScenePath)
+    for c in cams:
+        pm.select(c[1])
+        oldcam = c[1]
+        newcam = pm.duplicate(oldcam, rr=True)[0]
+        startFrame = int(pm.playbackOptions(q=True, minTime=True))
+        endFrame = int(pm.playbackOptions(q=True, maxTime=True))
+        pm.parent(newcam, w=True)
+        for la in pm.listAttr(newcam, l=True):
+            attrName = '.'.join([newcam.name(), str(la)])
+            pm.setAttr(attrName, l=False)
+        camconstraint = pm.parentConstraint(oldcam, newcam)
+        pm.bakeResults(newcam, at=('translate', 'rotate'), t=(startFrame, endFrame), sm=True)
+        pm.delete(camconstraint)
+        pm.select(newcam, r=True)
+        cc = 'FBXExport -f "%s" -s' % filePath
+        mm.eval(cc)

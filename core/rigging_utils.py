@@ -1,15 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-"""
-written by Nguyen Phi Hung 2017
-email: josephkirk.art@gmail.com
-All code written by me unless specify
-"""
-
 import general_utils as ul
 import pymel.core as pm
-import rig_class as rcl
 import math
 from string import ascii_uppercase as alphabet
 from itertools import product
@@ -17,71 +10,107 @@ import logging
 import copy
 import maya.mel as mm
 from ..packages.Red9.core import Red9_Meta as meta
+
+# Logging initialize #
+
 logging.basicConfig()
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
-#### Rigging Control
 
+# Rigging MetaData Functions #
 
-#Project Specific Function
-def basic_intergration():
-    pm.PyNode('CH_ReferenceShape').visibility.set(False)
-    root = pm.PyNode('ROOT')
-    for atr in ['tx', 'ty', 'tz',
-                'rx', 'ry', 'rz',
-                'sx', 'sy', 'sz']:
-        root.attr(atr).lock()
-        root.attr(atr).set(cb=False, k=False)
-    chref = pm.PyNode('CH_Ctrl_Reference')
-    for atr in ['FacialVis','FacialBS','SecondaryVis','SecondaryBS']:
-        if not chref.hasAttr(atr):
-            chref.addAttr(atr,at='bool',k=1)
-    if not chref.hasAttr('Radius'):
-        chref.addAttr('Radius',at='float',k=1)
-        chref.Radius.set(100)
-    if not chref.Radius.outputs():
-        temp = pm.circle(radius=100)
-        temp[0].setRotation([-90,0,0])
-        pm.makeIdentity(temp[0], apply=True)
-        chref = pm.PyNode('CH_Ctrl_Reference')
-        pm.parent(temp[0].getShape(), chref, r=True, s=True)
-        pm.delete(chref.getShape(), shape=True)
-        chref.Radius >> temp[1].radius
-        pm.delete(temp[0])
-    if pm.objExists('facialGp'):
-        chref.FacialVis >> pm.PyNode('facialGp').visibility
-    for bs in ['FacialBS','EyeDeformBS']:
-        if pm.objExists(bs):
-            chref.FacialBS >> pm.PyNode(bs).envelope
-    if pm.objExists('secondaryGp'):
-        chref.SecondaryVis >> pm.PyNode('secondaryGp').visibility
-    if pm.objExists('SecondaryBS'):
-        chref.SecondaryBS >> pm.PyNode('SecondaryBS').envelope
-    
-###Rigging Function
-def get_current_chain(ob):
-    boneChains = []
-    while ob.getChildren():
-        childsCount = len(ob.getChildren(type='joint'))
-        assert (childsCount==1), 'Joint split to {} at {}'.format(childsCount,ob)
-        boneChains.append(ob)
-        ob = ob.getChildren(type='joint')[0]
+def as_meta(ob):
+    if hasattr(ob, 'name'):
+        return meta.MetaClass(ob.name())
+
+def get_controller_metanode(metaname='ControllersMeta'):
+    if pm.ls(metaname):
+        controlmeta = meta.MetaClass(metaname)
     else:
-        boneChains.append(ob)
-    return boneChains
+        controlmeta = meta.MetaClass(name=metaname)
+    return controlmeta
 
-def dup_bone(bone,**kws):
-    dupbone = bone.duplicate(po=True,**kws)[0]
-    dupbone.setParent(None)
-    dupbone.radius.set(bone.radius.get()*2)
-    return dupbone
+def select_controller_metanode(metaname='ControllersMeta'):
+    if pm.ls(metaname):
+        pm.select(metaname)
+    else:
+        log.error('No controller metaNode exists')
 
-def group(ob):
+def control_tagging(ob, metaname='ControllersMeta', remove=False):
+    controlmeta = get_controller_metanode(metaname)
+    if ob.name() not in controlmeta.getChildren() and not remove:
+        if ob.inputs(type='network'):
+            control_tagging(
+                ob,
+                metaname=ob.inputs(type='network')[0].name(),
+                remove=True)
+        controlmeta.connectChildren(ob.name(), attr='controls',srcSimple=True)
+    else:
+        if remove:
+            controlmeta.disconnectChild(ob.name(), deleteDestPlug=True)
+    return controlmeta
+
+def remove_all_control_tags(metaname='ControllersMeta', select=False):
+    if pm.ls(metaname):
+        controlmeta = meta.MetaClass(metaname)
+        controls = controlmeta.getChildren()
+        if select:
+            pm.select(controls)
+            return controls
+        for control in controls:
+            controlmeta.disconnectChild(control, deleteDestPlug=True)
+        return controls
+
+def reset_controller_transform():
+    controlmeta = get_controller_metanode()
+    controllers = controlmeta.getChildren()
+    for controller in controllers:
+        ul.reset_transform(pm.PyNode(controller))
+
+# Rigging Utilities Function #
+# --- Utilities ---
+
+def toggleChannelHistory(state=True):
+    oblist = pm.ls()
+    for ob in oblist:
+        ob.isHistoricallyInteresting.set(state)
+        log.info('{} Channel History Display Set To {}'.format(ob,state))
+
+def group(obs, grpname = ''):
     '''group control under newTransform'''
-    Gp = pm.nt.Transform(name=ob + 'Gp')
-    ob.setParent(Gp)
-    log.info('group {} under {}'.format(ob, Gp))
+    obs = []
+    if not isinstance(obs,list):
+        obs.append(obs)
+    else:
+        obs.extend(obs)
+    obs = [pm.PyNode(o) for o in obs if pm.objExists(o)]
+    if not grpname:
+        grpname=ob.name() + 'Gp'
+    Gp = pm.nt.Transform(name=grpname)
+    for ob in obs:
+        ob.setParent(Gp)
+        log.info('group {} under {}'.format(ob, Gp))
     return Gp
+
+def create_parent(ob):
+    obname = ob.name().split('|')[-1]
+    parent = pm.nt.Transform(name=obname + 'Gp')
+    oldParent = ob.getParent()
+    # parent.setTranslation(ob.getTranslation('world'), 'world')
+    # parent.setRotation(ob.getRotation('world'), 'world')
+    xformTo(parent, ob)
+    parent.setParent(oldParent)
+    ob.setParent(parent)
+    log.info('create Parent Transform %s'%parent)
+    return parent
+
+def remove_parent(ob):
+    parent = ob.getParent()
+    grandParent = parent.getParent()
+    ob.setParent(grandParent)
+    log.info('delete %s'%parent)
+    pm.delete(parent)
+    return grandParent
 
 def create_square(
         name,
@@ -244,128 +273,9 @@ def contraint_multi(ob, target, constraintType='Point'):
     constraintDict[constraintType](target,ob)
 
 def connect_visibility(ob, target, attrname='Vis'):
-    pm.addAttr(ob, ln=attrname,at='bool',k=1)
+    if not hasattr(ob, attrname):
+        ob.addAttr(ln=attrname,at='bool',k=1)
     ob.attr(attrname) >> target.visibility
-
-def get_controller_metanode(metaname='ControllersMeta'):
-    if pm.ls(metaname):
-        controlmeta = meta.MetaClass(metaname)
-    else:
-        controlmeta = meta.MetaClass(name=metaname)
-    return controlmeta
-
-def select_controller_metanode(metaname='ControllersMeta'):
-    if pm.ls(metaname):
-        pm.select(metaname)
-    else:
-        log.error('No controller metaNode exists')
-
-def control_tagging(ob, metaname='ControllersMeta', remove=False):
-    controlmeta = get_controller_metanode(metaname)
-    if ob.name() not in controlmeta.getChildren() and not remove:
-        if ob.inputs(type='network'):
-            control_tagging(
-                ob,
-                metaname=ob.inputs(type='network')[0].name(),
-                remove=True)
-        controlmeta.connectChildren(ob.name(), attr='controls',srcSimple=True)
-    else:
-        if remove:
-            controlmeta.disconnectChild(ob.name(), deleteDestPlug=True)
-    return controlmeta
-
-def remove_all_control_tags(metaname='ControllersMeta', select=False):
-    if pm.ls(metaname):
-        controlmeta = meta.MetaClass(metaname)
-        controls = controlmeta.getChildren()
-        if select:
-            pm.select(controls)
-            return controls
-        for control in controls:
-            controlmeta.disconnectChild(control, deleteDestPlug=True)
-        return controls
-
-def reset_controller_transform():
-    controlmeta = get_controller_metanode()
-    controllers = controlmeta.getChildren()
-    for controller in controllers:
-        ul.reset_transform(pm.PyNode(controller))
-
-def create_prop_control(bone, parent='ctlGp',useLoc=False, **kws):
-    if 'gp' not in bone.name().lower():
-        bonGp = create_parent(bone)
-    ctlname = ul.get_name(bone).replace('bon', 'ctl')
-    ctl = createPinCircle(
-            ctlname,
-            step=4,
-            sphere=True,
-            radius=2,
-            length=0)
-    ctlGp = create_parent(ctl)
-    xformTo(ctlGp, bone)
-    if useLoc:
-        connect_with_loc(ctl, bone, all=True)
-    else:
-        connect_transform(ctl, bone, all=True)
-    control_tagging(ctl, metaname='PropControlsSet_MetaNode')
-    if parent:
-        if pm.objExists(parent):
-            ctlGp.setParent(parent)
-        else:
-            pm.group(ctlGp,name=parent)
-    return ctl
-
-def create_free_control(bone, parent='ctlGp',useLoc=False, **kws):
-    if 'gp' not in bone.name().lower():
-        bonGp = create_parent(bone)
-    ctlname = bone.name().replace('bon', 'ctl')
-    ctl = createPinCircle(ctlname,length=0,sphere=True)
-    ctlGp = create_parent(ctl)
-    xformTo(ctlGp, bone)
-    if useLoc:
-        connect_with_loc(ctl, bone, all=True)
-    else:
-        connect_transform(ctl, bone, all=True)
-    control_tagging(ctl, metaname='FreeControlsSet_MetaNode')
-    if parent:
-        if pm.objExists(parent):
-          ctlGp.setParent(parent)
-        else:
-            pm.group(ctlGp,name=parent)
-    return ctl
-
-def create_parent_control(boneRoot, parent='ctlGp',useLoc=False, **kws):
-    ctls = []
-    boneChain = ul.iter_hierachy(boneRoot)
-    for bone in iter(boneChain):
-        if 'offset' not in ul.get_name(bone):
-            if bone.getParent():
-                if 'offset' not in ul.get_name(bone.getParent()):
-                    create_offset_bone(bone)
-            else:
-                create_offset_bone(bone)
-            name = ul.get_name(bone).split('_')[0]
-            ctl = createPinCircle(name)
-            ctl.rename(name + '_ctl')
-            ctlGp = create_parent(ctl)
-            ctlGp.rename(name + '_ctlGp')
-            match_transform(ctlGp,bone)
-            control_tagging(ctl, metaname='ParentControlsSet_MetaNode')
-            if ctls:
-                ctlGp.setParent(ctls[-1])
-            ctls.append(ctl)
-            connect_transform(ctl, bone, all=True )
-    ctlRoot = ctls[0].getParent()
-    if useLoc:
-        connect_with_loc(
-            ctls[0],
-            ctls[0].outputs(type='joint')[0], all=True)
-    if parent:
-        if pm.objExists(parent):
-            ctlRoot.setParent(parent)
-        else:
-            pm.group(ctlRoot,name=parent)
-    return ctls
 
 def aim_setup(ctl,loc):
     oldParent = ctl.getParent().getParent()
@@ -392,245 +302,6 @@ def aim_setup(ctl,loc):
     for c in locConnection:
         c.rename(c.name().replace('loc','aimLoc'))
     return (orientOffset, aimGp, locGp)
-
-def dup_bone_chain(boneRoot,suffix='dup'):
-    boneChain = ul.iter_hierachy(boneRoot)
-    newChain = []
-    for bone in iter(boneChain):
-        dupBone= pm.duplicate(bone,po=True,rr=True)[0]
-        # dupBone = pm.nt.Joint()
-        # xformTo(dupBone, bone)
-        dupBone.rename(ul.get_name(bone)+'_%s'%suffix)
-        if newChain:
-            dupBone.setParent(newChain[-1])
-        else:
-            dupBone.setParent(None)
-        newChain.append(dupBone)
-    return newChain
-    
-def create_long_hair(boneRoot, hairSystem='', circle=True):
-    dynamicBones = dup_bone_chain(boneRoot, suffix='dynamic')
-    boneGp = create_parent(boneRoot)
-    dupBoneGp = create_parent(dynamicBones[0])
-    bonChain = ul.iter_hierachy(boneRoot)
-    dupBoneChain = ul.iter_hierachy(dynamicBones[0])
-    for bone, dupbone in zip(iter(bonChain),iter(dupBoneChain)):
-        tranformBool = any([0<bone.attr(atr).get() or bone.attr(atr).get()>0 for atr in ['rx','ry','rz', 'sx','sy','sz']])
-        if tranformBool:
-            log.info('%s contain value in rotate or scale. Commencing freeze transform'%bone)
-            freeze_skin_joint(bone)
-            pm.makeIdentity(dupbone, apply=True)
-        offsetBone = create_offset_bone(bone)
-        offsetMeta = meta.MetaClass(offsetBone.name())
-        offsetMeta.connectChild(dupbone.name(), 'dynamicBone', 'drivenBone')
-        #pm.orientConstraint(dupbone, offsetBone, mo=True)
-        connect_transform(dupbone, offsetBone,rotate=True)
-    ikhandle, ikeffector, ikcurve = pm.ikHandle(
-        sj=dynamicBones[0], ee=dynamicBones[-1], solver='ikSplineSolver')
-    ikhandle.setParent(dupBoneGp)
-    ikcurve.rename(ul.get_name(boneRoot).replace('bon','ikCurve'))
-    hairSystem = make_curve_dynamic(ikcurve, hairSystem=hairSystem)
-    dynamicCurve, follicle, hairSys = [i for i in hairSystem]
-    dynamicCurve.worldSpace[0] >> ikhandle.inCurve
-    controls = create_parent_control(boneRoot, parent='',useLoc=True)
-    if circle:
-        for control in controls:
-            tempShape = createPinCircle(
-                control.name(),
-                axis='YZ',
-                radius=2,
-                length=0)
-            ul.parent_shape(tempShape, control)
-            #pm.delete(tempShape)
-    controlGp = create_parent(controls[0].getParent())
-    controlGp = controlGp.rename(controlGp.name().split('_')[0]+'_root_ctlGp')
-    controlRoot = createPinCircle(controlGp.name(),axis='YZ',radius=3,length=0)
-    xformTo(controlRoot, controlGp)
-    controlRoot.setParent(controlGp)
-    #loc.getParent().setParent(controlGp)
-    dupBoneGp.setParent(controlRoot)
-    focGp = follicle.getParent().getParent()
-    follicle.getParent().setParent(controlRoot)
-    pm.delete(focGp)
-    pm.parentConstraint(dynamicBones[0],create_parent(controls[0]))
-    hairSysMeta = meta.MetaClass(hairSys.name())
-    hairSysMeta.connectChildren([c.name() for c in controls], 'boneControl', 'hairSystem', srcSimple=True)
-    for ctl, dynamicBone in zip(controls[1:], dynamicBones[1:]):
-        offset = create_parent(ctl)
-        control_tagging(ctl, metaname='DynamicHairControlsSet_MetaNode')
-        loc = connect_with_loc(dynamicBone, offset,all=True)[0]
-        loc.getParent().setParent(dynamicBone.getParent())
-    #lock ctlRoot translate and scale
-    for atr in [
-        'tx','ty','tz',
-        'sx','sy','sz',]:
-        controlRoot.setAttr(atr, lock=True, keyable=False, channelBox=False)
-    if not pm.objExists('hairSystem_miscGp'):
-        hairMiscGp = pm.nt.Transform(name='hairSystem_miscGp')
-    hairMiscGp = pm.PyNode("hairSystem_miscGp")
-    hairSys.getParent().setParent(hairMiscGp)
-    dynamicCurve.getParent().getParent().setParent(hairMiscGp)
-    if pm.objExists('ctlGp'):
-        controlGp.setParent('ctlGp')
-    else:
-        pm.group(controlGp,name='ctlGp')
-    if pm.objExists('miscGp'):
-        hairMiscGp.setParent('miscGp')
-    else:
-        pm.group(hairMiscGp,name='miscGp')
-    # add ctl tag
-    control_tagging(controlRoot, metaname='DynamicHairControlsSet_MetaNode')
-
-def create_short_hair(bone, parent='miscGp'):
-    bones = get_current_chain(bone)
-    bonename = bone.name().split('|')[-1]
-    startBone = bones[0]
-    endBone = bones[-1]
-    midBone = bones[int(round((len(bones)-1)/2.0))]
-    ikhandle, ikeffector, ikcurve = pm.ikHandle(
-        sj=startBone, ee=endBone,solver='ikSplineSolver')
-    ikhandle.rename(bonename+'_ikhandle')
-    ikeffector.rename(bonename+'_ikeffector')
-    ikcurve.rename(bonename+'_ikCurve')
-    sbonetop, mbonetop, ebonetop = [
-        dup_bone(b,name = b.name()+'_'+suffix) for b,suffix in zip([startBone,midBone,endBone],['root','mid','top'])]
-    #sbonetop.setParent(bone.getParent())
-    if (len(bones)-1)%2.0 == 1:
-        boneUp = bones[int(math.ceil((len(bones)-1)/2.0))]
-        boneDown = bones[int(math.floor((len(bones)-1)/2.0))]
-        mbonetop.setTranslation(
-            (boneUp.getTranslation('world')+boneDown.getTranslation('world'))/2,'world')
-    for b in [sbonetop, mbonetop, ebonetop]:
-        b.setParent(None)
-        b.radius.set(b.radius.get()*1.2)
-    curveSkin = pm.skinCluster(sbonetop,mbonetop,ebonetop,ikcurve)
-    ectl = create_free_control(ebonetop,useLoc=True)
-    mctl = create_free_control(mbonetop,useLoc=True)
-    control_tagging(ectl, metaname='ShortHairControlsSet_MetaNode')
-    control_tagging(mctl, metaname='ShortHairControlsSet_MetaNode')
-    pm.select([mbonetop.getParent(), ebonetop.getParent(), ikcurve, ikhandle], r=True)
-    ikmiscGp = pm.group(name=bonename+'_ikMisc')
-    pm.group([ectl.getParent(), mctl.getParent()], name=bonename+'_ctlGp')
-    if parent:
-        if pm.objExists(parent):
-            ikmiscGp.setParent(parent)
-        else:
-            pm.group(ikmiscGp,name=parent)
-    return (sbonetop, mbonetop, ebonetop)
-
-def create_short_hair_simple(bone, parent='miscGp'):
-    bones = get_current_chain(bone)
-    bonename = bone.name().split('|')[-1]
-    startBone = bones[0]
-    endBone = bones[-1]
-    ikhandle, ikeffector, ikcurve = pm.ikHandle(
-        sj=startBone, ee=endBone,solver='ikSplineSolver')
-    ikhandle.rename(bonename+'_ikhandle')
-    ikeffector.rename(bonename+'_ikeffector')
-    ikcurve.rename(bonename+'_ikCurve')
-    sbonetop, ebonetop = [
-        dup_bone(b,name = b.name()+'_'+suffix) for b,suffix in zip([startBone,endBone],['root','top'])]
-    for b in [sbonetop, ebonetop]:
-        b.radius.set(b.radius.get()*1.1)
-        b.setParent(bone.getParent().getParent())
-    curveSkin = pm.skinCluster(sbonetop ,ebonetop,ikcurve)
-    ectl = create_free_control(ebonetop, useLoc=True)
-    control_tagging(ectl, metaname='ShortHairControlsSet_MetaNode')
-    pm.select([ikcurve, ikhandle], r=True)
-    #sbonetop.setParent(bone.getParent())
-    ikmiscGp = pm.group(name=bonename+'_ikMisc')
-    if parent:
-        if pm.objExists(parent):
-            ikmiscGp.setParent(parent)
-        else:
-            pm.group(ikmiscGp,name=parent)
-    return (sbonetop, ebonetop)
-
-def create_sway_short_hair(bone,rootTop):
-    bones = get_current_chain(bone)
-    bonename = bone.name().split('|')[-1]
-    startBone = bones[0]
-    endBone = bones[-1]
-    midBone = bones[int(round((len(bones)-1)/2.0))]
-    ikhandle, ikeffector, ikcurve = pm.ikHandle(
-        sj=startBone, ee=endBone,solver='ikSplineSolver')
-    ikhandle.rename(bonename+'_ikhandle')
-    ikeffector.rename(bonename+'_ikeffector')
-    ikcurve.rename(bonename+'_ikCurve')
-    sbonetop, mbonetop, ebonetop = [
-        dup_bone(b,name = b.name()+'_top') for b in [startBone,midBone,endBone]]
-    print (len(bones)-1)%2.0
-    if (len(bones)-1)%2.0 == 1:
-        boneUp = bones[int(math.ceil((len(bones)-1)/2.0))]
-        boneDown = bones[int(math.floor((len(bones)-1)/2.0))]
-        mbonetop.setTranslation(
-            (boneUp.getTranslation('world')+boneDown.getTranslation('world'))/2,'world')
-    for b in [sbonetop, mbonetop, ebonetop]:
-        b.setParent(None)
-        b.radius.set(b.radius.get()*2)
-    curveSkin = pm.skinCluster(sbonetop,mbonetop,ebonetop,ikcurve)
-    if not rootTop.hasAttr('swayspeedX'):
-        pm.addAttr(
-            rootTop,
-            ln='swayspeedX', nn='Sway X Speed', sn='swayspX',
-            at='float', k=1, dv=0.75)
-    if not rootTop.hasAttr('swaystrengthX'):
-        pm.addAttr(
-            rootTop,
-            ln='swaystrengthX', nn='Sway X Strength', sn='swaystrX',
-            at='float', k=1, dv=0.25)
-    if not rootTop.hasAttr('swayfrequencyX'):
-        pm.addAttr(rootTop,
-        ln='swayfrequencyX', nn='Sway X Frequency', sn='swayfreX',
-        at='float', k=1, dv=2)
-    if not rootTop.hasAttr('swayspeedY'):
-        pm.addAttr(rootTop,
-        ln='swayspeedY', nn='Sway Y Speed', sn='swayspY',
-        at='float', k=1, dv=1)
-    if not rootTop.hasAttr('swaystrengthY'):
-        pm.addAttr(rootTop,
-        ln='swaystrengthY', nn='Sway Y Strength', sn='swaystrY',
-        at='float', k=1, dv=0.5)
-    if not rootTop.hasAttr('swayfrequencyY'):
-        pm.addAttr(rootTop,
-        ln='swayfrequencyY', nn='Sway Y Frequency', sn='swayfreY',
-        at='float', k=1, dv=1)
-    pm.select(ikcurve,r=True)
-    X = pm.nonLinear( type='sine' )
-    X[1].rename(bonename+'_sineX')
-    pm.select(ikcurve,r=True)
-    Y = pm.nonLinear( type='sine' )
-    Y[1].rename(bonename+'_sineY')
-    #Z = pm.nonLinear(type='sine')
-    for sineHandle in [X,Y]:
-        sineHandle[0].lowBound.set(0)
-        sineHandle[0].amplitude.set(0.25)
-        sineHandle[0].dropoff.set(-1)
-        sineHandle[0].wavelength.set(1.5)
-        sineHandle[1].setTranslation(sbonetop.getTranslation('world'), 'world')
-        tempAim = pm.aimConstraint(
-            ebonetop,
-            sineHandle[1],
-            aimVector=[0,1,0],
-            )
-        sineHandle[1].setParent(sbonetop)
-        sineHandle[1].scaleY.set(
-            sbonetop.getTranslation().distanceTo(ebonetop.getTranslation()))
-        tempAim.worldUpType.set(1)
-        tempAim.setWorldUpObject(mbonetop.name())
-        if sineHandle == Y:
-            tempAim.setUpVector([1,0,0])
-        else:
-            tempAim.setUpVector([0,0,1])
-    sineExpress = pm.expression(
-        s='%s.offset=time*%s*noise(time);\n%s.offset=time*%s*noise(time);'%(
-            X[0].name(),rootTop.swayspX.name(),Y[0].name(),rootTop.swayspY.name()),
-        td=True, ae=1, uc='all')
-    rootTop.swaystrX >> X[0].amplitude
-    rootTop.swayfreX >> X[0].wavelength
-    rootTop.swaystrY >> Y[0].amplitude
-    rootTop.swayfreY >> Y[0].wavelength
-    return (sbonetop, mbonetop, ebonetop)
 
 def create_offset_bone(bone, child=False, suffix='offset_bon'):
     newname = bone.name().split('|')[-1].split('_')[0] + '_' + suffix
@@ -673,31 +344,12 @@ def create_loc_on_vert(vert,name='guideLoc'):
         ppconstraint.attr(stripname + 'V0').set(uv[1])
         return loc
 
-def create_parent(ob):
-    obname = ob.name().split('|')[-1]
-    parent = pm.nt.Transform(name=obname + 'Gp')
-    oldParent = ob.getParent()
-    parent.setTranslation(ob.getTranslation('world'), 'world')
-    parent.setRotation(ob.getRotation('world'), 'world')
-    parent.setParent(oldParent)
-    ob.setParent(parent)
-    log.info('create Parent Transform %s'%parent)
-    return parent
-
-
-def remove_parent(ob):
-    parent = ob.getParent()
-    grandParent = parent.getParent()
-    ob.setParent(grandParent)
-    log.info('delete %s'%parent)
-    pm.delete(parent)
-    return grandParent
+# --- Transformation ---
 
 def xformTo(ob, target):
     const = pm.parentConstraint(target, ob)
     pm.delete(const)
     log.info('{} match to {}'.format(ob,target))
-
 
 def match_transform(ob, target):
     ob.setMatrix(target.getMatrix(ws=True), ws=True)
@@ -746,25 +398,9 @@ def disconnect_transform(ob , attr='all'):
     for atr in attrdict[attr]:
         ob.attr(atr).disconnect()
 
-def toggleChannelHistory(state=True):
-    oblist = pm.ls()
-    for ob in oblist:
-        ob.isHistoricallyInteresting.set(state)
-        log.info('{} Channel History Display Set To {}'.format(ob,state))
+# --- Blend Shape ---
 
-
-def deform_normal_off(state=False):
-    skin_clusters = pm.ls(type='skinCluster')
-    if not skin_clusters:
-        return
-    for skin_cluster in skin_clusters:
-        skin_cluster.attr('deformUserNormals').set(False)
-        log.info('{} Deform User Normals Set To {}'.format(skin_cluster,state))
-
-def mirror_joint_multi(ob):
-    pm.mirrorJoint(ob, myz=True, sr=('Left', 'Right'))
-
-def get_blendshape_target(
+def rebuild_blendshape_target(
         bsname,
         reset_value=False,
         rebuild=False,
@@ -832,6 +468,8 @@ def get_blendshape_target(
         blendshape = blend_reget[0]
         target_list = blend_reget[1]
     return (blendshape, target_list)
+
+# --- Skin Cluster ---
 
 def freeze_skin_joint(bon, hi=False):
     bonname = ul.get_name(bon)
@@ -1042,12 +680,6 @@ def snap_simple(ob1, ob2, worldspace=False, hierachy=False, preserve_child=False
             for ob1_child, ob1_child_old_matrix in zip(ob1_childs, ob1_child_old_matrixes):
                 ob1_child.setMatrix(ob1_child_old_matrix, ws=True)
 
-
-# pm.copySkinWeights(ss=skin.name(), ds=dest_skin.name(),
-#                    noMirror=True, normalize=True,
-#                    surfaceAssociation='closestPoint',
-#                    influenceAssociation='closestJoint')
-# dest_skin.setSkinMethod(skin.getSkinMethod())
 def copy_skin_multi(source_skin_grp, dest_skin_grp, **kwargs):
     '''copy skin for 2 identical group hierachy'''
     source_skins = source_skin_grp.listRelatives(type='transform', ad=1)
@@ -1059,7 +691,6 @@ def copy_skin_multi(source_skin_grp, dest_skin_grp, **kwargs):
         print '---Copy Skin Finish---'
     else:
         print 'source and target are not the same'
-
 
 @ul.error_alert
 def copy_skin_single(source_skin, dest_skin, **kwargs):
@@ -1108,6 +739,96 @@ def copy_skin_single(source_skin, dest_skin, **kwargs):
             print '{:_>20} connect to skinCluster: {}'.format(ob, ul.get_skin_cluster(ob))
         print "_" * 30
 
+def reset_bindPose_all():
+    newbp = pm.dagPose(bp=True, save=True)
+    bindPoses = pm.ls(type=pm.nt.DagPose)
+    for bp in bindPoses:
+        if bp != newbp:
+            pm.delete(bp)
+    print "All bindPose has been reseted to %s" % newbp
+    return newbp
+
+def reset_bindPose_root(joint_root):
+    joint_childs = joint_root.listRelatives(type=pm.nt.Joint, ad=True)
+    for joint in joint_childs:
+        if joint.rotate.get() != pm.dt.Vector(0, 0, 0):
+            # print type(joint.rotate.get())
+            joint.jointOrient.set(joint.rotate.get())
+            joint.rotate.set(pm.dt.Vector(0, 0, 0))
+    reset_bindPose_all()
+
+def deform_normal_off(state=False):
+    skin_clusters = pm.ls(type='skinCluster')
+    if not skin_clusters:
+        return
+    for skin_cluster in skin_clusters:
+        skin_cluster.attr('deformUserNormals').set(False)
+        log.info('{} Deform User Normals Set To {}'.format(skin_cluster,state))
+
+# --- Joint ---
+
+def get_current_chain(ob):
+    boneChains = []
+    while ob.getChildren():
+        childsCount = len(ob.getChildren(type='joint'))
+        assert (childsCount==1), 'Joint split to {} at {}'.format(childsCount,ob)
+        boneChains.append(ob)
+        ob = ob.getChildren(type='joint')[0]
+    else:
+        boneChains.append(ob)
+    return boneChains
+
+def get_opposite_joint(bone, select=False, opBoneOnly=True, customPrefix=None):
+    "get opposite Bone"
+    mirrorPrefixes_list = [
+        ('Left', 'Right'),
+        ('_L_', '_R_')
+    ]
+    try:
+        if all(customPrefix, type(customPrefix) == tuple, len(customPrefix) == 2):
+            mirrorPrefixes_list.append(customPrefix)
+    except:
+        pass
+    for mirrorprefix in mirrorPrefixes_list:
+        for index, mp in enumerate(mirrorprefix):
+            if mp in bone.name():
+                opBoneName = bone.name().replace(mirrorprefix[index], mirrorprefix[index - 1])
+                opBone = pm.ls(opBoneName)[0] if pm.ls(opBoneName) else None
+                if select:
+                    if opBoneOnly:
+                        pm.select(opBone)
+                    else:
+                        pm.select(bone, opBone)
+                print opBoneName
+                return opBone
+
+def dup_bone(bone,name='joint1'):
+    pm.select(cl=True)
+    dupbone = pm.nt.Joint()
+    #dupbone = bone.duplicate(rr=True,po=True)[0]
+    #dupbone.setParent(None)
+    dupbone.rename(name)
+    dupbone.radius.set(bone.radius.get()*2)
+    # match_transform(dupbone,bone)
+    xformTo(dupbone, bone)
+    pm.makeIdentity(dupbone, apply=True)
+    return dupbone
+
+def dup_bone_chain(boneRoot,suffix='dup'):
+    boneChain = ul.iter_hierachy(boneRoot)
+    newChain = []
+    for bone in iter(boneChain):
+        dupBone= pm.duplicate(bone,po=True,rr=True)[0]
+        # dupBone = pm.nt.Joint()
+        # xformTo(dupBone, bone)
+        dupBone.rename(ul.get_name(bone)+'_%s'%suffix)
+        if newChain:
+            dupBone.setParent(newChain[-1])
+        else:
+            dupBone.setParent(None)
+        newChain.append(dupBone)
+    return newChain
+
 def connect_joint(bones, boneRoot, **kwargs):
     for bone in bones:
         pm.connectJoint(bone, boneRoot, **kwargs)
@@ -1144,6 +865,24 @@ def label_joint(
     except AttributeError as why:
         log.error(why)
 
+def rename_bone_Chain(boneRoots, newName, startcollumn=0, startNum=1, suffix='bon'):
+    collumNames = list(alphabet)
+    collumNames.extend(
+        [''.join(list(i)) for i in list(
+            product(alphabet, repeat=2))])
+    for id, boneRoot in enumerate(boneRoots):
+        boneChain = ul.iter_hierachy(boneRoot)
+        i = startNum
+        assert ((startcollumn+id)<len(collumNames)), 'Maximum Bone Collumn reach, maximum: %d'%len(collumNames)
+        collumnName = collumNames[startcollumn+id]
+        for bone in iter(boneChain):
+            bone.rename('{}{}{:02d}_{}'.format(
+                newName,
+                collumnName,
+                i,
+                suffix))
+            i += 1
+
 def create_roll_joint(oldJoint):
     newJoint = pm.duplicate(oldJoint, rr=1, po=1)[0]
     pm.rename(newJoint, ('%sRoll1' % oldJoint.name()).replace('Left', 'LeafLeft'))
@@ -1160,22 +899,6 @@ def create_sub_joint(ob):
     ob.rotate >> new_pairBlend.inRotate2
     new_pairBlend.outRotate >> subJoint.rotate
     return (ob, new_pairBlend, subJoint)
-
-def reset_attr_value(ob):
-    attr_exclude_list = [
-        "translateX", "translateY", "translateZ",
-        "rotateX", "rotateY", "rotateZ",
-        "scaleX", "scaleY", "scaleZ",
-        "visibility"
-    ]
-    attr_list = ob.listattr()
-    for at in attrList[:-1]:
-        bone.attr(at).set(0)
-
-def create_skinDeform(ob):
-    dupOb = pm.duplicate(ob, name="_".join([ob.name(), "skinDeform"]))
-    for child in dupOb[0].listRelatives(ad=True):
-        ul.add_suffix(child)
 
 def mirror_joint_tranform(bone, translate=False, rotate=True, **kwargs):
     # print bone
@@ -1196,65 +919,10 @@ def mirror_joint_tranform(bone, translate=False, rotate=True, **kwargs):
                      ch=kwargs['ch'] if kwargs.has_key('ch') else False,
                      co=not kwargs['ch'] if kwargs.has_key('ch') else True)
 
-def rename_bone_Chain(boneRoots, newName, startcollumn=0, startNum=1, suffix='bon'):
-    collumNames = list(alphabet)
-    collumNames.extend(
-        [''.join(list(i)) for i in list(
-            product(alphabet, repeat=2))])
-    for id, boneRoot in enumerate(boneRoots):
-        boneChain = ul.iter_hierachy(boneRoot)
-        i = startNum
-        assert ((startcollumn+id)<len(collumNames)), 'Maximum Bone Collumn reach, maximum: %d'%len(collumNames)
-        collumnName = collumNames[startcollumn+id]
-        for bone in iter(boneChain):
-            bone.rename('{}{}{:02d}_{}'.format(
-                newName,
-                collumnName,
-                i,
-                suffix))
-            i += 1
+def mirror_joint_multi(ob):
+    pm.mirrorJoint(ob, myz=True, sr=('Left', 'Right'))
 
-def get_opposite_joint(bone, select=False, opBoneOnly=True, customPrefix=None):
-    "get opposite Bone"
-    mirrorPrefixes_list = [
-        ('Left', 'Right'),
-        ('_L_', '_R_')
-    ]
-    try:
-        if all(customPrefix, type(customPrefix) == tuple, len(customPrefix) == 2):
-            mirrorPrefixes_list.append(customPrefix)
-    except:
-        pass
-    for mirrorprefix in mirrorPrefixes_list:
-        for index, mp in enumerate(mirrorprefix):
-            if mp in bone.name():
-                opBoneName = bone.name().replace(mirrorprefix[index], mirrorprefix[index - 1])
-                opBone = pm.ls(opBoneName)[0] if pm.ls(opBoneName) else None
-                if select:
-                    if opBoneOnly:
-                        pm.select(opBone)
-                    else:
-                        pm.select(bone, opBone)
-                print opBoneName
-                return opBone
-
-def reset_bindPose_all():
-    newbp = pm.dagPose(bp=True, save=True)
-    bindPoses = pm.ls(type=pm.nt.DagPose)
-    for bp in bindPoses:
-        if bp != newbp:
-            pm.delete(bp)
-    print "All bindPose has been reseted to %s" % newbp
-    return newbp
-
-def reset_bindPose_root(joint_root):
-    joint_childs = joint_root.listRelatives(type=pm.nt.Joint, ad=True)
-    for joint in joint_childs:
-        if joint.rotate.get() != pm.dt.Vector(0, 0, 0):
-            # print type(joint.rotate.get())
-            joint.jointOrient.set(joint.rotate.get())
-            joint.rotate.set(pm.dt.Vector(0, 0, 0))
-    reset_bindPose_all()
+# --- Hair System Functions ---
 
 def assign_curve_to_hair(abc_curve,hair_system="",preserve=False):
     '''assign Alembic curve Shape or tranform contain multi curve Shape to hairSystem'''

@@ -13,10 +13,12 @@ import maya.mel as mm
 from pymel.core import *
 import types
 from .. import core
-core._reload()
-ul = core.ul
-ru = core.rul
-rcl = core.rcl
+from ..project_specific import ns57
+
+# core._reload()
+# ul = core.ul
+# ru = core.rul
+# rcl = core.rcl
 # Global Var
 # Function
 def batch_export_cam():
@@ -32,7 +34,7 @@ def batch_export_cam():
                 loadSettings="Load no references",
                 loadReferenceDepth='none',
                 prompt=False, f=True)
-            ul.exportCam()
+            ul.export_cameras_to_fbx()
         cm.file(f=True, new=True)
         mm.eval("paneLayout -e -m true $gMainPane")
 
@@ -110,7 +112,7 @@ class RigTools(object):
         #self.nodetrack.startTrack()
         print self.nodetrack.getNodes()
 
-    def do_func(self, func, mode='single', **kws):
+    def do_func(self, func, **kws):
         for kw,value in kws.items():
             if isinstance(value,types.MethodType):
                 kws[kw] = value()
@@ -120,7 +122,7 @@ class RigTools(object):
             self.nodebase.extend(i.listRelatives(type='transform',ad=True))
         self.nodetrack.reset()
         self.nodetrack.startTrack()
-        ul.do_function_on(mode)(func)(**kws)
+        func(**kws)
         self.nodetrack.endTrack()
         self.fullbasetrack.extend(self.nodebase)
         self.fullcreatedtrack.extend(self.nodetrack.getNodes())
@@ -165,6 +167,7 @@ class RigTools(object):
                         button(
                             label='Skin Weigth Setter',
                             c=Callback(SkinWeightSetter.show))
+
             with frameLayout(label='Create Control:',cl=False):
                 with columnLayout():
                     center_text = ul.partial(text, align='center')
@@ -186,14 +189,16 @@ class RigTools(object):
                             label='Prop Control',
                             c=Callback(
                                 self.do_func,
-                                ru.create_prop_control,
-                                useLoc=self._uiElement['useLoc'].getValue))
+                                ns57.create_prop_control,
+                                useLoc=self._uiElement['useLoc'].getValue,
+                                sl=True))
                         button(
                             label='Free Control',
                             c=Callback(
                                 self.do_func,
-                                ru.create_free_control,
-                                useLoc=self._uiElement['useLoc'].getValue))
+                                ns57.create_free_control,
+                                useLoc=self._uiElement['useLoc'].getValue,
+                                sl=True))
                     separator()
                     center_text(label='Create Bone Chain Controls:')
                     with rowColumnLayout(rs=[(1,1),], numberOfColumns=2):
@@ -201,22 +206,26 @@ class RigTools(object):
                             label='Parent Control',
                             c=Callback(
                                 self.do_func,
-                                ru.create_parent_control,
-                                useLoc=self._uiElement['useLoc'].getValue))
+                                ns57.create_parent_control,
+                                useLoc=self._uiElement['useLoc'].getValue,
+                                sl=True))
                         button(
                             label='Aim Setup',
                             c=Callback(
                                 self.do_func,
                                 ru.aim_setup,
-                                mode='singlelast'))
+                                sl=True))
                     separator()
                     center_text(label='Create Long Hair Control:')
-                    with rowColumnLayout(rs=[(1,1),], numberOfColumns=2, columnWidth=[(1, 150), (2, 50)]):
+                    with rowColumnLayout(
+                            rs=[(1,1),],
+                            numberOfColumns=2,
+                            columnWidth=[(1, 150), (2, 50)]):
                         self._uiElement['Hair System'] = textFieldGrp(
-                            cl2=('left', 'right'),
+                            cl2=('right', 'right'),
                             co2=(80, 10),
                             cw2=(70, 110),
-                            label='Hair System:', text='%s_hairSystem'%ul.get_character_infos()[-1])
+                            label='Hair System:', text='%s_hairSystem'%ns57.get_character_infos()[-1])
                         button(
                             label='Get',
                             h=20,
@@ -225,21 +234,41 @@ class RigTools(object):
                         label='Create',
                         c=Callback(
                             self.do_func,
-                            ru.create_long_hair,
-                            hairSystem=self._uiElement['Hair System'].getText))
+                            ns57.create_long_hair,
+                            hairSystem=self._uiElement['Hair System'].getText,
+                            sl=True))
                     separator()
                     center_text(label='Create Short Hair Control:')
+                    with rowColumnLayout(
+                            rs=[(1,1),],
+                            numberOfColumns=2,
+                            columnWidth=[(1, 150), (2, 50)]):
+                        self._uiElement['SHctlparent'] = textFieldGrp(
+                            cl2=('right', 'right'),
+                            co2=(80, 10),
+                            cw2=(70, 110),
+                            label='Parent:', text='')
+                        button(
+                            label='Get',
+                            h=20,
+                            c=lambda x: \
+                                self._uiElement['SHctlparent'].setText(
+                                    selected()[-1].name()))
                     with rowColumnLayout(rs=[(1,1),], numberOfColumns=2):
                         button(
                             label='With Middle',
                             c=Callback(
                                 self.do_func,
-                                ru.create_short_hair))
+                                ns57.create_short_hair,
+                                parent=self._uiElement['SHctlparent'].getText,
+                                sl=True))
                         button(
                             label='Top Only',
                             c=Callback(
                                 self.do_func,
-                                ru.create_short_hair_simple))
+                                ns57.create_short_hair_simple,
+                                parent=self._uiElement['SHctlparent'].getText,
+                                sl=True))
                     separator()
                     button(
                         label='Delete Created Nodes',
@@ -251,17 +280,20 @@ class RigTools(object):
                             c=Callback(
                                 self.delete_created_nodes,
                                 all=True))
+
             with frameLayout(label='Control Tag:'):
                 with rowColumnLayout(rs=[(1,0),]):
                     button(
                         label='Tag as controller',
                         c=Callback(
-                            ul.do_function_on()(ru.control_tagging)))
+                            ru.control_tagging,
+                            sl=True))
                     button(
                         label='Remove tag',
                         c=Callback(
-                            ul.do_function_on()(ru.control_tagging),
-                            remove=True))
+                            ru.control_tagging,
+                            remove=True,
+                            sl=True))
                     button(
                         label='Select all controllers',
                         c=Callback(
@@ -280,122 +312,157 @@ class RigTools(object):
                         label='Reset all controllers transform',
                         c=Callback(
                             ru.reset_controller_transform))
+
             with frameLayout(label='Utilities:'):
                 with rowColumnLayout(rs=[(1,0),]):
                     smallbutton = ul.partial(button,h=30)
                     smallbutton(
                         label='create Parent',
                         c=Callback(
-                            ul.do_function_on()(ru.create_parent)))
+                            ru.create_parent,
+                            sl=True))
                     smallbutton(
                         label='delete Parent',
                         c=Callback(
-                            ul.do_function_on()(ru.remove_parent)))
+                            ru.remove_parent,
+                            sl=True))
                     smallbutton(
                         label='Parent Shape',
                         c=Callback(
-                            ul.do_function_on('double')(ul.parent_shape)))
+                            ul.parent_shape,
+                            sl=True))
                     smallbutton(
                         label='create Offset bone',
                         c=Callback(
-                            ul.do_function_on()(ru.create_offset_bone)))
+                            ru.create_offset_bone,
+                            sl=True))
                     smallbutton(
                         label='create Loc',
                         c=Callback(
-                            ul.do_function_on()(ru.create_loc_control),connect=False))
+                            ru.create_loc_control,
+                            connect=False,sl=True))
                     smallbutton(
                         label='create Loc control',
                         c=Callback(
-                            ul.do_function_on()(ru.create_loc_control),
-                            all=True))
+                            ru.create_loc_control,
+                            all=True,
+                            sl=True))
                     smallbutton(
                         label='connect with Loc',
                         c=Callback(
-                            ul.do_function_on('double')(ru.connect_with_loc),
-                            all=True))
+                            ru.connect_with_loc,
+                            all=True,
+                            sl=True))
                     with popupMenu(b=3):
                         menuItem(label='translate only', c=Callback(
-                            ul.do_function_on('double')(ru.connect_with_loc),
-                            translate=True))
+                            ru.connect_with_loc,
+                            translate=True,
+                            sl=True))
                         menuItem(label='rotate only', c=Callback(
-                            ul.do_function_on('double')(ru.connect_with_loc),
-                            rotate=True))
+                            ru.connect_with_loc,
+                            rotate=True,
+                            sl=True))
                     smallbutton(
                         label='vertex to Loc',
                         c=Callback(
-                            ul.do_function_on()(ru.create_loc_on_vert)))
+                            ru.create_loc_on_vert,
+                            sl=True))
                     smallbutton(
                         label='Connect Transform',
                         c=Callback(
-                            ul.do_function_on('double')(ru.connect_transform),
-                            all=True))
+                            ru.connect_transform,
+                            all=True,
+                            sl=True))
                     with popupMenu(b=3):
                         menuItem(
                             label='Connect Translate',
                             c=Callback(
-                                ul.do_function_on('double')(ru.connect_transform),
-                                translate=True, rotate=False, scale=False))
+                                ru.connect_transform,
+                                translate=True, rotate=False, scale=False,
+                                sl=True))
                         menuItem(
                             label='Connect Rotate',
                             c=Callback(
-                                ul.do_function_on('double')(ru.connect_transform),
-                                translate=False, rotate=True, scale=False))
+                                ru.connect_transform,
+                                translate=False, rotate=True, scale=False,
+                                sl=True))
                         menuItem(
                             label='Connect Scale',
                             c=Callback(
-                                ul.do_function_on('double')(ru.connect_transform),
-                                translate=False, rotate=False, scale=True))
+                                ru.connect_transform,
+                                translate=False, rotate=False, scale=True,
+                                sl=True))
                     smallbutton(
                         label='Disconnect Transform',
                         c=Callback(
-                            ul.do_function_on()(ru.disconnect_transform)))
+                            ru.disconnect_transform,
+                            sl=True))
                     with popupMenu(b=3):
                         menuItem(
                             label='Disconnect Translate',
                             c=Callback(
-                                ul.do_function_on()(ru.disconnect_transform),
-                                attr='translate'))
+                                ru.disconnect_transform),
+                                attr='translate',
+                                sl=True)
                         menuItem(
                             label='Disconnect Rotate',
                             c=Callback(
-                                ul.do_function_on()(ru.disconnect_transform),
-                                attr='rotate'))
+                                ru.disconnect_transform),
+                                attr='rotate',
+                                sl=True)
                         menuItem(
                             label='Disconnect Scale',
                             c=Callback(
-                                ul.do_function_on()(ru.disconnect_transform),
-                                attr='scale'))
+                                ru.disconnect_transform),
+                                attr='scale',
+                                sl=True)
                 smallbutton(
                     label='multi Parent Constraint',
                     c=Callback(
-                        ul.do_function_on('singlelast')(ru.contraint_multi),
-                        constraintType='Parent'))
+                        ru.contraint_multi,
+                        constraintType='Parent',
+                        sl=True))
                 with popupMenu(b=3):
-                    menuItem(label='multi Point Constraint', c=Callback(
-                        ul.do_function_on('singlelast')(ru.contraint_multi),
-                        constraintType='Point'))
-                    menuItem(label='multi Orient Constraint', c=Callback(
-                        ul.do_function_on('singlelast')(ru.contraint_multi),
-                        constraintType='Orient'))
-                    menuItem(label='multi Point&Orient Constraint', c=Callback(
-                        ul.do_function_on('singlelast')(ru.contraint_multi),
-                        constraintType='PointOrient'))
-                    menuItem(label='multi Aim Constraint', c=Callback(
-                        ul.do_function_on('singlelast')(ru.contraint_multi),
-                        constraintType='Aim'))
-                    menuItem(label='multi Loc Point Constraint', c=Callback(
-                        ul.do_function_on('double')(ru.contraint_multi),
-                        constraintType='LocP'))
-                    menuItem(label='multi Loc Orient Constraint', c=Callback(
-                        ul.do_function_on('double')(ru.contraint_multi),
-                        constraintType='LocO'))
-                    menuItem(label='multi Loc Point&Orient Constraint', c=Callback(
-                        ul.do_function_on('double')(ru.contraint_multi),
-                        constraintType='LocOP'))
+                    menuItem(
+                        label='multi Point Constraint', c=Callback(
+                            ru.contraint_multi,
+                            constraintType='Point',
+                            sl=True))
+                    menuItem(
+                        label='multi Orient Constraint', c=Callback(
+                            ru.contraint_multi,
+                            constraintType='Orient',
+                            sl=True))
+                    menuItem(
+                        label='multi Point&Orient Constraint', c=Callback(
+                            ru.contraint_multi,
+                            constraintType='PointOrient',
+                            sl=True))
+                    menuItem(
+                        label='multi Aim Constraint', c=Callback(
+                            ru.contraint_multi,
+                            constraintType='Aim',
+                            sl=True))
+                    menuItem(
+                        label='multi Loc Point Constraint', c=Callback(
+                            ru.contraint_multi,
+                            constraintType='LocP',
+                            sl=True))
+                    menuItem(
+                        label='multi Loc Orient Constraint', c=Callback(
+                            ru.contraint_multi,
+                            constraintType='LocO',
+                            sl=True))
+                    menuItem(
+                        label='multi Loc Point&Orient Constraint', c=Callback(
+                            ru.contraint_multi,
+                            constraintType='LocOP',
+                            sl=True))
+
             with frameLayout(label='Intergration:'):
                 button(
                     label='Basic Intergration',
-                    c=Callback(ru.basic_intergration))
+                    c=Callback(ns57.basic_intergration))
                 with rowColumnLayout():
                     self._uiElement['visAtrName'] = textFieldGrp(
                         cl2=('left', 'right'),
@@ -403,8 +470,8 @@ class RigTools(object):
                         cw2=(40, 100),
                         label='Vis Attribute Name:', text='FullRigVis')
                     smallbutton(
-                        label='Connect Visibility', c=lambda x:ul.do_function_on('double')(ru.connect_visibility)(
-                            attrname= self._uiElement['visAtrName'].getText()))
+                        label='Connect Visibility', c=lambda x:ru.connect_visibility(
+                            attrname= self._uiElement['visAtrName'].getText(), sl=True))
                 with rowColumnLayout():
                     button(label='Channel History OFF', c=Callback(ru.toggleChannelHistory, False))
                     with popupMenu(b=3):
@@ -569,6 +636,8 @@ class FacialRig(object):
 
 
 class SkinWeightSetter(object):
+    '''Tools to set skin weight and transfer skinCluster
+    '''
     def __init__(self):
         self.skin_type = 'Classic'
         self.last_selected = []
@@ -626,7 +695,7 @@ class SkinWeightSetter(object):
         self.weight_threshold = (args[0], args[1])
 
     def set_skin_type(*args):
-        ul.do_function_on()(ru.switch_skin_type)(type=args[1])
+        ru.switch_skin_type(type=args[1], sl=True)
         headsUpMessage("Skin type set to %s" % args[1], time=0.2)
 
     def set_interactive_state(self):
@@ -829,19 +898,16 @@ class SkinWeightSetter(object):
                         self.ui['renameBone'].append(textField(text='bon'))
                         button(
                             label='Rename',
-                            c=lambda x:ul.do_function_on('set')(
-                                    ru.rename_bone_Chain)(
+                            c=lambda x:ru.rename_bone_Chain(
                                         self.ui['renameBone'][0].getText()+self.ui['renameBone'][1].getValue(),
                                         self.ui['renameBone'][2].getValue(),
                                         self.ui['renameBone'][3].getValue(),
                                         self.ui['renameBone'][4].getText(),
-                                    ))
+                                        sl=True))
                         button(
                             label='Label',
                             annotation='use joint name as label',
-                            c=Callback(
-                                ul.do_function_on()(
-                                    ru.label_joint)))
+                            c=Callback(ru.label_joint), sl=True)
                 with rowColumnLayout(
                     numberOfColumns=4,
                     columnWidth=[(1,100),]):
@@ -849,39 +915,40 @@ class SkinWeightSetter(object):
                         label='add Influence',
                         annotation='add influence to skin mesh',
                         c=Callback(
-                            ul.do_function_on('singlelast')(
-                                ru.add_joint_influence)))
+                            ru.add_joint_influence,
+                            sl=True))
                     button(
                         label='Freeze Skin Joint',
                         annotation='Freeze transform for joint connect to Skin Cluster',
                         c=Callback(
-                            ul.do_function_on()(
-                                ru.freeze_skin_joint)))
+                            ru.freeze_skin_joint,
+                            sl=True))
                     button(
                         label = 'Freeze Skin Joint Chain',
                         annotation='Freeze transform for joint Chain connect to Skin Cluster',
                         c = Callback(
-                            ul.do_function_on()(
-                                ru.freeze_skin_joint),
-                            hi=True))
+                            ru.freeze_skin_joint,
+                            hi=True,
+                            sl=True))
                     button(
                         label = 'Transfer Weight',
                         annotation='*Select 2 bone*. Transfer skin weight from one bone to another',
                         c=Callback(
-                            ul.do_function_on('singlelast')(
-                                ru.move_skin_weight)))
+                            ru.move_skin_weight,
+                            sl=True))
                     button(
                         label = 'Transfer Weight Chain',
                         annotation='*Select 2 bone root*. Transfer skin weight from one bone Chain to another',
                         c = Callback(
-                            ul.do_function_on('double')(
-                                ru.move_skin_weight),
-                            hi=True))
+                                ru.move_skin_weight,
+                                hi=True,
+                                sl=True))
                     button(
                         label = 'Reset BindPose',
                         annotation='Reset skin bind pose',
                         c = Callback(
-                            ru.reset_bindPose_all))
+                            ru.reset_bindPose_all,
+                            sl=True))
                 separator(height=10, style='none')
 
             with frameLayout(label='Status',borderVisible=True):

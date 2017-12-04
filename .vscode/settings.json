@@ -9,5 +9,17 @@
         "-p",
         "test_*.py"
     ],
-    "python.unitTest.unittestEnabled": true
+    "python.unitTest.unittestEnabled": true,
+    "python.unitTest.pyTestEnabled": false,
+    "python.unitTest.pyTestPath": "./packages/pytest/py.test",
+    "python.workspaceSymbols.exclusionPatterns": [
+        "**/site-packages/**",
+        "**/packages/**"
+    ],
+    "python.linting.ignorePatterns": [
+        ".vscode/*.py",
+        "**/site-packages/**/*.py",
+        "**/packages/**"
+    ],
+    
 }

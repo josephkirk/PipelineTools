@@ -18,9 +18,6 @@ import logging
 logging.basicConfig()
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
-reload(ul)
-reload(ru)
-
 
 # print meta
 # log.info('Rig Class Initilize')
