@@ -1,6 +1,10 @@
 {
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+    
         {
             "name": "Python",
             "type": "python",
@@ -9,6 +13,8 @@
             "pythonPath": "${config:python.pythonPath}",
             "program": "${file}",
             "cwd": "${workspaceRoot}",
+            "env": {},
+            "envFile": "${workspaceRoot}/.env",
             "debugOptions": [
                 "WaitOnAbnormalExit",
                 "WaitOnNormalExit",
@@ -16,71 +22,49 @@
             ]
         },
         {
-            "name": "PySpark",
+            "name": "Python: Attach",
             "type": "python",
-            "request": "launch",
-            "stopOnEntry": true,
-            "osx": {
-                "pythonPath": "${env.SPARK_HOME}/bin/spark-submit"
-            },
-            "windows": {
-                "pythonPath": "${env.SPARK_HOME}/bin/spark-submit.cmd"
-            },
-            "linux": {
-                "pythonPath": "${env.SPARK_HOME}/bin/spark-submit"
-            },
-            "program": "${file}",
-            "cwd": "${workspaceRoot}",
-            "debugOptions": [
-                "WaitOnAbnormalExit",
-                "WaitOnNormalExit",
-                "RedirectOutput"
-            ]
+            "request": "attach",
+            "localRoot": "${workspaceRoot}",
+            "remoteRoot": "${workspaceRoot}",
+            "port": 3000,
+            "secret": "my_secret",
+            "host": "localhost"
         },
         {
-            "name": "Python Module",
-            "type": "python",
-            "request": "launch",
-            "stopOnEntry": true,
-            "pythonPath": "${config:python.pythonPath}",
-            "module": "module.name",
-            "cwd": "${workspaceRoot}",
-            "debugOptions": [
-                "WaitOnAbnormalExit",
-                "WaitOnNormalExit",
-                "RedirectOutput"
-            ]
-        },
-        {
-            "name": "Integrated Terminal/Console",
+            "name": "Python: Terminal (integrated)",
             "type": "python",
             "request": "launch",
             "stopOnEntry": true,
             "pythonPath": "${config:python.pythonPath}",
             "program": "${file}",
-            "cwd": "null",
+            "cwd": "",
             "console": "integratedTerminal",
+            "env": {},
+            "envFile": "${workspaceRoot}/.env",
             "debugOptions": [
                 "WaitOnAbnormalExit",
                 "WaitOnNormalExit"
             ]
         },
         {
-            "name": "External Terminal/Console",
+            "name": "Python: Terminal (external)",
             "type": "python",
             "request": "launch",
             "stopOnEntry": true,
             "pythonPath": "${config:python.pythonPath}",
             "program": "${file}",
-            "cwd": "null",
+            "cwd": "",
             "console": "externalTerminal",
+            "env": {},
+            "envFile": "${workspaceRoot}/.env",
             "debugOptions": [
                 "WaitOnAbnormalExit",
                 "WaitOnNormalExit"
             ]
         },
         {
-            "name": "Django",
+            "name": "Python: Django",
             "type": "python",
             "request": "launch",
             "stopOnEntry": true,
@@ -89,8 +73,11 @@
             "cwd": "${workspaceRoot}",
             "args": [
                 "runserver",
-                "--noreload"
+                "--noreload",
+                "--nothreading"
             ],
+            "env": {},
+            "envFile": "${workspaceRoot}/.env",
             "debugOptions": [
                 "WaitOnAbnormalExit",
                 "WaitOnNormalExit",
@@ -99,7 +86,7 @@
             ]
         },
         {
-            "name": "Flask",
+            "name": "Python: Flask (0.11.x or later)",
             "type": "python",
             "request": "launch",
             "stopOnEntry": false,
@@ -114,6 +101,7 @@
                 "--no-debugger",
                 "--no-reload"
             ],
+            "envFile": "${workspaceRoot}/.env",
             "debugOptions": [
                 "WaitOnAbnormalExit",
                 "WaitOnNormalExit",
@@ -121,7 +109,7 @@
             ]
         },
         {
-            "name": "Flask (old)",
+            "name": "Python: Flask (0.10.x or earlier)",
             "type": "python",
             "request": "launch",
             "stopOnEntry": false,
@@ -129,6 +117,8 @@
             "program": "${workspaceRoot}/run.py",
             "cwd": "${workspaceRoot}",
             "args": [],
+            "env": {},
+            "envFile": "${workspaceRoot}/.env",
             "debugOptions": [
                 "WaitOnAbnormalExit",
                 "WaitOnNormalExit",
@@ -136,7 +126,66 @@
             ]
         },
         {
-            "name": "Watson",
+            "name": "Python: PySpark",
+            "type": "python",
+            "request": "launch",
+            "stopOnEntry": true,
+            "osx": {
+                "pythonPath": "${env:SPARK_HOME}/bin/spark-submit"
+            },
+            "windows": {
+                "pythonPath": "${env:SPARK_HOME}/bin/spark-submit.cmd"
+            },
+            "linux": {
+                "pythonPath": "${env:SPARK_HOME}/bin/spark-submit"
+            },
+            "program": "${file}",
+            "cwd": "${workspaceRoot}",
+            "env": {},
+            "envFile": "${workspaceRoot}/.env",
+            "debugOptions": [
+                "WaitOnAbnormalExit",
+                "WaitOnNormalExit",
+                "RedirectOutput"
+            ]
+        },
+        {
+            "name": "Python: Module",
+            "type": "python",
+            "request": "launch",
+            "stopOnEntry": true,
+            "pythonPath": "${config:python.pythonPath}",
+            "module": "module.name",
+            "cwd": "${workspaceRoot}",
+            "env": {},
+            "envFile": "${workspaceRoot}/.env",
+            "debugOptions": [
+                "WaitOnAbnormalExit",
+                "WaitOnNormalExit",
+                "RedirectOutput"
+            ]
+        },
+        {
+            "name": "Python: Pyramid",
+            "type": "python",
+            "request": "launch",
+            "stopOnEntry": true,
+            "pythonPath": "${config:python.pythonPath}",
+            "cwd": "${workspaceRoot}",
+            "env": {},
+            "envFile": "${workspaceRoot}/.env",
+            "args": [
+                "${workspaceRoot}/development.ini"
+            ],
+            "debugOptions": [
+                "WaitOnAbnormalExit",
+                "WaitOnNormalExit",
+                "RedirectOutput",
+                "Pyramid"
+            ]
+        },
+        {
+            "name": "Python: Watson",
             "type": "python",
             "request": "launch",
             "stopOnEntry": true,
@@ -148,21 +197,13 @@
                 "runserver",
                 "--noreload=True"
             ],
+            "env": {},
+            "envFile": "${workspaceRoot}/.env",
             "debugOptions": [
                 "WaitOnAbnormalExit",
                 "WaitOnNormalExit",
                 "RedirectOutput"
             ]
-        },
-        {
-            "name": "Attach (Remote Debug)",
-            "type": "python",
-            "request": "attach",
-            "localRoot": "${workspaceRoot}",
-            "remoteRoot": "${workspaceRoot}",
-            "port": 3000,
-            "secret": "my_secret",
-            "host": "localhost"
         }
     ]
 }
