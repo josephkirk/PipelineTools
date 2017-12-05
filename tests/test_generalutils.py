@@ -229,8 +229,11 @@ class TestDecorator(unittest.TestCase):
             for ob in obs:
                 pm.select(ob, r=True)
                 pm.select(targets, add=True)
-                pc = pm.skinCluster()
-                yield pc
+                try:
+                    pc = pm.skinCluster()
+                    yield pc
+                except RuntimeError:
+                    pass
         try:
             pm.select(cl=True)
             joints = []
@@ -240,7 +243,7 @@ class TestDecorator(unittest.TestCase):
             pm.select(joints, add=True)
             test_results = self.test_func['lastType'](
                 type_filter=['mesh', 'joint'])(test_func)(sl=True)
-        except TypeError as why:
+        except (TypeError, RuntimeError) as why:
             print 'do_function_on did not feed selected object to function'
             raise why
         self.general_test(pm.ls(type='skinCluster'), test_results)
@@ -248,7 +251,11 @@ class TestDecorator(unittest.TestCase):
             self.general_test(skinClter.getInfluence(), joints)
 
     def test_do_function_on_different_mode(self):
+        '''Create Multiple Joint , Locator and OneSphere.
+        Select Sphere Vertex accord to the amout of joint.
+        After that also select joints and locs'''
         def test_func(joint, loc, vert):
+            print joint, loc ,vert
             paconstraint = pm.parentConstraint(loc, joint)
             uv = vert.getUV()
             mesh = vert.node()
@@ -265,8 +272,10 @@ class TestDecorator(unittest.TestCase):
             for i in range(count):
                 pm.select(cl=True)
                 joints.append(pm.joint(p=[0, i, 0]))
-                locs.append(pm.spaceLocator())
+                loc = pm.spaceLocator()
+                locs.append(loc)
             sph = pm.polySphere(radius=10)
+            print locs
             #pm.select(sph[0].getShape().vtx[1], r=True)
             pm.select(cl=True)
             for i in range(count):
@@ -274,22 +283,28 @@ class TestDecorator(unittest.TestCase):
                 pm.select(sph[0].getShape().vtx[i], add=True)
             pm.select(locs, add=True)
             pm.select(joints, add=True)
+            print pm.selected()
             test_results = self.test_func['multiType'](
-                type_filter=['joint', 'loc', 'vertex'])(test_func)(sl=True)
+                type_filter=['joint', 'locator', 'vertex'])(test_func)(sl=True)
         except TypeError as why:
             print 'do_function_on did not feed selected object to function'
             raise why
-        self.general_test(pm.ls(type='parentConstraint'), test_results)
+        self.assertTrue(
+            pm.ls(type='parentConstraint'),
+            'Joint and Loc did not connect, No Parent Constraint in Scene')
+        self.assertTrue(
+            pm.ls(type='pointOnPolyConstraint'),
+            'Loc did not connect to mesh, no PointOnPoly Constraint in Scene')
         for j, l in zip(joints, locs):
-            self.assertTrue(j.inputs(type='parentConstraint'))
-            self.assertTrue(l.outputs(type='parentConstraint'))
-        # for j, l in zip(joints, locs):
-        #     self.assertEqual(
-        #         j.inputs(type='parentConstraint')[0],
-        #         l.outputs(type='parentConstraint')[0])
-        #     self.assertEqual(
-        #         l.inputs(type='pointOnPolyConstraint')[0],
-        #         sph.getShape().outputs(type='pointOnPolyConstraint')[0])
+            self.assertTrue(
+                j.inputs(type='parentConstraint'),
+                '%s do not have any Parent Constraint Connection'%j)
+            self.assertTrue(
+                l.outputs(type='parentConstraint'),
+                '%s do not have any Parent Constraint Connection'%l)
+            self.assertTrue(
+                l.inputs(type='pointOnPolyConstraint'),
+                '%s do not have any Point On Poly Constraint Connection'%l)
 
 class TestUtility(unittest.TestCase):
     def test_iter_hierachy(self):

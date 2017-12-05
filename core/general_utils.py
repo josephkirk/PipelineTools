@@ -236,23 +236,37 @@ def do_function_on(mode='single', type_filter=[]):
                 # if selected keyword are False
                 return func(*args, **kwargs)
             # get selected object as PyNode
-            component_type_check = any([ty in ['vertex', 'edge', 'face'] for ty in type_filter])
-            tmp_type_filter = []
-            for id, ty in enumerate(type_filter):
-                if ty in ['vertex', 'edge', 'face']:
-                    if 'mesh' not in tmp_type_filter:
-                        tmp_type_filter.append('mesh')
-                else:
-                    tmp_type_filter.append(ty)
-            object_list = [
-                i for i in pm.selected()
-                if i.nodeType() in tmp_type_filter] \
-                if tmp_type_filter else pm.selected()
+            object_list = []
+            if type_filter:
+                for o in pm.selected():
+                    try:
+                        otype = o.getShape().nodeType()
+                        assert (otype is not None)
+                    except AttributeError, AssertionError:
+                        otype = o.nodeType()
+                    component_dict = {
+                        'vertex': pm.general.MeshVertex,
+                        'edge': pm.general.MeshEdge,
+                        'face': pm.general.MeshFace
+                    }
+                    for typ, ptyp in component_dict.items():
+                        if isinstance(o,ptyp):
+                            otype = typ
+                    if otype in type_filter:
+                        if otype in component_dict.keys():
+                            vList = convert_component([o])
+                            for v in vList:
+                                for vid in v.indices():
+                                    object_list.append(v.node().vtx[vid])
+                        else:
+                            object_list.append(o)
+            else:
+                object_list = pm.selected()
             if not object_list:
                 msg = '''No selected objects or type input in type_filter is unknown!
                 Type Filter :\n%s 
                 Selection :\n%s'''%(
-                    str(tmp_type_filter),
+                    str(type_filter),
                     str([(i,i.nodeType()) for i in pm.selected()]))
                 log.error(msg)
                 raise RuntimeError(msg)
@@ -338,7 +352,7 @@ def do_function_on(mode='single', type_filter=[]):
                         #if o.nodeType() == 'transform':
                         try:
                             otype = o.getShape().nodeType()
-                            assert otype is not None
+                            assert (otype is not None)
                         except AttributeError, AssertionError:
                             otype = o.nodeType()
                         component_dict = {
@@ -353,8 +367,8 @@ def do_function_on(mode='single', type_filter=[]):
                             obtypes.append(o)
                     obtype_list.append(obtypes)
                 for ob_set in zip(*obtype_list):
-                    nargs = list(ob_set)
-                    nargs.append(args)
+                    nargs = [o for o in list(ob_set) if o]
+                    nargs.extend(args)
                     yield func(*nargs, **kwargs)
             ########
             #Define function mode dict
