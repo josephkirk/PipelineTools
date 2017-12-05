@@ -226,27 +226,36 @@ def do_function_on(mode='single', type_filter=[]):
         @wraps(func)
         def wrapper(*args, **kwargs):
             # test keywords for 'selected' or 'sl' keyword
-            try:
-                selected = kwargs['selected']
-            except KeyError:
-                try:
-                    selected = kwargs['sl']
-                except KeyError:
-                    # both 'selected' and 'sl' are not found in keyword
-                    return func(*args, **kwargs)
             for k in ['selected', 'sl']:
-                try:
+                if k in kwargs:
+                    selected = kwargs[k]
                     del kwargs[k]
-                except:
-                    pass
+                else:
+                    selected = False
             if not selected:
                 # if selected keyword are False
                 return func(*args, **kwargs)
             # get selected object as PyNode
-            object_list = pm.selected(type=type_filter)
+            component_type_check = any([ty in ['vertex', 'edge', 'face'] for ty in type_filter])
+            tmp_type_filter = []
+            for id, ty in enumerate(type_filter):
+                if ty in ['vertex', 'edge', 'face']:
+                    if 'mesh' not in tmp_type_filter:
+                        tmp_type_filter.append('mesh')
+                else:
+                    tmp_type_filter.append(ty)
+            object_list = [
+                i for i in pm.selected()
+                if i.nodeType() in tmp_type_filter] \
+                if tmp_type_filter else pm.selected()
             if not object_list:
-                log.error('No selected objects or type input in type_filter is unknown!')
-                raise
+                msg = '''No selected objects or type input in type_filter is unknown!
+                Type Filter :\n%s 
+                Selection :\n%s'''%(
+                    str(tmp_type_filter),
+                    str([(i,i.nodeType()) for i in pm.selected()]))
+                log.error(msg)
+                raise RuntimeError(msg)
             ##########
             #Define function mode
             ##########
@@ -300,7 +309,11 @@ def do_function_on(mode='single', type_filter=[]):
             def do_to_last_type():
                 '''like 'last' mode but last object must be a different type from other'''
                 if len(object_list) < 2 or len(type_filter) < 2:
-                    msg = 'Select more than two objects of diffent type!'
+                    msg = 'Select more than two objects of diffent type!\n \
+                           Current Selection:\n%s \
+                           Current Type Filter:\n%s '%(
+                               str(object_list),
+                               str(type_filter))
                     log.error(msg)
                     raise RuntimeWarning(msg)
                 source_type_set = [o for o in object_list if o.nodeType() !=  type_filter[-1]]
@@ -310,12 +323,36 @@ def do_function_on(mode='single', type_filter=[]):
             def do_different_type():
                 '''like 'last' mode but last object must be a different type from other'''
                 if len(object_list) < 2 or len(type_filter) < 2:
-                    log.error('Select more than two objects of diffent type!')
-                    raise
+                    msg = 'Select more than %s objects of %s diffent type!\n \
+                           Current Selection:\n%s \
+                           Current Type Filter:\n%s '%(
+                               len(type_filter), len(type_filter),
+                               str(object_list),
+                               str(type_filter))
+                    log.error(msg)
+                    raise RuntimeWarning(msg)
                 obtype_list = []
                 for t in type_filter:
-                    obtype_list.append([o for o in object_list if o.nodeType() == t])
-                for ob_set in zip(*nargs):
+                    obtypes = []
+                    for o in object_list:
+                        #if o.nodeType() == 'transform':
+                        try:
+                            otype = o.getShape().nodeType()
+                            assert otype is not None
+                        except AttributeError, AssertionError:
+                            otype = o.nodeType()
+                        component_dict = {
+                            'vertex': pm.general.MeshVertex,
+                            'edge': pm.general.MeshEdge,
+                            'face': pm.general.MeshFace
+                        }
+                        for typ, ptyp in component_dict.items():
+                            if isinstance(o,ptyp):
+                                otype = typ 
+                        if otype == t:
+                            obtypes.append(o)
+                    obtype_list.append(obtypes)
+                for ob_set in zip(*obtype_list):
                     nargs = list(ob_set)
                     nargs.append(args)
                     yield func(*nargs, **kwargs)
@@ -330,7 +367,7 @@ def do_function_on(mode='single', type_filter=[]):
                 'last': do_to_last,
                 'singleLast': partial(do_to_last, True),
                 'lastType': do_to_last_type,
-                'multitype': do_different_type,
+                'multiType': do_different_type,
             }
             ########
             #Return function result

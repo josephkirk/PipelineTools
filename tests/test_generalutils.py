@@ -18,8 +18,6 @@ def teardown():
     pm.newFile(f=True)
     print '\n','='*20, 'Cleanup Scene', '='*20,'\n'
 
-def test_func(ob, suffix=''):
-    pm.rename( ob, ob + suffix )
 
 # Test Class
 class TestDecorator(unittest.TestCase):
@@ -54,8 +52,8 @@ class TestDecorator(unittest.TestCase):
                 'last',
                 'singleLast',
                 'lastType',
-                'multitype']:
-            self.test_func[m] = partial(ul.do_function_on(mode=m))
+                'multiType']:
+            self.test_func[m] = partial(ul.do_function_on,mode=m)
         print '\n','='*50
 
     def tearDown(self):
@@ -78,7 +76,8 @@ class TestDecorator(unittest.TestCase):
             return ob
         try:
             pm.select(self.selected)
-            test_results = self.test_func['single'](test_func)('newTestSphere',sl=True)
+            test_results = self.test_func['single']()(
+                test_func)('newTestSphere', sl=True)
         except TypeError as why:
             print 'do_function_on did not feed selected object to function'
             raise why
@@ -95,7 +94,8 @@ class TestDecorator(unittest.TestCase):
         test_direct_results = []
         for ob in self.selected:
             try:
-                result = self.test_func['single'](test_func)(ob,'newTestSphere')
+                result = self.test_func['single']()(
+                    test_func)(ob,'newTestSphere')
                 test_direct_results.append(result[0])
             except TypeError as why:
                 print 'do_function_on did not feed argument to function'
@@ -118,7 +118,8 @@ class TestDecorator(unittest.TestCase):
             return newobs
         try:
             pm.select(self.selected)
-            test_results = self.test_func['set'](test_func)('newTestSphere',sl=True)
+            test_results = self.test_func['set']()(
+                test_func)('newTestSphere', sl=True)
         except TypeError as why:
             print 'do_function_on did not feed selected object to function'
             raise why
@@ -136,7 +137,8 @@ class TestDecorator(unittest.TestCase):
                 newobs.append(ob)
             return newobs
         try:
-            result = self.test_func['set'](test_func)(self.selected,'newTestSphere')
+            result = self.test_func['set']()(
+                test_func)(self.selected, 'newTestSphere')
             test_direct_results = result
         except TypeError as why:
             print 'do_function_on did not feed argument to function'
@@ -146,14 +148,15 @@ class TestDecorator(unittest.TestCase):
             self.assertTrue(
                 ob.name().count('newTestSphere'),
                 'result for %s do not match expected'%ob)
-    
+
     def test_do_function_on_hierachy_mode(self):
         def test_func(ob, newName):
             pm.rename(ob, newName)
             return ob
         try:
             pm.select(self.genObRoots)
-            test_results = self.test_func['hierachy'](test_func)('newTestSphere',sl=True)
+            test_results = self.test_func['hierachy']()(
+                test_func)('newTestSphere', sl=True)
         except TypeError as why:
             print 'do_function_on did not feed selected object to function'
             raise why
@@ -162,7 +165,7 @@ class TestDecorator(unittest.TestCase):
             self.assertTrue(
                 ob.name().count('newTestSphere'),
                 'result for %s do not match expected'%ob)
-    
+
     def test_do_function_on_hierachy_mode_direct(self):
         def test_func(obs, newName):
             newobs = []
@@ -171,7 +174,8 @@ class TestDecorator(unittest.TestCase):
                 newobs.append(ob)
             return newobs
         try:
-            test_results = self.test_func['hierachy'](test_func)(self.selected,'newTestSphere')
+            test_results = self.test_func['hierachy']()(
+                test_func)(self.selected, 'newTestSphere')
         except TypeError as why:
             print 'do_function_on did not feed selected object to function'
             raise why
@@ -182,19 +186,19 @@ class TestDecorator(unittest.TestCase):
                 'result for %s do not match expected'%ob)
 
     def test_do_function_on_oneToOne_mode(self):
-        def test_func(ob,target):
+        def test_func(ob, target):
             pc = pm.parentConstraint(target, ob)
             return ob
         try:
             pm.select(self.genObRoots)
-            test_results = self.test_func['oneToOne'](test_func)(sl=True)
+            test_results = self.test_func['oneToOne']()(test_func)(sl=True)
         except TypeError as why:
             print 'do_function_on did not feed selected object to function'
             raise why
         self.general_test(pm.ls(type='parentConstraint'), test_results)
 
     def test_do_function_on_last_mode(self):
-        def test_func(obs,target):
+        def test_func(obs, target):
             newPC = []
             for ob in obs:
                 pc = pm.parentConstraint(target, ob)
@@ -202,48 +206,96 @@ class TestDecorator(unittest.TestCase):
             return newPC
         try:
             pm.select(self.selected)
-            test_results = self.test_func['last'](test_func)(sl=True)
+            test_results = self.test_func['last']()(test_func)(sl=True)
         except TypeError as why:
             print 'do_function_on did not feed selected object to function'
             raise why
         self.general_test(self.selected[:-1], pm.ls(type='parentConstraint'))
 
     def test_do_function_on_singlelast_mode(self):
-        def test_func(ob,target):
+        def test_func(ob, target):
             pc = pm.parentConstraint(target, ob)
             return pc
         try:
             pm.select(self.selected)
-            test_results = self.test_func['singleLast'](test_func)(sl=True)
+            test_results = self.test_func['singleLast']()(test_func)(sl=True)
         except TypeError as why:
             print 'do_function_on did not feed selected object to function'
             raise why
-        self.general_test(pm.ls(type='parentConstraint'),test_results)
-    
+        self.general_test(pm.ls(type='parentConstraint'), test_results)
+
     def test_do_function_on_lastType_mode(self):
-        def test_func(obs,targets):
+        def test_func(obs, targets):
             for ob in obs:
                 pm.select(ob, r=True)
-                pm.select(target, add=True)
+                pm.select(targets, add=True)
                 pc = pm.skinCluster()
-            return pc
+                yield pc
         try:
-            pm.select(self.selected)
+            pm.select(cl=True)
             joints = []
             for i in range(5):
-                joints.append(pm.joint(p=[0,i,0]))
+                joints.append(pm.joint(p=[0, i, 0]))
+            pm.select(self.selected, r=True)
             pm.select(joints, add=True)
-            test_results = self.test_func['lastType'](test_func)(sl=True)
+            test_results = self.test_func['lastType'](
+                type_filter=['mesh', 'joint'])(test_func)(sl=True)
         except TypeError as why:
             print 'do_function_on did not feed selected object to function'
             raise why
-        self.general_test(pm.ls(type='skinCluster'),test_results)
+        self.general_test(pm.ls(type='skinCluster'), test_results)
+        for skinClter in pm.ls(type='skinCluster'):
+            self.general_test(skinClter.getInfluence(), joints)
+
+    def test_do_function_on_different_mode(self):
+        def test_func(joint, loc, vert):
+            paconstraint = pm.parentConstraint(loc, joint)
+            uv = vert.getUV()
+            mesh = vert.node()
+            ppconstraint = pm.pointOnPolyConstraint(
+                mesh, loc, mo=False)
+            stripname = ul.get_name(mesh.getParent())
+            ppconstraint.attr(stripname + 'U0').set(uv[0])
+            ppconstraint.attr(stripname + 'V0').set(uv[1])
+            return (paconstraint, ppconstraint)
+        try:
+            joints = []
+            locs = []
+            count = len(self.genObRoots)
+            for i in range(count):
+                pm.select(cl=True)
+                joints.append(pm.joint(p=[0, i, 0]))
+                locs.append(pm.spaceLocator())
+            sph = pm.polySphere(radius=10)
+            #pm.select(sph[0].getShape().vtx[1], r=True)
+            pm.select(cl=True)
+            for i in range(count):
+                i+=1
+                pm.select(sph[0].getShape().vtx[i], add=True)
+            pm.select(locs, add=True)
+            pm.select(joints, add=True)
+            test_results = self.test_func['multiType'](
+                type_filter=['joint', 'loc', 'vertex'])(test_func)(sl=True)
+        except TypeError as why:
+            print 'do_function_on did not feed selected object to function'
+            raise why
+        self.general_test(pm.ls(type='parentConstraint'), test_results)
+        for j, l in zip(joints, locs):
+            self.assertTrue(j.inputs(type='parentConstraint'))
+            self.assertTrue(l.outputs(type='parentConstraint'))
+        # for j, l in zip(joints, locs):
+        #     self.assertEqual(
+        #         j.inputs(type='parentConstraint')[0],
+        #         l.outputs(type='parentConstraint')[0])
+        #     self.assertEqual(
+        #         l.inputs(type='pointOnPolyConstraint')[0],
+        #         sph.getShape().outputs(type='pointOnPolyConstraint')[0])
 
 class TestUtility(unittest.TestCase):
     def test_iter_hierachy(self):
         joints = []
         for i in range(5):
-            joints.append(pm.joint(p=[0,i,0]))
+            joints.append(pm.joint(p=[0, i, 0]))
         results = ul.iter_hierachy(joints[0])
         self.assertEqual(
             pm.ls(type='joint'), list(results),
