@@ -172,16 +172,6 @@ def reset_floating_window():
 
 # Decorators #
 
-def timeit(func):
-    """time a function"""
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        t= time()
-        result = func(*args, **kwargs)
-        log.debug(func.__name__,'took: ',time()-t)
-        return result
-    return wrapper
-
 def error_alert(func):
     """print Error if function fail"""
     @wraps(func)
@@ -239,25 +229,10 @@ def do_function_on(mode='single', type_filter=[]):
             object_list = []
             if type_filter:
                 for o in pm.selected():
-                    try:
-                        otype = o.getShape().nodeType()
-                        assert (otype is not None)
-                    except AttributeError, AssertionError:
-                        otype = o.nodeType()
-                    component_dict = {
-                        'vertex': pm.general.MeshVertex,
-                        'edge': pm.general.MeshEdge,
-                        'face': pm.general.MeshFace
-                    }
-                    for typ, ptyp in component_dict.items():
-                        if isinstance(o,ptyp):
-                            otype = typ
+                    otype = get_type(o)
                     if otype in type_filter:
-                        if otype in component_dict.keys():
+                        if otype in ['vertex','edge','face']:
                             vList = convert_component([o])
-                            for v in vList:
-                                for vid in v.indices():
-                                    object_list.append(v.node().vtx[vid])
                         else:
                             object_list.append(o)
             else:
@@ -273,20 +248,20 @@ def do_function_on(mode='single', type_filter=[]):
             ##########
             #Define function mode
             ##########
-
+            @error_alert
             def do_single():
                 '''Feed function with each valid selected object and yield result'''
                 for ob in object_list:
                     yield func(ob, *args, **kwargs)
-
+            @error_alert
             def do_hierachy():
                 '''Feed function with each object and all its childrens and yield result'''
                 for ob in object_list:
-                    print ob
+                    # print ob
                     for child in iter_hierachy(ob):
-                        print child
+                        # print child
                         yield func(child, *args, **kwargs)
-
+            @error_alert
             def do_one_to_one():
                 '''Feed function with a set of first and last selected object and yield result'''
                 if len(object_list)%2:
@@ -300,11 +275,11 @@ def do_function_on(mode='single', type_filter=[]):
                                 if not id%2]
                 for ob1, ob2 in zip(objects_set1, objects_set2):
                     yield func(ob1, ob2, *args, **kwargs)
-
+            @error_alert
             def do_set():
                 '''Feed function directly with list of selected objects'''
                 return func(object_list, *args, **kwargs)
-
+            @error_alert
             def do_to_last(singlelast=False):
                 '''Feed function list of selected objects before the last select object and
                 the last object'''
@@ -319,7 +294,7 @@ def do_function_on(mode='single', type_filter=[]):
                         yield func(op, target, *args, **kwargs)
                 else:
                     yield func(op_list, target, *args, **kwargs)
-
+            @error_alert
             def do_to_last_type():
                 '''like 'last' mode but last object must be a different type from other'''
                 if len(object_list) < 2 or len(type_filter) < 2:
@@ -333,7 +308,7 @@ def do_function_on(mode='single', type_filter=[]):
                 source_type_set = [o for o in object_list if o.nodeType() !=  type_filter[-1]]
                 target_type_set = [o for o in object_list if o.nodeType() == type_filter[-1]]
                 return func(source_type_set, target_type_set,*args, **kwargs)
-
+            @error_alert
             def do_different_type():
                 '''like 'last' mode but last object must be a different type from other'''
                 if len(object_list) < 2 or len(type_filter) < 2:
@@ -349,25 +324,13 @@ def do_function_on(mode='single', type_filter=[]):
                 for t in type_filter:
                     obtypes = []
                     for o in object_list:
-                        #if o.nodeType() == 'transform':
-                        try:
-                            otype = o.getShape().nodeType()
-                            assert (otype is not None)
-                        except AttributeError, AssertionError:
-                            otype = o.nodeType()
-                        component_dict = {
-                            'vertex': pm.general.MeshVertex,
-                            'edge': pm.general.MeshEdge,
-                            'face': pm.general.MeshFace
-                        }
-                        for typ, ptyp in component_dict.items():
-                            if isinstance(o,ptyp):
-                                otype = typ 
+                        otype = get_type(o)
                         if otype == t:
                             obtypes.append(o)
                     obtype_list.append(obtypes)
+                assert all(object_list), 'One or more object set belong to a type in type Filter is empty'
                 for ob_set in zip(*obtype_list):
-                    nargs = [o for o in list(ob_set) if o]
+                    nargs = []
                     nargs.extend(args)
                     yield func(*nargs, **kwargs)
             ########
@@ -522,6 +485,22 @@ def sys_cop(src, dest):
     return ','.join(status)
 
 # --- Query Infos --- #
+@error_alert
+def get_type(ob):
+    try:
+        otype = ob.getShape().nodeType()
+        assert (otype is not None)
+    except AttributeError, AssertionError:
+        otype = ob.nodeType()
+    component_dict = {
+        'vertex': pm.general.MeshVertex,
+        'edge': pm.general.MeshEdge,
+        'face': pm.general.MeshFace
+    }
+    for typ, ptyp in component_dict.items():
+        if isinstance(ob,ptyp):
+            otype = typ
+    return otype
 
 @error_alert
 def get_name(ob):
@@ -537,7 +516,7 @@ def recurse_hierachy(root, callback,*args,**kwargs):
             recurse(child)
     recurse(root)
 
-#@error_alert
+@error_alert
 def iter_hierachy(root):
     '''yield hierachy generator object with stack method'''
     stack = [root]
@@ -710,21 +689,50 @@ def remove_number(string):
     for index, character in enumerate(string):
         if character.isdigit():
             return (string[:index], int(string[index:] if string[index:].isdigit() else string[index:]))
-
-def convert_component(components_list, toVertex=True, toEdge=False, toFace=False):
-    test_type = [o for o in components_list if type(o) is pm.nt.Transform]
-
-    if test_type:
+@error_alert
+def convert_component(
+        components_list,
+        toVertex=True,
+        toEdge=False,
+        toFace=False):
+    ''' convert tranform to component or from component to other component type'''
+    # check if arg contain tranform node, if True return Shape Vertex
+    filter_transform = [
+        o for o in components_list if type(o) is pm.nt.Transform]
+    if filter_transform:
         converts = []
-        for match in test_type:
-            convert = match.getShape().vtx
-            converts.append(convert)
+        for tr in check_for_transform:
+            if getShape(tr):
+                convert = getShape(tr).vtx
+                for vert in getShape(tr).vtx:
+                    for vertid in vert.indices():
+                        converts.append(getShape(tr).vtx[vertid])
         return converts
-    converts = pm.polyListComponentConversion(components_list,
-                                              fromFace=True, fromEdge=True, fromVertex=True,
-                                              toFace=toFace, toEdge=toEdge, toVertex=toVertex)
-    print converts
-    return pm.ls(converts)
+    filter_component = [c for c in components_list if hasattr(c,'__apicomponent__')]
+    if filter_component:
+        converts = pm.polyListComponentConversion(
+            filter_component,
+            fromFace=True, fromEdge=True, fromVertex=True,
+            toFace=toFace, toEdge=toEdge, toVertex=toVertex)
+        converts = [pm.PyNode(convert) for convert in converts]
+        if toFace:
+            result = []
+            for face in result:
+                for faceid in face.indices():
+                    converts.append(face.node().f[faceid])
+            return result
+        if toEdge:
+            result = []
+            for edge in converts:
+                for edgeid in edge.indices():
+                    result.append(edge.node().e[edgeid])
+            return result
+        if toVertex:
+            result = []
+            for vert in converts:
+                for vertid in vert.indices():
+                    result.append(vert.node().vtx[vertid])
+            return result
 
 def convert_edge_to_curve(edge):
     pm.polySelect(edge.node(), el=edge.currentItemIndex())
