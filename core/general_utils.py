@@ -233,6 +233,7 @@ def do_function_on(mode='single', type_filter=[]):
                     if otype in type_filter:
                         if otype in ['vertex','edge','face']:
                             vList = convert_component([o])
+                            object_list.extend(vList)
                         else:
                             object_list.append(o)
             else:
@@ -328,9 +329,10 @@ def do_function_on(mode='single', type_filter=[]):
                         if otype == t:
                             obtypes.append(o)
                     obtype_list.append(obtypes)
-                assert all(object_list), 'One or more object set belong to a type in type Filter is empty'
+                print obtype_list
+                assert all(obtype_list), 'One or more object set belong to a type in type Filter is empty'
                 for ob_set in zip(*obtype_list):
-                    nargs = []
+                    nargs = list(ob_set)
                     nargs.extend(args)
                     yield func(*nargs, **kwargs)
             ########

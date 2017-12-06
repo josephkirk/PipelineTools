@@ -275,7 +275,7 @@ class TestDecorator(unittest.TestCase):
                 loc = pm.spaceLocator()
                 locs.append(loc)
             sph = pm.polySphere(radius=10)
-            print locs
+            #print locs
             #pm.select(sph[0].getShape().vtx[1], r=True)
             pm.select(cl=True)
             for i in range(count):
@@ -283,7 +283,7 @@ class TestDecorator(unittest.TestCase):
                 pm.select(sph[0].getShape().vtx[i], add=True)
             pm.select(locs, add=True)
             pm.select(joints, add=True)
-            print pm.selected()
+            #print pm.selected()
             test_results = self.test_func['multiType'](
                 type_filter=['joint', 'locator', 'vertex'])(test_func)(sl=True)
         except TypeError as why:
