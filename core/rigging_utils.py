@@ -36,6 +36,7 @@ def select_controller_metanode(metaname='ControllersMeta'):
     else:
         log.error('No controller metaNode exists')
 
+@ul.do_function_on()
 def control_tagging(ob, metaname='ControllersMeta', remove=False):
     controlmeta = get_controller_metanode(metaname)
     if ob.name() not in controlmeta.getChildren() and not remove:
@@ -76,6 +77,7 @@ def toggleChannelHistory(state=True):
         ob.isHistoricallyInteresting.set(state)
         log.info('{} Channel History Display Set To {}'.format(ob,state))
 
+@ul.do_function_on('set')
 def group(obs, grpname = ''):
     '''group control under newTransform'''
     obs = []
@@ -92,6 +94,7 @@ def group(obs, grpname = ''):
         log.info('group {} under {}'.format(ob, Gp))
     return Gp
 
+@ul.do_function_on()
 def create_parent(ob):
     obname = ob.name().split('|')[-1]
     parent = pm.nt.Transform(name=obname + 'Gp')
@@ -104,6 +107,7 @@ def create_parent(ob):
     log.info('create Parent Transform %s'%parent)
     return parent
 
+@ul.do_function_on()
 def remove_parent(ob):
     parent = ob.getParent()
     grandParent = parent.getParent()
@@ -241,6 +245,7 @@ def createPinCircle(
     log.debug(crv)
     return crv
 
+@ul.do_function_on('oneToOne')
 def contraint_multi(ob, target, constraintType='Point'):
     constraintDict = {
         'Point': ul.partial(pm.pointConstraint , mo=True),
@@ -272,11 +277,13 @@ def contraint_multi(ob, target, constraintType='Point'):
             return
     constraintDict[constraintType](target,ob)
 
+@ul.do_function_on('oneToOne')
 def connect_visibility(ob, target, attrname='Vis'):
     if not hasattr(ob, attrname):
         ob.addAttr(ln=attrname,at='bool',k=1)
     ob.attr(attrname) >> target.visibility
 
+@ul.do_function_on('oneToOne')
 def aim_setup(ctl,loc):
     oldParent = ctl.getParent().getParent()
     create_parent(ctl)
@@ -303,6 +310,7 @@ def aim_setup(ctl,loc):
         c.rename(c.name().replace('loc','aimLoc'))
     return (orientOffset, aimGp, locGp)
 
+@ul.do_function_on()
 def create_offset_bone(bone, child=False, suffix='offset_bon'):
     newname = bone.name().split('|')[-1].split('_')[0] + '_' + suffix
     offsetbone = pm.duplicate(bone, name=newname, po=True)[0]
@@ -311,6 +319,7 @@ def create_offset_bone(bone, child=False, suffix='offset_bon'):
     bone.setParent(offsetbone)
     return offsetbone
 
+@ul.do_function_on()
 def create_loc_control(ob, connect=True,**kws):
     obname = ob.name().split('|')[-1]
     loc = pm.spaceLocator(name=obname + '_loc')
@@ -321,6 +330,7 @@ def create_loc_control(ob, connect=True,**kws):
         connect_transform(loc, ob, **kws)
     return loc
 
+@ul.do_function_on('oneToOne')
 def connect_with_loc(ctl,bon,**kws):
     loc = create_loc_control(bon,**kws)
     pct = pm.pointConstraint(ctl, loc, mo=True)
@@ -328,6 +338,7 @@ def connect_with_loc(ctl,bon,**kws):
     log.info('{} connect with {} using {}'.format(ctl,bon,loc))
     return (loc,pct,oct)
 
+@ul.do_function_on(type_filter=['vertex'])
 def create_loc_on_vert(vert,name='guideLoc'):
     print vert
     if isinstance(vert,pm.general.MeshVertex):
@@ -346,15 +357,18 @@ def create_loc_on_vert(vert,name='guideLoc'):
 
 # --- Transformation ---
 
+@ul.do_function_on('oneToOne')
 def xformTo(ob, target):
     const = pm.parentConstraint(target, ob)
     pm.delete(const)
     log.info('{} match to {}'.format(ob,target))
 
+@ul.do_function_on('oneToOne')
 def match_transform(ob, target):
     ob.setMatrix(target.getMatrix(ws=True), ws=True)
     log.info('{} match to {}'.format(ob,target))
 
+@ul.do_function_on('oneToOne')
 def connect_transform(ob, target, **kws):
     attrdict = {
         'translate': ['tx', 'ty', 'tz'],
@@ -385,6 +399,7 @@ def connect_transform(ob, target, **kws):
                 log.info('{} connect to {}'.format(
                     ob.attr(attr), target.attr(attr)))
 
+@ul.do_function_on('oneToOne')
 def disconnect_transform(ob , attr='all'):
     attrdict = {
         'translate': ['translate','tx', 'ty', 'tz'],
@@ -399,7 +414,7 @@ def disconnect_transform(ob , attr='all'):
         ob.attr(atr).disconnect()
 
 # --- Blend Shape ---
-
+@ul.do_function_on(type_filter=["blendShape"])
 def rebuild_blendshape_target(
         bsname,
         reset_value=False,
@@ -471,6 +486,7 @@ def rebuild_blendshape_target(
 
 # --- Skin Cluster ---
 
+@ul.do_function_on(type_filter=['joint'])
 def freeze_skin_joint(bon, hi=False):
     bonname = ul.get_name(bon)
     tempBon = pm.duplicate(bon,po=True,rr=True)[0]
@@ -495,6 +511,7 @@ def freeze_skin_joint(bon, hi=False):
             bon = bonChain.next()
             freeze_skin_joint(bon)
 
+@ul.do_function_on('oneToOne', type_filter=['joint'])
 def move_skin_weight(bon, targetBon, hi=False, reset_bindPose=False):
     skinClusters = bon.outputs(type='skinCluster')
     for skinCluster in skinClusters:
@@ -533,6 +550,7 @@ def move_skin_weight(bon, targetBon, hi=False, reset_bindPose=False):
         for bon,targetBon in zip(iter(bonChain), iter(targetBonChain)):
             move_skin_weight(bon,targetBon)
 
+@ul.do_function_on('singleLast', type_filter=['joint', 'mesh'])
 def add_joint_influence(bone, skinmesh):
     skin_cluster = ul.get_skin_cluster(skinmesh)
     assert(skin_cluster), '%s have no skin bind'%skinmesh  
@@ -540,6 +558,7 @@ def add_joint_influence(bone, skinmesh):
     if bone not in inflList:
         skin_cluster.addInfluence(bone, wt=0)
 
+@ul.do_function_on('oneToOne', type_filter=['mesh', 'joint'])
 def skin_weight_filter(ob, joint, min=0.0, max=0.1, select=False):
     '''return vertex with weight less than theshold'''
     skin_cluster = ul.get_skin_cluster(ob)
@@ -554,6 +573,7 @@ def skin_weight_filter(ob, joint, min=0.0, max=0.1, select=False):
         pm.select(filter_weight)
     return filter_weight
 
+@ul.do_function_on(type_filter=['joint'])
 def switch_skin_type(ob, type='classis'):
     type_dict = {
         'Classis': 0,
@@ -566,6 +586,7 @@ def switch_skin_type(ob, type='classis'):
     deform_normal_state = 0 if type_dict[type] is 2 else 1
     skin_cluster.attr('deformUserNormals').set(deform_normal_state)
 
+@ul.do_function_on('lastType', type_filter=['vertex', 'edge', 'face', 'mesh', 'joint'])
 def skin_weight_setter(component_list, joints_list, skin_value=1.0, normalized=True, hierachy=False):
     '''set skin weight to skin_value for vert in verts_list to first joint,
        other joint will receive average from normalized weight,
@@ -607,6 +628,7 @@ def skin_weight_setter(component_list, joints_list, skin_value=1.0, normalized=T
             # print skin_weight
             # skin_cluster.setWeights(joints_list,[skin])
 
+@ul.do_function_on(type_filter=['vertex', 'edge', 'face', 'mesh'])
 def dual_weight_setter(component_list, weight_value=0.0, query=False):
     verts_list = ul.convert_component(component_list)
     shape = verts_list[0].node()
@@ -626,6 +648,7 @@ def dual_weight_setter(component_list, weight_value=0.0, query=False):
                 # pm.select(verts_list)
                 # skin_cluster.setBlendWeights(shape, verts_list, [weight_value,])
 
+@ul.do_function_on()
 def create_joint(ob_list):
     new_joints = []
     for ob in ob_list:
@@ -829,10 +852,12 @@ def dup_bone_chain(boneRoot,suffix='dup'):
         newChain.append(dupBone)
     return newChain
 
+@ul.do_function_on('oneToOne',type_filter=['joint'])
 def connect_joint(bones, boneRoot, **kwargs):
     for bone in bones:
         pm.connectJoint(bone, boneRoot, **kwargs)
 
+@ul.do_function_on(type_filter=['joint'])
 def label_joint(
         ob,
         remove_prefixes=['CH_'],
@@ -865,6 +890,7 @@ def label_joint(
     except AttributeError as why:
         log.error(why)
 
+@ul.do_function_on(type_filter=['joint'])
 def rename_bone_Chain(boneRoots, newName, startcollumn=0, startNum=1, suffix='bon'):
     collumNames = list(alphabet)
     collumNames.extend(
@@ -883,6 +909,7 @@ def rename_bone_Chain(boneRoots, newName, startcollumn=0, startNum=1, suffix='bo
                 suffix))
             i += 1
 
+@ul.do_function_on(type_filter=['joint'])
 def create_roll_joint(oldJoint):
     newJoint = pm.duplicate(oldJoint, rr=1, po=1)[0]
     pm.rename(newJoint, ('%sRoll1' % oldJoint.name()).replace('Left', 'LeafLeft'))
@@ -890,6 +917,7 @@ def create_roll_joint(oldJoint):
     pm.parent(newJoint, oldJoint)
     return newJoint
 
+@ul.do_function_on(type_filter=['joint'])
 def create_sub_joint(ob):
     subJoint = pm.duplicate(ob, name='%sSub' % ob.name(), rr=1, po=1, )[0]
     new_pairBlend = pm.createNode('pairBlend')
@@ -900,6 +928,7 @@ def create_sub_joint(ob):
     new_pairBlend.outRotate >> subJoint.rotate
     return (ob, new_pairBlend, subJoint)
 
+@ul.do_function_on(type_filter=['joint'])
 def mirror_joint_tranform(bone, translate=False, rotate=True, **kwargs):
     # print bone
     opbone = get_opposite_joint(bone, customPrefix=(kwargs['customPrefix'] if kwargs.has_key('customPrefix') else None))
@@ -919,6 +948,7 @@ def mirror_joint_tranform(bone, translate=False, rotate=True, **kwargs):
                      ch=kwargs['ch'] if kwargs.has_key('ch') else False,
                      co=not kwargs['ch'] if kwargs.has_key('ch') else True)
 
+@ul.do_function_on(type_filter=['joint'])
 def mirror_joint_multi(ob):
     pm.mirrorJoint(ob, myz=True, sr=('Left', 'Right'))
 
@@ -951,6 +981,7 @@ def create_hair_system(name=''):
     hairSys.active.set(1)
     return (hairSys, nucleus)
 
+@ul.do_function_on(type_filter=['nurbsCurve'])
 def make_curve_dynamic(inputcurve, hairSystem=''):
     if hairSystem and pm.objExists(hairSystem):
         allHairSys = pm.ls(type='hairSystem')
