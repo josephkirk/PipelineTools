@@ -11,18 +11,18 @@ print '='*20, 'Initialize Finished ', '='*20, '\n'
 # Set up & tear down
 
 def setup():
-    print '\n'*2,'='*20, 'Set up new Scene', '='*20
+    '''Set up new Scene'''
     pm.newFile(f=True)
 
 def teardown():
+    '''Clean up new Scene'''
     pm.newFile(f=True)
-    print '\n','='*20, 'Cleanup Scene', '='*20,'\n'
-
 
 # Test Class
 class TestDecorator(unittest.TestCase):
     """test decorator"""
     def setUp(self):
+        '''Create New Scene with group of hierachy spheres'''
         setup()
         new_obs = []
         collumn = 5
@@ -54,12 +54,14 @@ class TestDecorator(unittest.TestCase):
                 'lastType',
                 'multiType']:
             self.test_func[m] = partial(ul.do_function_on,mode=m)
-        print '\n','='*50
+        # print '\n','='*50
 
     def tearDown(self):
+        '''Clean up scene'''
         teardown()
 
     def general_test(self, orig, test_results):
+        '''Test for results if results and created nodes are equal'''
         self.assertIsNotNone(
             test_results,
             'return result is empty')
@@ -71,131 +73,138 @@ class TestDecorator(unittest.TestCase):
                 ))
 
     def test_do_function_on_single_mode(self):
-        def test_func(ob, newName):
-            pm.rename(ob, newName)
-            return ob
-        try:
-            pm.select(self.selected)
-            test_results = self.test_func['single']()(
-                test_func)('newTestSphere', sl=True)
-        except TypeError as why:
-            print 'do_function_on did not feed selected object to function'
-            raise why
-        self.general_test(self.selected, test_results)
-        for ob in self.selected:
-            self.assertTrue(
-                ob.name().count('newTestSphere'),
-                'result for %s do not match expected'%ob)
+        ''' test Wraper to feed each of selected object'''
 
-    def test_do_function_on_single_mode_direct(self):
-        def test_func(ob, newName):
+        @ul.do_function_on()
+        def test_func(ob, newName='newTestSphere'):
+            '''function made for testing'''
             pm.rename(ob, newName)
             return ob
-        test_direct_results = []
-        for ob in self.selected:
-            try:
-                result = self.test_func['single']()(
-                    test_func)(ob,'newTestSphere')
-                test_direct_results.append(result[0])
-            except TypeError as why:
-                print 'do_function_on did not feed argument to function'
-                raise why
-            except IndexError as why:
-                print 'result return is None'
-                raise why
-        self.general_test(self.selected, test_direct_results)
-        for ob in self.selected:
-            self.assertTrue(
-                ob.name().count('newTestSphere'),
-                'result for %s do not match expected'%ob)
+
+        @ul.error_alert
+        def run_test(use_wrapper=False):
+            '''test function with wrapper'''
+            pm.select(self.selected)
+            test_wrapper = partial(
+                test_func, sl=use_wrapper)
+            if use_wrapper:
+                test_results = test_wrapper()
+            else:
+                test_results = map(test_wrapper, pm.selected())
+            self.general_test(self.selected, test_results)
+            for ob in self.selected:
+                self.assertTrue(
+                    ob.name().count('newTestSphere'),
+                    'result for %s do not match expected'%ob)
+            self.setUp()
+            return 'OK'
+
+        # test with argument feed from wrapper
+        run_test(use_wrapper=True)
+        # test with argument feed through wrapper
+        run_test()
 
     def test_do_function_on_set_mode(self):
-        def test_func(obs, newName):
-            newobs = []
-            for ob in obs:
-                pm.rename(ob, newName)
-                newobs.append(ob)
-            return newobs
-        try:
-            pm.select(self.selected)
-            test_results = self.test_func['set']()(
-                test_func)('newTestSphere', sl=True)
-        except TypeError as why:
-            print 'do_function_on did not feed selected object to function'
-            raise why
-        self.general_test(self.selected, test_results)
-        for ob in self.selected:
-            self.assertTrue(
-                ob.name().count('newTestSphere'),
-                'result for %s do not match expected'%ob)
+        '''test Wraper to feet a set of selected objects'''
 
-    def test_do_function_on_set_mode_direct(self):
-        def test_func(obs, newName):
-            newobs = []
+        @ul.do_function_on('set')
+        def test_func(obs, newName='newTestSphere'):
+            '''function made for testing'''
+            op_obs = []
             for ob in obs:
                 pm.rename(ob, newName)
-                newobs.append(ob)
-            return newobs
-        try:
-            result = self.test_func['set']()(
-                test_func)(self.selected, 'newTestSphere')
-            test_direct_results = result
-        except TypeError as why:
-            print 'do_function_on did not feed argument to function'
-            raise why
-        self.general_test(self.selected, test_direct_results)
-        for ob in self.selected:
-            self.assertTrue(
-                ob.name().count('newTestSphere'),
-                'result for %s do not match expected'%ob)
+                op_obs.append(ob)
+            return op_obs
+
+        @ul.error_alert
+        def run_test(use_wrapper=False):
+            '''test function with wrapper'''
+            pm.select(self.selected)
+            test_wrapper = partial(
+                test_func, sl=use_wrapper)
+            if use_wrapper:
+                test_results = test_wrapper()
+            else:
+                test_results = test_wrapper(pm.selected())
+            self.general_test(self.selected, test_results)
+            for ob in self.selected:
+                self.assertTrue(
+                    ob.name().count('newTestSphere'),
+                    'result for %s do not match expected'%ob)
+            self.setUp()
+            return 'OK'
+
+        # test with argument feed from wrapper
+        run_test(use_wrapper=True)
+        # test with argument feed through wrapper
+        run_test()
 
     def test_do_function_on_hierachy_mode(self):
-        def test_func(ob, newName):
+        '''test Wraper to feet a set of selected objects with their childs'''
+
+        @ul.do_function_on('hierachy')
+        def test_func(ob, newName='newTestSphere'):
+            '''function made for testing'''
             pm.rename(ob, newName)
             return ob
-        try:
-            pm.select(self.genObRoots)
-            test_results = self.test_func['hierachy']()(
-                test_func)('newTestSphere', sl=True)
-        except TypeError as why:
-            print 'do_function_on did not feed selected object to function'
-            raise why
-        self.general_test(self.selected, test_results)
-        for ob in self.selected:
-            self.assertTrue(
-                ob.name().count('newTestSphere'),
-                'result for %s do not match expected'%ob)
 
-    def test_do_function_on_hierachy_mode_direct(self):
-        def test_func(obs, newName):
-            newobs = []
-            for ob in obs:
-                pm.rename(ob, newName)
-                newobs.append(ob)
-            return newobs
-        try:
-            test_results = self.test_func['hierachy']()(
-                test_func)(self.selected, 'newTestSphere')
-        except TypeError as why:
-            print 'do_function_on did not feed selected object to function'
-            raise why
-        self.general_test(self.selected, test_results)
-        for ob in self.selected:
-            self.assertTrue(
-                ob.name().count('newTestSphere'),
-                'result for %s do not match expected'%ob)
+        @ul.error_alert
+        def run_test(use_wrapper=False):
+            '''test function with wrapper'''
+            pm.select(self.genObRoots)
+            test_wrapper = partial(
+                test_func, sl=use_wrapper)
+            if use_wrapper:
+                test_results = test_wrapper()
+            else:
+                test_results = map(
+                    test_wrapper,
+                    pm.selected() + [oc for o in pm.selected()
+                                     for oc in o.getChildren(
+                                         type='transform', ad=True)])
+            self.general_test(self.selected, test_results)
+            for ob in self.selected:
+                self.assertTrue(
+                    ob.name().count('newTestSphere'),
+                    'result for %s do not match expected'%ob)
+            self.setUp()
+            return 'OK'
+
+        # test with argument feed from wrapper
+        run_test(use_wrapper=True)
+        # test with argument feed through wrapper
+        run_test()
 
     def test_do_function_on_oneToOne_mode(self):
+        '''test Wraper to feet a set of 2 selected objects'''
+
+        @ul.do_function_on('oneToOne')
         def test_func(ob, target):
             pc = pm.parentConstraint(target, ob)
-            return ob
-        try:
+            return pc
+ 
+        @ul.error_alert
+        def run_test(use_wrapper=False):
+            '''test function with wrapper'''
             pm.select(self.genObRoots)
-            test_results = self.test_func['oneToOne']()(test_func)(sl=True)
-        except TypeError as why:
-            print 'do_function_on did not feed selected object to function'
-            raise why
-        self.general_test(pm.ls(type='parentConstraint'), test_results)
+            test_wrapper = partial(
+                test_func, sl=use_wrapper)
+            if use_wrapper:
+                test_results = test_wrapper()
+            else:
+                test_results = [
+                    test_wrapper(o, pm.selected()[id+1])
+                    for id, o in enumerate(pm.selected())
+                    if not id%2]
+            self.general_test(pm.ls(type='parentConstraint'), test_results)
+            self.setUp()
+            return 'OK'
+
+        # test with argument feed from wrapper
+        run_test(use_wrapper=True)
+        # test with argument feed through wrapper
+        run_test()
+
 
     def test_do_function_on_last_mode(self):
         def test_func(obs, target):

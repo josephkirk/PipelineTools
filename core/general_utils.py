@@ -231,7 +231,7 @@ def do_function_on(mode='single', type_filter=[]):
                 for o in pm.selected():
                     otype = get_type(o)
                     if otype in type_filter:
-                        if otype in ['vertex','edge','face']:
+                        if otype in ['vertex', 'edge', 'face']:
                             vList = convert_component([o])
                             object_list.extend(vList)
                         else:
@@ -243,7 +243,7 @@ def do_function_on(mode='single', type_filter=[]):
                 Type Filter :\n%s 
                 Selection :\n%s'''%(
                     str(type_filter),
-                    str([(i,i.nodeType()) for i in pm.selected()]))
+                    str([(i, i.nodeType()) for i in pm.selected()]))
                 log.error(msg)
                 raise RuntimeError(msg)
             ##########
@@ -254,6 +254,7 @@ def do_function_on(mode='single', type_filter=[]):
                 '''Feed function with each valid selected object and yield result'''
                 for ob in object_list:
                     yield func(ob, *args, **kwargs)
+
             @error_alert
             def do_hierachy():
                 '''Feed function with each object and all its childrens and yield result'''
@@ -262,6 +263,7 @@ def do_function_on(mode='single', type_filter=[]):
                     for child in iter_hierachy(ob):
                         # print child
                         yield func(child, *args, **kwargs)
+
             @error_alert
             def do_one_to_one():
                 '''Feed function with a set of first and last selected object and yield result'''
@@ -276,10 +278,12 @@ def do_function_on(mode='single', type_filter=[]):
                                 if not id%2]
                 for ob1, ob2 in zip(objects_set1, objects_set2):
                     yield func(ob1, ob2, *args, **kwargs)
+
             @error_alert
             def do_set():
                 '''Feed function directly with list of selected objects'''
                 return func(object_list, *args, **kwargs)
+
             @error_alert
             def do_to_last(singlelast=False):
                 '''Feed function list of selected objects before the last select object and
@@ -295,6 +299,7 @@ def do_function_on(mode='single', type_filter=[]):
                         yield func(op, target, *args, **kwargs)
                 else:
                     yield func(op_list, target, *args, **kwargs)
+
             @error_alert
             def do_to_last_type():
                 '''like 'last' mode but last object must be a different type from other'''
@@ -306,9 +311,17 @@ def do_function_on(mode='single', type_filter=[]):
                                str(type_filter))
                     log.error(msg)
                     raise RuntimeWarning(msg)
-                source_type_set = [o for o in object_list if o.nodeType() !=  type_filter[-1]]
-                target_type_set = [o for o in object_list if o.nodeType() == type_filter[-1]]
-                return func(source_type_set, target_type_set,*args, **kwargs)
+                source_type_set = [
+                    o for o in object_list
+                    if o.nodeType() != type_filter[-1]]
+                target_type_set = [
+                    o for o in object_list
+                    if o.nodeType() == type_filter[-1]]
+                return func(
+                    source_type_set,
+                    target_type_set,
+                    *args, **kwargs)
+
             @error_alert
             def do_different_type():
                 '''like 'last' mode but last object must be a different type from other'''
@@ -330,11 +343,13 @@ def do_function_on(mode='single', type_filter=[]):
                             obtypes.append(o)
                     obtype_list.append(obtypes)
                 print obtype_list
-                assert all(obtype_list), 'One or more object set belong to a type in type Filter is empty'
+                assert all(obtype_list), \
+                    'One or more object set belong to a type in type Filter is empty'
                 for ob_set in zip(*obtype_list):
                     nargs = list(ob_set)
                     nargs.extend(args)
                     yield func(*nargs, **kwargs)
+
             ########
             #Define function mode dict
             ########
@@ -487,6 +502,12 @@ def sys_cop(src, dest):
     return ','.join(status)
 
 # --- Query Infos --- #
+def filter_type(o, type_list):
+    otype = get_type(o)
+    if otype in type_list:
+        return o if otype not in [
+            'vertex', 'edge', 'face'] else convert_component(o)
+
 @error_alert
 def get_type(ob):
     try:
