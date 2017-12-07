@@ -367,8 +367,7 @@ def do_function_on(mode='single', type_filter=[]):
             #Return function result
             ########
             result = function_mode[mode]()
-            if isinstance(result, types.GeneratorType):
-                result = list(result)
+            result = recurse_collect(result)
             log.debug('%s Wrap by do_function_on decorator and return %s'%(func.__name__,str(result)))
             return result
         return wrapper
@@ -538,6 +537,25 @@ def recurse_hierachy(root, callback,*args,**kwargs):
         for child in node.getChildren(type='transform'):
             recurse(child)
     recurse(root)
+
+@error_alert
+def recurse_collect(root):
+    '''Recursive throught iterator to yield list elemment'''
+    collectors = []
+    def recurse(alist):
+        if hasattr(alist,'__iter__'):
+            for elemen in alist:
+                if hasattr(elemen,'has_key'):
+                    for key, value in elemen.iteritems():
+                        collectors.append(key)
+                        recurse(value)
+                else:
+                    recurse(elemen)
+        else:
+            # yield eleme
+            collectors.append(alist)
+    recurse(root)
+    return collectors
 
 @error_alert
 def iter_hierachy(root):

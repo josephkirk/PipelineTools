@@ -68,9 +68,8 @@ class TestDecorator(unittest.TestCase):
         if test_results:
             self.assertEqual(
                 len(orig), len(test_results),
-                'return result do not match selected count\n%s objects to %s objects\nMissing:%s'%(
-                    len(orig), len(test_results), str([o for o in orig if o not in test_results])
-                ))
+                'return result do not match selected count\n%s objects to %s objects\nMissing:%s\n%s'%(
+                    len(orig), len(test_results), str([o for o in orig if o not in test_results]), test_results))
 
     def test_do_function_on_single_mode(self):
         ''' test Wraper to feed each of selected object'''
@@ -96,13 +95,17 @@ class TestDecorator(unittest.TestCase):
                 self.assertTrue(
                     ob.name().count('newTestSphere'),
                     'result for %s do not match expected'%ob)
-            self.setUp()
-            return 'OK'
+            return test_results
 
         # test with argument feed from wrapper
-        run_test(use_wrapper=True)
+        wrap_result = run_test(use_wrapper=True)
+
+        self.setUp()
+
         # test with argument feed through wrapper
-        run_test()
+        direct_result = run_test()
+        self.assertEqual(len(wrap_result), len(direct_result))
+
 
     def test_do_function_on_set_mode(self):
         '''test Wraper to feet a set of selected objects'''
@@ -131,13 +134,17 @@ class TestDecorator(unittest.TestCase):
                 self.assertTrue(
                     ob.name().count('newTestSphere'),
                     'result for %s do not match expected'%ob)
-            self.setUp()
-            return 'OK'
+
+            return test_results
 
         # test with argument feed from wrapper
-        run_test(use_wrapper=True)
+        wrap_result = run_test(use_wrapper=True)
+
+        self.setUp()
+
         # test with argument feed through wrapper
-        run_test()
+        direct_result = run_test()
+        self.assertEqual(len(wrap_result), len(direct_result))
 
     def test_do_function_on_hierachy_mode(self):
         '''test Wraper to feet a set of selected objects with their childs'''
@@ -167,13 +174,16 @@ class TestDecorator(unittest.TestCase):
                 self.assertTrue(
                     ob.name().count('newTestSphere'),
                     'result for %s do not match expected'%ob)
-            self.setUp()
-            return 'OK'
+            return test_results
 
         # test with argument feed from wrapper
-        run_test(use_wrapper=True)
+        wrap_result = run_test(use_wrapper=True)
+
+        self.setUp()
+
         # test with argument feed through wrapper
-        run_test()
+        direct_result = run_test()
+        self.assertEqual(len(wrap_result), len(direct_result))
 
     def test_do_function_on_oneToOne_mode(self):
         '''test Wraper to feet a set of 2 selected objects'''
@@ -197,72 +207,102 @@ class TestDecorator(unittest.TestCase):
                     for id, o in enumerate(pm.selected())
                     if not id%2]
             self.general_test(pm.ls(type='parentConstraint'), test_results)
-            self.setUp()
-            return 'OK'
+            return test_results
 
         # test with argument feed from wrapper
-        run_test(use_wrapper=True)
+        wrap_result = run_test(use_wrapper=True)
+
+        self.setUp()
+
         # test with argument feed through wrapper
-        run_test()
+        direct_result = run_test()
+        self.assertEqual(len(wrap_result), len(direct_result))
 
 
     def test_do_function_on_last_mode(self):
-        def test_func(obs, target):
-            newPC = []
-            for ob in obs:
-                pc = pm.parentConstraint(target, ob)
-                newPC.append(pc)
-            return newPC
-        try:
-            pm.select(self.selected)
-            test_results = self.test_func['last']()(test_func)(sl=True)
-        except TypeError as why:
-            print 'do_function_on did not feed selected object to function'
-            raise why
-        self.general_test(self.selected[:-1], pm.ls(type='parentConstraint'))
+        '''test Wraper to feet a set of objects to the last selected '''
 
-    def test_do_function_on_singlelast_mode(self):
-        def test_func(ob, target):
-            pc = pm.parentConstraint(target, ob)
-            return pc
-        try:
-            pm.select(self.selected)
-            test_results = self.test_func['singleLast']()(test_func)(sl=True)
-        except TypeError as why:
-            print 'do_function_on did not feed selected object to function'
-            raise why
-        self.general_test(pm.ls(type='parentConstraint'), test_results)
+        @ul.do_function_on('last')
+        def test_func(obs, target):
+            result = [pm.parentConstraint(target, ob) for ob in obs]
+            return result
+ 
+        @ul.error_alert
+        def run_test(use_wrapper=False):
+            '''test function with wrapper'''
+            pm.select(self.genObRoots)
+            test_wrapper = partial(
+                test_func, sl=use_wrapper)
+            if use_wrapper:
+                test_results = test_wrapper()
+            else:
+                test_results = test_wrapper(self.genObRoots[:-1], self.genObRoots[-1])
+            self.general_test(pm.ls(type='parentConstraint'), test_results)
+            return test_results
+
+        # test with argument feed from wrapper
+        wrap_result = run_test(use_wrapper=True)
+
+        self.setUp()
+        # test with argument feed through wrapper
+        direct_result = run_test()
+        #self.assertEqual(len(wrap_result), len(direct_result))
 
     def test_do_function_on_lastType_mode(self):
-        def test_func(obs, targets):
-            for ob in obs:
-                pm.select(ob, r=True)
-                pm.select(targets, add=True)
+        '''test Wraper to feet multi type set of objects to the last selected type '''
+
+        @ul.do_function_on('lastType', type_filter=['mesh', 'joint'])
+        def test_func(meshes, joints):
+            results = []
+            for geo in meshes:
+                pm.select(geo, r=True)
+                pm.select(joints, add=True)
                 try:
                     pc = pm.skinCluster()
-                    yield pc
+                    results.append(pc)
                 except RuntimeError:
                     pass
-        try:
+            return results
+
+        @ul.error_alert
+        def run_test(use_wrapper=False):
+            '''test function with wrapper'''
             pm.select(cl=True)
             joints = []
             for i in range(5):
                 joints.append(pm.joint(p=[0, i, 0]))
             pm.select(self.selected, r=True)
             pm.select(joints, add=True)
-            test_results = self.test_func['lastType'](
-                type_filter=['mesh', 'joint'])(test_func)(sl=True)
-        except (TypeError, RuntimeError) as why:
-            print 'do_function_on did not feed selected object to function'
-            raise why
-        self.general_test(pm.ls(type='skinCluster'), test_results)
-        for skinClter in pm.ls(type='skinCluster'):
-            self.general_test(skinClter.getInfluence(), joints)
+            test_wrapper = partial(
+                test_func, sl=use_wrapper)
+            if use_wrapper:
+                test_results = test_wrapper()
+            else:
+                test_results = [
+                    test_wrapper(m,js) for m, js in zip(
+                        [o for o in pm.selected() if ul.get_type(o) == 'mesh'],
+                        [o for o in pm.selected() if ul.get_type(o) == 'joint'])]
+            self.general_test(pm.ls(type='skinCluster'), test_results)
+            for skinClter in pm.ls(type='skinCluster'):
+                self.general_test(skinClter.getInfluence(), joints)
+
+            return test_results
+
+        # test with argument feed from wrapper
+        wrap_result = run_test(use_wrapper=True)
+
+        self.setUp()
+
+        # test with argument feed through wrapper
+        #direct_result = run_test()
+        #self.assertEqual(len(wrap_result), len(direct_result))
 
     def test_do_function_on_different_mode(self):
         '''Create Multiple Joint , Locator and OneSphere.
         Select Sphere Vertex accord to the amout of joint.
         After that also select joints and locs'''
+
+        @ul.do_function_on('multiType', type_filter=['joint', 'locator', 'vertex'])
         def test_func(joint, loc, vert):
             print joint, loc ,vert
             paconstraint = pm.parentConstraint(loc, joint)
@@ -274,7 +314,9 @@ class TestDecorator(unittest.TestCase):
             ppconstraint.attr(stripname + 'U0').set(uv[0])
             ppconstraint.attr(stripname + 'V0').set(uv[1])
             return (paconstraint, ppconstraint)
-        try:
+
+        @ul.error_alert
+        def run_test(use_wrapper=False):
             joints = []
             locs = []
             count = len(self.genObRoots)
@@ -284,36 +326,44 @@ class TestDecorator(unittest.TestCase):
                 loc = pm.spaceLocator()
                 locs.append(loc)
             sph = pm.polySphere(radius=10)
-            #print locs
-            #pm.select(sph[0].getShape().vtx[1], r=True)
             pm.select(cl=True)
             for i in range(count):
-                i+=1
+                i += 1
                 pm.select(sph[0].getShape().vtx[i], add=True)
             pm.select(locs, add=True)
             pm.select(joints, add=True)
-            #print pm.selected()
-            test_results = self.test_func['multiType'](
-                type_filter=['joint', 'locator', 'vertex'])(test_func)(sl=True)
-        except TypeError as why:
-            print 'do_function_on did not feed selected object to function'
-            raise why
-        self.assertTrue(
-            pm.ls(type='parentConstraint'),
-            'Joint and Loc did not connect, No Parent Constraint in Scene')
-        self.assertTrue(
-            pm.ls(type='pointOnPolyConstraint'),
-            'Loc did not connect to mesh, no PointOnPoly Constraint in Scene')
-        for j, l in zip(joints, locs):
+            test_wrapper = partial(
+                test_func, sl=use_wrapper)
+            if use_wrapper:
+                test_results = test_wrapper()
+            else:
+                test_results = test_wrapper(pm.selected())
             self.assertTrue(
-                j.inputs(type='parentConstraint'),
-                '%s do not have any Parent Constraint Connection'%j)
+                pm.ls(type='parentConstraint'),
+                'Joint and Loc did not connect, No Parent Constraint in Scene')
             self.assertTrue(
-                l.outputs(type='parentConstraint'),
-                '%s do not have any Parent Constraint Connection'%l)
-            self.assertTrue(
-                l.inputs(type='pointOnPolyConstraint'),
-                '%s do not have any Point On Poly Constraint Connection'%l)
+                pm.ls(type='pointOnPolyConstraint'),
+                'Loc did not connect to mesh, no PointOnPoly Constraint in Scene')
+            for j, l in zip(joints, locs):
+                self.assertTrue(
+                    j.inputs(type='parentConstraint'),
+                    '%s do not have any Parent Constraint Connection'%j)
+                self.assertTrue(
+                    l.outputs(type='parentConstraint'),
+                    '%s do not have any Parent Constraint Connection'%l)
+                self.assertTrue(
+                    l.inputs(type='pointOnPolyConstraint'),
+                    '%s do not have any Point On Poly Constraint Connection'%l)
+
+            return test_results
+
+        # test with argument feed from wrapper
+        wrap_result = run_test(use_wrapper=True)
+
+        self.setUp()
+        # test with argument feed through wrapper
+        #direct_result = run_test()
+        #self.assertEqual(len(wrap_result), len(direct_result))
 
 class TestUtility(unittest.TestCase):
     def test_iter_hierachy(self):
@@ -324,6 +374,16 @@ class TestUtility(unittest.TestCase):
         self.assertEqual(
             pm.ls(type='joint'), list(results),
             'results does not match scene.\nScene:\n%s\nResult:\n%s'%(joints, results))
+    
+    def test_recurse_hierachy(self):
+        pass
+
+    def test_recurse_collect(self):
+        list_test = [[[(f+i,{(c,d) for c,d in zip(range(f),range(i))}) for f in range(i)]] for i in range(5)]
+        test_result = ul.recurse_collect(list_test)
+        self.assertTrue(all([not hasattr(e,'__iter__') for e in test_result]))
+
+
 # Load Test
 test_cases = ([TestUtility, TestDecorator,])
 
