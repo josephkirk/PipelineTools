@@ -374,18 +374,62 @@ class TestUtility(unittest.TestCase):
         self.assertEqual(
             pm.ls(type='joint'), list(results),
             'results does not match scene.\nScene:\n%s\nResult:\n%s'%(joints, results))
-    
-    def test_recurse_hierachy(self):
-        pass
 
-    def test_recurse_collect(self):
-        list_test = [[[(f+i,{(c,d) for c,d in zip(range(f),range(i))}) for f in range(i)]] for i in range(5)]
-        test_result = ul.recurse_collect(list_test)
-        self.assertTrue(all([not hasattr(e,'__iter__') for e in test_result]))
+    def test_recurse_functions(self):
+        try:
+            import os
+            import sys
+            import shutil
+            test_path = os.path.dirname(__file__)
+            new_dir_list = []
+            dir_root = os.path.abspath(
+                os.path.join(test_path, 'dir_root'))
+            sub_dirs = [os.path.abspath(
+                            os.path.join(dir_root, 'testdir_{:02d}'.format(i+1)))
+                        for i in range(6)]
+            sub_subdirs = [os.path.abspath(
+                            os.path.join(subdir, 'testdir_{:02d}'.format(i+1)))
+                        for subdir in sub_dirs]
+            new_dir_list = ul.recurse_collect(dir_root,sub_dirs,sub_subdirs)
+            for dtr in new_dir_list:
+                os.mkdir(dtr)
+            new_file_list = []
+            for sub_subdir in new_dir_list:
+                for i in range(6):
+                    file_name = '{}_file_{:02d}.txt'.format(os.path.basename(sub_subdir),i+1)
+                    file_path = os.path.abspath(os.path.join(
+                        sub_subdir, file_name))
+                    newFile = open(file_path,'w+')
+                    newFile.close()
+                    new_file_list.append(file_name)
+            def test_list_branch(_path):
+                if os.path.isdir(_path):
+                    subpaths = [
+                        os.path.join(_path, subpath)
+                        for subpath in os.listdir(_path)]
+                    return subpaths
+            def test_func(_file):
+                if os.path.isfile(_file):
+                    if _file.endswith('.txt'):
+                        return os.path.basename(_file)
+            run_test_result = ul.recurse_collect(
+                ul.recurse_trees(dir_root, test_list_branch, test_func))
+            run_test_result.sort()
+            self.assertTrue(run_test_result, 'Result is empty')
+            self.assertEqual(
+                len(new_file_list), len(run_test_result),
+                'Result is not right\nTotalFiles: {} files \nResut: {} files'.format(
+                    len(new_file_list),
+                    len(run_test_result)))
+            self.assertTrue(
+                all([i in new_file_list for i in run_test_result]))
+            #project_path = pm.workspace.path()
+        finally:
+            shutil.rmtree(dir_root)
 
 
 # Load Test
-test_cases = ([TestUtility, TestDecorator,])
+test_cases = [TestUtility, TestDecorator]
 
 def load_tests(loader, tests, pattern):
     suite = unittest.TestSuite()

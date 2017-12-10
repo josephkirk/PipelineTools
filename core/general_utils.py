@@ -376,17 +376,24 @@ def do_function_on(mode='single', type_filter=[]):
 # Utility functions #
 # --- Path --- #
 
+def collect_files(topdir, latestOnly=False):
+    pass
+
+def collect_dirs(topdir):
+    pass
+
 def send_current_file(
-    scene=True,
-    suffix='_vn',
-    lastest=True,
-    render=False,
-    tex=True,
-    extras=['psd','uv', 'zbr', 'pattern'],
-    version=1,
-    verbose=True):
+        scene=True,
+        suffix='_vn',
+        lastest=True,
+        render=False,
+        tex=True,
+        extras=['psd', 'uv', 'zbr', 'pattern'],
+        version=1,
+        verbose=True):
     src = pm.sceneName()
     scene_src = src.dirname()
+    path_root = ''
     status = []
     todayFolder = pm.date(f='YYMMDD')
     if version>1:
@@ -530,16 +537,21 @@ def get_name(ob):
     return ob.name().split('|')[-1] 
 
 @error_alert
-def recurse_hierachy(root, callback,*args,**kwargs):
+def recurse_trees(root, list_branch_callback, callback,*args,**kwargs):
     '''Recursive do a callback function'''
+    collectors = []
     def recurse(node):
-        callback(node,*args,**kwargs)
-        for child in node.getChildren(type='transform'):
-            recurse(child)
+        if list_branch_callback(node):
+            for child in list_branch_callback(node):
+                collectors.append(recurse(child))
+        else:
+            collectors.append(callback(node,*args,**kwargs))
     recurse(root)
+    filter_collectors = [i for i in collectors if i]
+    return filter_collectors
 
 @error_alert
-def recurse_collect(root):
+def recurse_collect(filter=[], *args):
     '''Recursive throught iterator to yield list elemment'''
     collectors = []
     def recurse(alist):
@@ -554,11 +566,16 @@ def recurse_collect(root):
         else:
             # yield eleme
             collectors.append(alist)
-    recurse(root)
+    for arg in args:
+        recurse(arg)
+    if filter:
+        collectors = [
+            i for i in collectors
+            if any([isinstance(i, _type) for _type in filter])]
     return collectors
 
 @error_alert
-def iter_hierachy(root):
+def iter_hierachy(root, filter = 'transform'):
     '''yield hierachy generator object with stack method'''
     stack = [root]
     level = 0
@@ -566,7 +583,7 @@ def iter_hierachy(root):
         level +=1
         node = stack.pop()
         yield node
-        childs = node.getChildren( type='transform' )
+        childs = node.getChildren( type=filter )
         if len(childs) > 1:
             log.debug('\nsplit to %s, %s'%(len(childs),str(childs)))
             for child in childs:

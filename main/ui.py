@@ -401,21 +401,21 @@ class RigTools(object):
                         menuItem(
                             label='Disconnect Translate',
                             c=Callback(
-                                ru.disconnect_transform),
+                                ru.disconnect_transform,
                                 attr='translate',
-                                sl=True)
+                                sl=True))
                         menuItem(
                             label='Disconnect Rotate',
                             c=Callback(
-                                ru.disconnect_transform),
+                                ru.disconnect_transform,
                                 attr='rotate',
-                                sl=True)
+                                sl=True))
                         menuItem(
                             label='Disconnect Scale',
                             c=Callback(
-                                ru.disconnect_transform),
+                                ru.disconnect_transform,
                                 attr='scale',
-                                sl=True)
+                                sl=True))
                 smallbutton(
                     label='multi Parent Constraint',
                     c=Callback(
