@@ -550,7 +550,7 @@ def recurse_trees(root, list_branch_callback, callback,*args,**kwargs):
     filter_collectors = [i for i in collectors if i]
     return filter_collectors
 
-@error_alert
+#@error_alert
 def recurse_collect(filter=[], *args):
     '''Recursive throught iterator to yield list elemment'''
     collectors = []

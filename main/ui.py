@@ -189,14 +189,14 @@ class RigTools(object):
                             label='Prop Control',
                             c=Callback(
                                 self.do_func,
-                                ns57.create_prop_control,
+                                ru.create_prop_control,
                                 useLoc=self._uiElement['useLoc'].getValue,
                                 sl=True))
                         button(
                             label='Free Control',
                             c=Callback(
                                 self.do_func,
-                                ns57.create_free_control,
+                                ru.create_free_control,
                                 useLoc=self._uiElement['useLoc'].getValue,
                                 sl=True))
                     separator()
@@ -206,7 +206,7 @@ class RigTools(object):
                             label='Parent Control',
                             c=Callback(
                                 self.do_func,
-                                ns57.create_parent_control,
+                                ru.create_parent_control,
                                 useLoc=self._uiElement['useLoc'].getValue,
                                 sl=True))
                         button(
@@ -234,7 +234,7 @@ class RigTools(object):
                         label='Create',
                         c=Callback(
                             self.do_func,
-                            ns57.create_long_hair,
+                            ru.create_long_hair,
                             hairSystem=self._uiElement['Hair System'].getText,
                             sl=True))
                     separator()
@@ -247,27 +247,27 @@ class RigTools(object):
                             cl2=('right', 'right'),
                             co2=(80, 10),
                             cw2=(70, 110),
-                            label='Parent:', text='')
+                            label='Parent :', text='')
                         button(
                             label='Get',
                             h=20,
                             c=lambda x: \
                                 self._uiElement['SHctlparent'].setText(
                                     selected()[-1].name()))
-                    with rowColumnLayout(rs=[(1,1),], numberOfColumns=2):
+                    with rowColumnLayout(
+                            rs=[(1,1),],
+                            numberOfColumns=3,
+                            columnWidth=[(1, 50),(2,30),(3,140)]):
+                        text(label='Mid Controls:')
+                        self._uiElement['SHctlcount'] = intField(
+                            value=0, min=0)
                         button(
-                            label='With Middle',
+                            label='create',
                             c=Callback(
                                 self.do_func,
-                                ns57.create_short_hair,
+                                ru.create_short_hair,
                                 parent=self._uiElement['SHctlparent'].getText,
-                                sl=True))
-                        button(
-                            label='Top Only',
-                            c=Callback(
-                                self.do_func,
-                                ns57.create_short_hair_simple,
-                                parent=self._uiElement['SHctlparent'].getText,
+                                midCtls=self._uiElement['SHctlcount'].getValue,
                                 sl=True))
                     separator()
                     button(
