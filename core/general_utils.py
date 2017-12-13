@@ -219,12 +219,11 @@ def do_function_on(mode='single', type_filter=[]):
         @wraps(func)
         def wrapper(*args, **kwargs):
             # test keywords for 'selected' or 'sl' keyword
+            selected = False
             for k in ['selected', 'sl']:
                 if k in kwargs:
                     selected = kwargs[k]
                     del kwargs[k]
-                else:
-                    selected = False
             if not selected:
                 # if selected keyword are False
                 return func(*args, **kwargs)
@@ -248,6 +247,7 @@ def do_function_on(mode='single', type_filter=[]):
                         'multiType': self.different_type,
                     }
                     self._get_oblist()
+
                 def _get_oblist(self):
                     '''get selected object as PyNode'''
                     self.oblist = []
@@ -273,6 +273,7 @@ def do_function_on(mode='single', type_filter=[]):
                     return self.oblist
 
                 def single(self):
+                    '''Feed function with each selected object yield result'''
                     for ob in self.oblist:
                         result = self.func(ob, *self.args, **self.kwargs)
                         self.results.append(result)
@@ -294,9 +295,9 @@ def do_function_on(mode='single', type_filter=[]):
                             Current Object Counts:%d'%(len(self.oblist))
                         log.warning(msg)
                         raise RuntimeWarning(msg)
-                    objects_set1 = [o for id, o in enumerate(self.oblist)
-                                    if id%2]
                     objects_set2 = [o for id, o in enumerate(self.oblist)
+                                    if id%2]
+                    objects_set1 = [o for id, o in enumerate(self.oblist)
                                     if not id%2]
                     for ob1, ob2 in zip(objects_set1, objects_set2):
                         self.results.append(self.func(ob1, ob2, *self.args, **self.kwargs))
@@ -442,7 +443,8 @@ def send_current_file(
         msg = "Scene Copy Error\n{}".format(','.join(why))
         status.append(msg)
     if tex or extras:
-        if all([src.dirname().dirname().dirname().basename() != d for d in ['CH','BG','CP']]) and src.dirname().dirname().basename()!='CP':
+        if all([src.dirname().dirname().dirname().basename() != d for d in ['CH','BG','CP']]) and \
+                src.dirname().dirname().basename()!='CP':
             scene_src = scene_src.dirname()
             scene_dest = scene_dest.dirname()
             print scene_src
@@ -664,6 +666,29 @@ def get_closest_info(ob, mesh_node):
     return results
 
 @error_alert
+def get_points_on_curve(inputcurve, amount=3):
+    infoNode = pm.PyNode(pm.pointOnCurve(inputcurve, ch=True, top=True))
+    try:
+        inc = 1.0/(amount-1)
+        for i in range(amount):
+            infoNode.parameter.set(i*inc)
+            pos = infoNode.position.get()
+            norm = infoNode.normal.get()
+            tang = infoNode.tangent.get()
+            crossV = norm.cross(tang)
+            pmatrix = pm.dt.Matrix(
+                norm.x, norm.y, norm.z, 0,
+                tang.x, tang.y, tang.z, 0,
+                crossV.x, crossV.y, crossV.z, 0,
+                pos.x, pos.y, pos.z, 0)
+            yield (pmatrix.translate, pmatrix.rotate)
+    except ZeroDivisionError:
+        log.error('Amount is too low, current:{}, minimum:{}'.format(amount, 2))
+        raise
+    finally:
+        pm.delete(infoNode)
+
+@error_alert
 def get_node(node_name, unique_only=True, type_filter=None, verpose=False):
     msg=[]
     try:
@@ -732,7 +757,7 @@ def get_pos_center_from_edge(edge):
             for true_edge in unpack_edges:
                 for vert in true_edge.connectedVertices():
                     verts_set.add(vert)
-        vert_pos = sum([v.getPosition() for v in list(verts_set)])/len(verts_set)
+        vert_pos = sum([v.getPosition('world') for v in list(verts_set)])/len(verts_set)
         return vert_pos
 
 # --- Transformation and Shape --- #
@@ -802,30 +827,27 @@ def convert_component(
                     result.append(vert.node().vtx[vertid])
             return result
 
+@do_function_on(type_filter=['edge'])
 def convert_edge_to_curve(edge):
     pm.polySelect(edge.node(), el=edge.currentItemIndex())
     pm.polyToCurve(degree=1)
 
+@do_function_on('singleLast', type_filter=['transform', 'mesh'])
 def snap_nearest(ob, mesh_node):
     closest_component_pos = get_closest_component(ob, mesh_node, uv=False, pos=True)
     ob.setTranslation(closest_component_pos,'world')
 
-def mirror_transform(obs, axis="x",xform=[0,4]):
-    if not obs:
-        print "no object to mirror"
-        return
+@do_function_on()
+def mirror_transform(ob, axis="x",xform=[0,4]):
     axisDict = {
         "x":('tx', 'ry', 'rz', 'sx'),
         "y":('ty', 'rx', 'rz', 'sy'),
         "z":('tz', 'rx', 'ry', 'sz')}
     #print obs
-    if type(obs) != list:
-        obs = [obs]
-    for ob in obs:
-        if type(ob) == pm.nt.Transform:
-            for at in axisDict[axis][xform[0]:xform[1]]:
-                ob.attr(at).set(ob.attr(at).get()*-1)
+    for at in axisDict[axis][xform[0]:xform[1]]:
+        ob.attr(at).set(ob.attr(at).get()*-1)
 
+@do_function_on()
 def lock_transform(
         ob,
         lock=True,
@@ -840,6 +862,7 @@ def lock_transform(
         for at in ['translate','rotate','scale']:
             ob.attr(at).lock()
 
+@do_function_on()
 def reset_transform(ob):
     for atr in ['translate', 'rotate', 'scale']:
         try:
@@ -848,6 +871,7 @@ def reset_transform(ob):
         except RuntimeError as why:
             log.warning(why)
 
+@do_function_on('oneToOne')
 def parent_shape(src, target, delete_src=True, delete_oldShape=True):
     '''parent shape from source to target'''
     #pm.parent(src, world=True)
@@ -861,6 +885,7 @@ def parent_shape(src, target, delete_src=True, delete_oldShape=True):
     if delete_oldShape:
         pm.delete(get_shape(target), shape=True)
 
+@do_function_on()
 def un_parent_shape(ob):
     '''unParent all shape and create new trasnform for each shape'''
     shapeList = ob.listRelatives(type=pm.nt.Shape)
@@ -872,6 +897,7 @@ def un_parent_shape(ob):
     if type(ob) != pm.nt.Joint:
         pm.delete(ob)
 
+@do_function_on()
 def detach_shape(ob, preserve=False):
     '''detach Multi Shape to individual Object'''
     result= []
@@ -907,6 +933,7 @@ def set_material(ob, SG):
     else:
         print "There is no %s" % SG.name()
 
+@do_function_on()
 def add_vray_opensubdiv(ob):
     '''add Vray OpenSubdiv attr to enable smooth mesh render'''
     if str(pm.getAttr('defaultRenderGlobals.ren')) == 'vray':
@@ -914,6 +941,7 @@ def add_vray_opensubdiv(ob):
         pm.vray('addAttributesFromGroup', obShape, "vray_opensubdiv", 1)
         pm.setAttr(obShape+".vrayOsdPreserveMapBorders", 2)
 
+@do_function_on()
 def clean_attributes(ob):
     '''clean all Attribute'''
     for atr in ob.listAttr(ud=True):
@@ -923,22 +951,22 @@ def clean_attributes(ob):
         except:
             pass
 
+@do_function_on()
 def find_instances(
-    obs,
+    ob,
     instanceOnly=True):
     allTransform = [tr for tr in pm.ls(type=pm.nt.Transform) if tr.getShape()]
     instanceShapes =[]
     if instanceOnly:
         pm.select(cl=True)
-    for ob in obs:
-        obShape = ob.getShape()
-        if obShape.name().count('|'):
-            obShapeName = obShape.name().split('|')[-1]
-            for tr in allTransform:
-                shape = tr.getShape()
-                if obShapeName == shape.name().split('|')[-1] and tr != ob:
-                    #pm.select(ob,add=True)
-                    instanceShapes.append(tr)
+    obShape = ob.getShape()
+    if obShape.name().count('|'):
+        obShapeName = obShape.name().split('|')[-1]
+        for tr in allTransform:
+            shape = tr.getShape()
+            if obShapeName == shape.name().split('|')[-1] and tr != ob:
+                #pm.select(ob,add=True)
+                instanceShapes.append(tr)
         #else:
             #print "%s have no Instance Shape" % ob
     pm.select(instanceShapes,add=True)

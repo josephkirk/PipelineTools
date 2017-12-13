@@ -47,6 +47,7 @@ class RigTools(object):
         self.nodetrack = NodeTracker()
         self.fullbasetrack = []
         self.fullcreatedtrack = []
+        self.ControlObClass = rcl.ControlObject()
 
     @property
     def name(self):
@@ -165,7 +166,7 @@ class RigTools(object):
                 with columnLayout():
                     with rowColumnLayout(rs=[(1,1),], numberOfColumns=1):
                         button(
-                            label='Skin Weigth Setter',
+                            label='Bone & Skin Tools',
                             c=Callback(SkinWeightSetter.show))
 
             with frameLayout(label='Create Control:',cl=False):
@@ -173,7 +174,7 @@ class RigTools(object):
                     center_text = ul.partial(text, align='center')
                     button(
                         label='Create Control Shape',
-                        c=Callback(rcl.ControlObject.show))
+                        c=Callback(self.ControlObClass._showUI))
                     separator()
                     with frameLayout(
                             label='Options:',
@@ -730,7 +731,8 @@ class SkinWeightSetter(object):
         ru.skin_weight_filter(
             min=self.weight_threshold[0],
             max=self.weight_threshold[1],
-            select=True)
+            select=True,
+            sl=True)
 
     @showsHourglass
     def apply_weight(self):
@@ -738,38 +740,21 @@ class SkinWeightSetter(object):
         #    mm.eval('artAttrSkinPaintModePaintSelect 0 artAttrSkinPaintCtx')
         #if not selected():
         #    select(self.last_selected, r=True)
-        if not selected():
-            log.info('No selection')
-        else:
-            sel = selected()
-            joints = []
-            for id,e in enumerate(sel):
-                if isinstance(e, nt.Joint):
-                    joint = sel.pop(id)
-                    joints.append(joint)
-                    continue
-                if e.nodeType() != 'mesh':
-                    sel.pop(id)
-            ru.skin_weight_setter(
-                sel, joints,
-                skin_value=self.weight_value,
-                normalized=self.normalize,
-                hierachy=self.hierachy)
-        self.last_selection()
+        ru.skin_weight_setter(
+            skin_value=self.weight_value,
+            normalized=self.normalize,
+            hierachy=self.hierachy,
+            sl=True)
+        # self.last_selection()
         self.preview_skin_weight()
         headsUpMessage("Weight Set!", time=0.2)
 
     @showsHourglass
     def apply_dual_weight(self):
-        if not selected():
-            log.info('No selection')
-        else:
-            sel = selected()
-            for id,e in enumerate(sel):
-                if e.nodeType() != 'mesh':
-                    sel.pop(id)
-        ru.dual_weight_setter(sel,weight_value=self.dual_weight_value)
-        self.last_selection()
+        ru.dual_weight_setter(
+            weight_value=self.dual_weight_value,
+            sl=True)
+        # self.last_selection()
         headsUpMessage("Dual Quarternion Weight Set!", time=0.2)
 
     def init_ui(self):
@@ -907,7 +892,7 @@ class SkinWeightSetter(object):
                         button(
                             label='Label',
                             annotation='use joint name as label',
-                            c=Callback(ru.label_joint), sl=True)
+                            c=Callback(ru.label_joint, sl=True))
                 with rowColumnLayout(
                     numberOfColumns=4,
                     columnWidth=[(1,100),]):
@@ -947,8 +932,7 @@ class SkinWeightSetter(object):
                         label = 'Reset BindPose',
                         annotation='Reset skin bind pose',
                         c = Callback(
-                            ru.reset_bindPose_all,
-                            sl=True))
+                            ru.reset_bindPose_all))
                 separator(height=10, style='none')
 
             with frameLayout(label='Status',borderVisible=True):

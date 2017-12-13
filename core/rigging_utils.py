@@ -245,6 +245,7 @@ def createPinCircle(
     log.debug(crv)
     return crv
 
+@ul.error_alert
 @ul.do_function_on('oneToOne')
 def contraint_multi(ob, target, constraintType='Point'):
     constraintDict = {
@@ -263,7 +264,7 @@ def contraint_multi(ob, target, constraintType='Point'):
         constraintDict['Orient'](target,ob)
         return
     if constraintType.startswith('Loc'):
-        assert (isinstance(ob,pm.general.MeshVertex)), 'target is not a vertex'
+        assert (isinstance(ob,pm.general.MeshVertex)), 'target %s is not a vertex'%ob
         loc = create_loc_on_vert(ob)
         if constraintType == 'LocP':
             constraintDict['Point'](loc, target)
@@ -340,21 +341,67 @@ def connect_with_loc(ctl,bon,**kws):
 
 @ul.do_function_on(type_filter=['vertex'])
 def create_loc_on_vert(vert,name='guideLoc'):
-    print vert
     if isinstance(vert,pm.general.MeshVertex):
-        uv = vert.getUV()
+        print vert, vert.getUV() 
         mesh = vert.node()
-        loc = pm.spaceLocator(name=name)
+        uv = mesh.getUV(vert.index())
+        loc = pm.spaceLocator()
         locGp = create_parent(loc)
         ppconstraint = pm.pointOnPolyConstraint(
-            mesh, locGp, mo=False)
+            mesh.getParent(), locGp, mo=False)
         stripname = ul.get_name(mesh.getParent())
-        print type(uv[0])
-        print uv
         ppconstraint.attr(stripname + 'U0').set(uv[0])
         ppconstraint.attr(stripname + 'V0').set(uv[1])
+        print ppconstraint.attr(stripname + 'V0').get()
         return loc
 
+@ul.do_function_on(type_filter=['nurbsCurve'])
+def create_locs_on_curve(inputcurve, name='curveLoc', amount=3, constraint=True):
+    assert (amount>1), 'Amount Too low, minimum is 2' 
+    pm.loadPlugin('matrixNodes.mll')
+    inc = 1.0/(amount-1)
+    curveShape = inputcurve.getShape()
+    for i in range(amount):
+        infoNode = pm.nt.PointOnCurveInfo()
+        infoNode.rename('{}{:02d}_pointOnCurveInfo'.format(name, i+1))
+        curveShape.worldSpace[0] >> infoNode.inputCurve
+        infoNode.parameter.set(i*inc)
+        infoNode.turnOnPercentage.set(1)
+        cross_vector = pm.nt.VectorProduct()
+        cross_vector.rename('{}{:02d}_crossVector'.format(name, i+1))
+        cross_vector.operation.set(2)
+        infoNode.normal >> cross_vector.input1
+        infoNode.tangent >> cross_vector.input2
+        compose_matrix = pm.nt.FourByFourMatrix()
+        compose_matrix.rename('{}{:02d}_composeMatrix'.format(name, i+1))
+        connection_dict = dict(
+            normalX='in00', normalY='in01', normalZ='in02',
+            tangentX='in10', tangentY='in11', tangentZ='in12',
+            outputX='in20', outputY='in21', outputZ='in22',
+            positionX='in30', positionY='in31', positionZ='in32'
+        )
+        for srcatr, targetatr in connection_dict.iteritems():
+            if srcatr.startswith('output'):
+                cross_vector.attr(srcatr) >> compose_matrix.attr(targetatr)
+            else:
+                infoNode.attr(srcatr) >> compose_matrix.attr(targetatr)
+        decompose_matrix = pm.nt.DecomposeMatrix()
+        decompose_matrix.rename('{}{:02d}_decomposeMatrix'.format(name, i+1))
+        compose_matrix.output >> decompose_matrix.inputMatrix
+        loc = pm.spaceLocator()
+        loc.rename('{}{:02d}'.format(name, i+1))
+        decompose_matrix.outputTranslate >> loc.translate
+        decompose_matrix.outputRotate >> loc.rotate
+        # pairblend_node = pm.createNode('pairBlend')
+        # decompose_matrix.outputTranslate >> pairblend_node.inTranslate2
+        # decompose_matrix.outputRotate >> pairblend_node.inRotate2
+        # loc.translate >> pairblend_node.inTranslate1
+        # loc.rotate >> pairblend_node.inRotate1
+        # pairblend_node.outTranslate >> loc.translate
+        # pairblend_node.outRotate >> loc.rotate
+        loc.addAttr('parameter', at='float', k=1, max=1.0, min=0.0, defaultValue=i*inc)
+        loc.parameter >> infoNode.parameter
+        yield loc
 # --- Transformation ---
 
 @ul.do_function_on('oneToOne')
@@ -573,7 +620,7 @@ def skin_weight_filter(ob, joint, min=0.0, max=0.1, select=False):
         pm.select(filter_weight)
     return filter_weight
 
-@ul.do_function_on(type_filter=['joint'])
+@ul.do_function_on(type_filter=['mesh'])
 def switch_skin_type(ob, type='classis'):
     type_dict = {
         'Classis': 0,
@@ -648,23 +695,63 @@ def dual_weight_setter(component_list, weight_value=0.0, query=False):
                 # pm.select(verts_list)
                 # skin_cluster.setBlendWeights(shape, verts_list, [weight_value,])
 
-@ul.do_function_on()
+# Bone Utilities
+@ul.do_function_on(type_filter=['nurbsCurve'])
+def curve_to_bone(inputcurve, amount=3):
+    pcvs = ul.get_points_on_curve(inputcurve, amount=amount)
+    newBones = []
+    pm.select(cl=True)
+    for tr, rot in pcvs:
+        newBone = pm.joint(p=tr)
+        newBones.append(newBone)
+    pm.joint(newBones[0], e=True, oj='xyz', secondaryAxisOrient='yup', ch=True, zso=True)
+    return newBones
+
+@ul.do_function_on(type_filter=['nurbsCurve'])
+def create_bone_on_curve(inputcurve, amount=3):
+    cvlocs = create_locs_on_curve(inputcurve, amount=amount)
+    newBones = []
+    tempTr = []
+    for cvloc in cvlocs:
+        if newBones:
+            pm.select(newBones[-1], r=True)
+        else:
+            pm.select(cl=True)
+        newBone = pm.joint(p=cvloc.getTranslation('world'))
+        temp_transform = pm.nt.Transform()
+        temp_transform.setParent(cvloc)
+        ul.reset_transform(temp_transform)
+        tempTr.append(temp_transform)
+        newBones.append(newBone)
+    pm.joint(newBones[0], e=True, oj='xyz', secondaryAxisOrient='yup', ch=True, zso=True)
+    for tr, bone in zip(tempTr, newBones):
+        offsetBone = create_offset_bone(bone)
+        trParent = create_parent(tr)
+        match_transform(trParent, offsetBone)
+        pm.parentConstraint(tr, offsetBone)
+        # connect_with_loc(tr,bone)
+        # connect_transform(tr, bone, translate=True, rotate=True)
+    return newBones
+
+@ul.do_function_on('set')
 def create_joint(ob_list):
     new_joints = []
     for ob in ob_list:
         if type(ob) == pm.nt.Transform:
-            get_pos = ob.translate.get()
+            get_pos = ob.getTranslation('world')
         elif type(ob) == pm.general.MeshVertex:
             get_pos = ob.getPosition(space='world')
         elif type(ob) == pm.general.MeshEdge:
-            get_pos = ul.get_pos_center_from_edges(ob)
+            get_pos = ul.get_pos_center_from_edge(ob)
         new_joint = pm.joint(p=get_pos)
         new_joints.append(new_joint)
     for new_joint in new_joints:
         pm.joint(new_joint, edit=True, oj='xyz', sao='yup', ch=True, zso=True)
         if new_joint == new_joints[-1]:
             pm.joint(new_joint, edit=True, oj='none', ch=True, zso=True)
+    return new_joints
 
+@ul.do_function_on(type_filter=['joint'])
 def insert_joint(joint, num_joint=2):
     og_joint = joint
     joint_child = joint.getChildren()[0] if joint.getChildren() else None
@@ -680,12 +767,14 @@ def insert_joint(joint, num_joint=2):
         joint_list = og_joint.listRelatives(type='joint', ad=1)
         joint_list.reverse()
         joint_list.insert(0, og_joint)
-        for index, bone in enumerate(joint_list):
-            try:
-                pm.rename(bone, "%s%02d" % (joint_name[0], index + 1))
-            except:
-                pm.rename(bone, "%s#" % joint_name[0])
+        # for index, bone in enumerate(joint_list):
+        #     try:
+        #         pm.rename(bone, "%s%02d" % (joint_name[0], index + 1))
+        #     except:
+        #         pm.rename(bone, "%s#" % joint_name[0])
+    return joint_list
 
+@ul.do_function_on('oneToOne')
 def snap_simple(ob1, ob2, worldspace=False, hierachy=False, preserve_child=False):
     '''snap Transform for 2 object'''
     ob1_childs = ob1.listRelatives(type=['joint', 'transform'], ad=1)
@@ -703,6 +792,7 @@ def snap_simple(ob1, ob2, worldspace=False, hierachy=False, preserve_child=False
             for ob1_child, ob1_child_old_matrix in zip(ob1_childs, ob1_child_old_matrixes):
                 ob1_child.setMatrix(ob1_child_old_matrix, ws=True)
 
+@ul.do_function_on('oneToOne')
 def copy_skin_multi(source_skin_grp, dest_skin_grp, **kwargs):
     '''copy skin for 2 identical group hierachy'''
     source_skins = source_skin_grp.listRelatives(type='transform', ad=1)
@@ -715,7 +805,7 @@ def copy_skin_multi(source_skin_grp, dest_skin_grp, **kwargs):
     else:
         print 'source and target are not the same'
 
-@ul.error_alert
+@ul.do_function_on('oneToOne')
 def copy_skin_single(source_skin, dest_skin, **kwargs):
     '''copy skin for 2 object, target object do not need to have skin Cluster'''
     ### keyword add
@@ -771,6 +861,7 @@ def reset_bindPose_all():
     print "All bindPose has been reseted to %s" % newbp
     return newbp
 
+@ul.do_function_on()
 def reset_bindPose_root(joint_root):
     joint_childs = joint_root.listRelatives(type=pm.nt.Joint, ad=True)
     for joint in joint_childs:
@@ -825,6 +916,7 @@ def get_opposite_joint(bone, select=False, opBoneOnly=True, customPrefix=None):
                 print opBoneName
                 return opBone
 
+@ul.do_function_on(type_filter='joint')
 def dup_bone(bone,name='joint1'):
     pm.select(cl=True)
     dupbone = pm.nt.Joint()
@@ -837,6 +929,7 @@ def dup_bone(bone,name='joint1'):
     pm.makeIdentity(dupbone, apply=True)
     return dupbone
 
+@ul.do_function_on(type_filter='joint')
 def dup_bone_chain(boneRoot,suffix='dup'):
     boneChain = ul.iter_hierachy(boneRoot)
     newChain = []
@@ -852,12 +945,12 @@ def dup_bone_chain(boneRoot,suffix='dup'):
         newChain.append(dupBone)
     return newChain
 
-@ul.do_function_on('oneToOne',type_filter=['joint'])
+@ul.do_function_on('last', type_filter=['joint'])
 def connect_joint(bones, boneRoot, **kwargs):
     for bone in bones:
         pm.connectJoint(bone, boneRoot, **kwargs)
 
-@ul.do_function_on(type_filter=['joint'])
+@ul.do_function_on('hierachy', type_filter=['joint'])
 def label_joint(
         ob,
         remove_prefixes=['CH_'],
@@ -954,6 +1047,7 @@ def mirror_joint_multi(ob):
 
 # --- Hair System Functions ---
 
+@ul.do_function_on()
 def assign_curve_to_hair(abc_curve,hair_system="",preserve=False):
     '''assign Alembic curve Shape or tranform contain multi curve Shape to hairSystem'''
     curve_list = detach_shape(abc_curve, preserve=preserve)
@@ -1047,6 +1141,7 @@ def create_prop_control(bone, parent='ctlGp',useLoc=False, **kws):
         else:
             pm.group(ctlGp,name=parent)
     return ctl
+
 @ul.do_function_on()
 def create_free_control(bone, parent='ctlGp',useLoc=False, **kws):
     if 'gp' not in bone.name().lower():
@@ -1066,6 +1161,7 @@ def create_free_control(bone, parent='ctlGp',useLoc=False, **kws):
         else:
             pm.group(ctlGp,name=parent)
     return ctl
+
 @ul.do_function_on()
 def create_parent_control(boneRoot, parent='ctlGp',useLoc=False, **kws):
     ctls = []
@@ -1090,9 +1186,10 @@ def create_parent_control(boneRoot, parent='ctlGp',useLoc=False, **kws):
             connect_transform(ctl, bone, all=True )
     ctlRoot = ctls[0].getParent()
     if useLoc:
-        connect_with_loc(
+        loc = connect_with_loc(
             ctls[0],
             ctls[0].outputs(type='joint')[0], all=True)
+        loc[0].getParent().setParent(ctls[0])
     if parent:
         if pm.objExists(parent):
             ctlRoot.setParent(parent)
@@ -1148,12 +1245,17 @@ def create_long_hair(boneRoot, hairSystem='', circle=True, simplifyCurve=False):
     pm.delete(focGp)
     pm.parentConstraint(dynamicBones[0],create_parent(controls[0]))
     hairSysMeta = as_meta(hairSys)
-    hairSysMeta.connectChildren([c.name() for c in controls], 'boneControl', 'hairSystem', srcSimple=True)
+    hairSysMeta.connectChildren(
+        [c.name() for c in controls],
+        'boneControl', 'hairSystem', srcSimple=True)
+    locs = []
     for ctl, dynamicBone in zip(controls[1:], dynamicBones[1:]):
         offset = create_parent(ctl)
         control_tagging(ctl, metaname='DynamicHairControlsSet_MetaNode')
         loc = connect_with_loc(dynamicBone, offset,all=True)[0]
         loc.getParent().setParent(dynamicBone.getParent())
+        locs.append(loc)
+    print locs
     #lock ctlRoot translate and scale
     for atr in [
         'tx','ty','tz',
@@ -1193,17 +1295,15 @@ def create_short_hair(bone, parent='miscGp', midCtls=0, simplifyCurve=False):
     boneRoot = dup_bone(startBone, name = '{}_{}Bon'.format(bonename, 'root'))
     boneTops = [dup_bone(endBone, name = '{}_{}Bon'.format(bonename, 'top'))]
     #sbonetop.setParent(bone.getParent())
-    if midCtls and len(bones) > (midCtls+2):
-        for i in range(midCtls):
-            inc = (len(bones)-1)/(midCtls+1)
-            mboneTop = dup_bone(
-                    bones[i + int(round(inc))],
+    if midCtls:
+        pncInfo = ul.get_points_on_curve(ikcurve, amount=midCtls)
+        for tr,rot in pncInfo:
+            mboneTop = pm.nt.Joint(
                     name = '{}_midBone_{:02d}'.format(bonename,i+1))
-            boneUp = bones[int(math.ceil(inc))]
-            boneDown = bones[int(math.floor(inc))]
-            mboneTop.setTranslation(
-                (boneUp.getTranslation('world')+ \
-                 boneDown.getTranslation('world'))/2,'world')
+            boneUp = bones[i + int(math.ceil(inc))]
+            boneDown = bones[i + int(math.floor(inc))]
+            mboneTop.setTranslation(tr)
+            mboneTop.setRotation(rot)
             boneTops.insert(-1, mboneTop)
     print boneTops
     for b in boneTops:
