@@ -181,7 +181,10 @@ def error_alert(func):
             result = func(*args, **kwargs)
             log.info('{} OK and return {}, took: {}'.format(func.__name__, result, time()-t))
             return result
-        except (IOError, OSError, pm.MayaNodeError, pm.MayaAttributeError, AssertionError, TypeError,AttributeError) as why:
+        except (
+                IOError,OSError,
+                pm.MayaNodeError, pm.MayaAttributeError,
+                AssertionError, TypeError,AttributeError) as why:
             msg = []
             msg.append(''.join([
                 func.__name__,':',
@@ -225,149 +228,155 @@ def do_function_on(mode='single', type_filter=[]):
             if not selected:
                 # if selected keyword are False
                 return func(*args, **kwargs)
-            # get selected object as PyNode
-            object_list = []
-            if type_filter:
-                for o in pm.selected():
-                    otype = get_type(o)
-                    if otype in type_filter:
-                        if otype in ['vertex', 'edge', 'face']:
-                            vList = convert_component([o])
-                            object_list.extend(vList)
-                        else:
-                            object_list.append(o)
-            else:
-                object_list = pm.selected()
-            if not object_list:
-                msg = '''No selected objects or type input in type_filter is unknown!
-                Type Filter :\n%s 
-                Selection :\n%s'''%(
-                    str(type_filter),
-                    str([(i, i.nodeType()) for i in pm.selected()]))
-                log.error(msg)
-                raise RuntimeError(msg)
-            ##########
-            #Define function mode
-            ##########
-            @error_alert
-            def do_single():
-                '''Feed function with each valid selected object and yield result'''
-                for ob in object_list:
-                    yield func(ob, *args, **kwargs)
 
-            @error_alert
-            def do_hierachy():
-                '''Feed function with each object and all its childrens and yield result'''
-                for ob in object_list:
-                    # print ob
-                    for child in iter_hierachy(ob):
-                        # print child
-                        yield func(child, *args, **kwargs)
+            class DoFunc:
+                def __init__(self):
+                    self.mode = mode
+                    self.func = func
+                    self.filter = type_filter
+                    self.args = args
+                    self.kwargs = kwargs
+                    self.results = []
+                    self.function_modes = {
+                        'single':self.single,
+                        'set':self.obset,
+                        'hierachy':self.hierachy,
+                        'oneToOne': self.one_to_one,
+                        'last': self.to_last,
+                        'singleLast': partial(self.to_last, True),
+                        'lastType': self.to_last_type,
+                        'multiType': self.different_type,
+                    }
+                    self._get_oblist()
+                def _get_oblist(self):
+                    '''get selected object as PyNode'''
+                    self.oblist = []
+                    if self.filter:
+                        for o in pm.selected():
+                            otype = get_type(o)
+                            if otype in self.filter:
+                                if otype in ['vertex', 'edge', 'face']:
+                                    vList = convert_component([o])
+                                    self.oblist.extend(vList)
+                                else:
+                                    self.oblist.append(o)
+                    else:
+                        self.oblist = pm.selected()
+                    if not self.oblist:
+                        msg = '''No selected objects or type input in type_filter is unknown!
+                        Type Filter :\n%s 
+                        Selection :\n%s'''%(
+                            str(self.filter),
+                            str([(i, i.nodeType()) for i in pm.selected()]))
+                        log.error(msg)
+                        raise RuntimeError(msg)
+                    return self.oblist
 
-            @error_alert
-            def do_one_to_one():
-                '''Feed function with a set of first and last selected object and yield result'''
-                if len(object_list)%2:
-                    msg = 'Selected Object Count should be power of 2.\n \
-                           Current Object Counts:%d'%(len(object_list))
-                    log.warning(msg)
-                    raise RuntimeWarning(msg)
-                objects_set1 = [o for id, o in enumerate(object_list)
-                                if id%2]
-                objects_set2 = [o for id, o in enumerate(object_list)
-                                if not id%2]
-                for ob1, ob2 in zip(objects_set1, objects_set2):
-                    yield func(ob1, ob2, *args, **kwargs)
+                def single(self):
+                    for ob in self.oblist:
+                        result = self.func(ob, *self.args, **self.kwargs)
+                        self.results.append(result)
+                    return self.results
 
-            @error_alert
-            def do_set():
-                '''Feed function directly with list of selected objects'''
-                return func(object_list, *args, **kwargs)
+                def hierachy(self):
+                    '''Feed function with each object and all its childrens and yield result'''
+                    for ob in self.oblist:
+                        # print ob
+                        for child in iter_hierachy(ob):
+                            # print child
+                            self.results.append(self.func(child, *self.args, **self.kwargs))
+                    return self.results
 
-            @error_alert
-            def do_to_last(singlelast=False):
-                '''Feed function list of selected objects before the last select object and
-                the last object'''
-                if len(object_list) < 2:
-                    msg = 'Select more than two objects!'
-                    log.error(msg)
-                    raise RuntimeWarning(msg)
-                op_list = object_list[:-1]
-                target = object_list[-1]
-                if singlelast:
-                    for op in op_list:
-                        yield func(op, target, *args, **kwargs)
-                else:
-                    yield func(op_list, target, *args, **kwargs)
+                def one_to_one(self):
+                    '''Feed function with a set of first and last selected object and yield result'''
+                    if len(self.oblist)%2:
+                        msg = 'Selected Object Count should be power of 2.\n \
+                            Current Object Counts:%d'%(len(self.oblist))
+                        log.warning(msg)
+                        raise RuntimeWarning(msg)
+                    objects_set1 = [o for id, o in enumerate(self.oblist)
+                                    if id%2]
+                    objects_set2 = [o for id, o in enumerate(self.oblist)
+                                    if not id%2]
+                    for ob1, ob2 in zip(objects_set1, objects_set2):
+                        self.results.append(self.func(ob1, ob2, *self.args, **self.kwargs))
+                    return self.results
 
-            @error_alert
-            def do_to_last_type():
-                '''like 'last' mode but last object must be a different type from other'''
-                if len(object_list) < 2 or len(type_filter) < 2:
-                    msg = 'Select more than two objects of diffent type!\n \
-                           Current Selection:\n%s \
-                           Current Type Filter:\n%s '%(
-                               str(object_list),
-                               str(type_filter))
-                    log.error(msg)
-                    raise RuntimeWarning(msg)
-                source_type_set = [
-                    o for o in object_list
-                    if o.nodeType() != type_filter[-1]]
-                target_type_set = [
-                    o for o in object_list
-                    if o.nodeType() == type_filter[-1]]
-                return func(
-                    source_type_set,
-                    target_type_set,
-                    *args, **kwargs)
+                def obset(self):
+                    '''Feed function directly with list of selected objects'''
+                    self.results.append(func(self.oblist, *self.args, **self.kwargs))
+                    return self.results
 
-            @error_alert
-            def do_different_type():
-                '''like 'last' mode but last object must be a different type from other'''
-                if len(object_list) < 2 or len(type_filter) < 2:
-                    msg = 'Select more than %s objects of %s diffent type!\n \
-                           Current Selection:\n%s \
-                           Current Type Filter:\n%s '%(
-                               len(type_filter), len(type_filter),
-                               str(object_list),
-                               str(type_filter))
-                    log.error(msg)
-                    raise RuntimeWarning(msg)
-                obtype_list = []
-                for t in type_filter:
-                    obtypes = []
-                    for o in object_list:
-                        otype = get_type(o)
-                        if otype == t:
-                            obtypes.append(o)
-                    obtype_list.append(obtypes)
-                print obtype_list
-                assert all(obtype_list), \
-                    'One or more object set belong to a type in type Filter is empty'
-                for ob_set in zip(*obtype_list):
-                    nargs = list(ob_set)
-                    nargs.extend(args)
-                    yield func(*nargs, **kwargs)
+                def to_last(self, singlelast=False):
+                    '''Feed function list of selected objects before the last select object and
+                    the last object'''
+                    if len(self.oblist) < 2:
+                        msg = 'Select more than two objects!'
+                        log.error(msg)
+                        raise RuntimeWarning(msg)
+                    op_list = self.oblist[:-1]
+                    target = self.oblist[-1]
+                    if singlelast:
+                        for op in op_list:
+                            self.results.append(self.func(op, target, *self.args, **self.kwargs))
+                    else:
+                        self.results.append(self.func(op_list, target, *self.args, **self.kwargs))
+                    return self.results
 
-            ########
-            #Define function mode dict
-            ########
-            function_mode = {
-                'single':do_single,
-                'set':do_set,
-                'hierachy':do_hierachy,
-                'oneToOne': do_one_to_one,
-                'last': do_to_last,
-                'singleLast': partial(do_to_last, True),
-                'lastType': do_to_last_type,
-                'multiType': do_different_type,
-            }
-            ########
-            #Return function result
-            ########
-            result = function_mode[mode]()
-            result = recurse_collect(result)
+                def to_last_type(self):
+                    '''like 'last' mode but last object must be a different type from other'''
+                    if len(self.oblist) < 2 or len(self.filter) < 2:
+                        msg = 'Select more than two objects of diffent type!\n \
+                            Current Selection:\n%s \
+                            Current Type Filter:\n%s '%(
+                                str(self.oblist),
+                                str(self.filter))
+                        log.error(msg)
+                        raise RuntimeWarning(msg)
+                    source_type_set = [
+                        o for o in self.oblist
+                        if o.nodeType() != self.filter[-1]]
+                    target_type_set = [
+                        o for o in self.oblist
+                        if o.nodeType() == self.filter[-1]]
+                    self.results.append(func(
+                        source_type_set,
+                        target_type_set,
+                        *args, **kwargs))
+                    return self.results
+
+                def different_type(self):
+                    '''like 'last' mode but last object must be a different type from other'''
+                    if len(self.oblist) < 2 or len(self.filter) < 2:
+                        msg = 'Select more than %s objects of %s diffent type!\n \
+                            Current Selection:\n%s \
+                            Current Type Filter:\n%s '%(
+                                len(self.filter), len(self.filter),
+                                str(self.oblist),
+                                str(self.filter))
+                        log.error(msg)
+                        raise RuntimeWarning(msg)
+                    obtype_list = []
+                    for t in self.filter:
+                        obtypes = []
+                        for o in self.oblist:
+                            otype = get_type(o)
+                            if otype == t:
+                                obtypes.append(o)
+                        obtype_list.append(obtypes)
+                    assert all(obtype_list), \
+                        'One or more object set belong to a type in type Filter is empty'
+                    for ob_set in zip(*obtype_list):
+                        nargs = list(ob_set)
+                        nargs.extend(self.args)
+                        self.results.append(self.func(*nargs, **self.kwargs))
+                    return self.results
+
+                @classmethod
+                def do(cls):
+                    return recurse_collect(cls().function_modes[cls().mode]())
+
+            result = DoFunc.do()
             log.debug('%s Wrap by do_function_on decorator and return %s'%(func.__name__,str(result)))
             return result
         return wrapper
@@ -551,7 +560,7 @@ def recurse_trees(root, list_branch_callback, callback,*args,**kwargs):
     return filter_collectors
 
 #@error_alert
-def recurse_collect(filter=[], *args):
+def recurse_collect(*args, **kwargs):
     '''Recursive throught iterator to yield list elemment'''
     collectors = []
     def recurse(alist):
@@ -568,10 +577,11 @@ def recurse_collect(filter=[], *args):
             collectors.append(alist)
     for arg in args:
         recurse(arg)
-    if filter:
+    if 'filter' in kwargs:
+        assert kwargs['filter'], 'Filter Type is empty'
         collectors = [
             i for i in collectors
-            if any([isinstance(i, _type) for _type in filter])]
+            if any([isinstance(i, _type) for _type in kwargs['filter']])]
     return collectors
 
 @error_alert

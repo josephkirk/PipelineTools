@@ -78,15 +78,17 @@ def toggleChannelHistory(state=True):
         log.info('{} Channel History Display Set To {}'.format(ob,state))
 
 @ul.do_function_on('set')
-def group(grpname = '', *args):
+def group(*args, **kwargs):
     '''group control under newTransform'''
     obs = ul.recurse_collect(*args)
     obs = [pm.PyNode(o) for o in obs if pm.objExists(o)]
-    if not grpname:
-        grpname=ob.name() + 'Gp'
+    if 'grpname' not in kwargs['grpname']:
+        grpname = obs[0].name() + 'Gp'
+    else:
+        grpname = kwargs['grpname']
     if not pm.objExists(grpname):
         Gp = pm.nt.Transform(name=grpname)
-    Gp = pm.PyNode(grpname)
+    Gp = ul.get_node(grpname)
     for ob in obs:
         ob.setParent(Gp)
         log.info('group {} under {}'.format(ob, Gp))
@@ -1024,21 +1026,21 @@ def make_curve_dynamic(inputcurve, hairSystem=''):
 @ul.do_function_on()
 def create_prop_control(bone, parent='ctlGp',useLoc=False, **kws):
     if 'gp' not in bone.name().lower():
-        bonGp = rul.create_parent(bone)
+        bonGp = create_parent(bone)
     ctlname = ul.get_name(bone).replace('bon', 'ctl')
-    ctl = rul.createPinCircle(
+    ctl = createPinCircle(
             ctlname,
             step=4,
             sphere=True,
             radius=2,
             length=0)
-    ctlGp = rul.create_parent(ctl)
+    ctlGp = create_parent(ctl)
     xformTo(ctlGp, bone)
     if useLoc:
-        rul.connect_with_loc(ctl, bone, all=True)
+        connect_with_loc(ctl, bone, all=True)
     else:
-        rul.connect_transform(ctl, bone, all=True)
-    rul.control_tagging(ctl, metaname='PropControlsSet_MetaNode')
+        connect_transform(ctl, bone, all=True)
+    control_tagging(ctl, metaname='PropControlsSet_MetaNode')
     if parent:
         if pm.objExists(parent):
             ctlGp.setParent(parent)
@@ -1048,15 +1050,15 @@ def create_prop_control(bone, parent='ctlGp',useLoc=False, **kws):
 @ul.do_function_on()
 def create_free_control(bone, parent='ctlGp',useLoc=False, **kws):
     if 'gp' not in bone.name().lower():
-        bonGp = rul.create_parent(bone)
+        bonGp = create_parent(bone)
     ctlname = bone.name().replace('bon', 'ctl')
-    ctl = rul.createPinCircle(ctlname,length=0,sphere=True)
-    ctlGp = rul.create_parent(ctl)
+    ctl = createPinCircle(ctlname,length=0,sphere=True)
+    ctlGp = create_parent(ctl)
     xformTo(ctlGp, bone)
     if useLoc:
-        rul.connect_with_loc(ctl, bone, all=True)
+        connect_with_loc(ctl, bone, all=True)
     else:
-        rul.connect_transform(ctl, bone, all=True)
+        connect_transform(ctl, bone, all=True)
     control_tagging(ctl, metaname='FreeControlsSet_MetaNode')
     if parent:
         if pm.objExists(parent):
@@ -1072,23 +1074,23 @@ def create_parent_control(boneRoot, parent='ctlGp',useLoc=False, **kws):
         if 'offset' not in ul.get_name(bone):
             if bone.getParent():
                 if 'offset' not in ul.get_name(bone.getParent()):
-                    rul.create_offset_bone(bone)
+                    create_offset_bone(bone)
             else:
-                rul.create_offset_bone(bone)
+                create_offset_bone(bone)
             name = ul.get_name(bone).split('_')[0]
             ctl = createPinCircle(name)
             ctl.rename(name + '_ctl')
             ctlGp = create_parent(ctl)
             ctlGp.rename(name + '_ctlGp')
             match_transform(ctlGp,bone)
-            rul.control_tagging(ctl, metaname='ParentControlsSet_MetaNode')
+            control_tagging(ctl, metaname='ParentControlsSet_MetaNode')
             if ctls:
                 ctlGp.setParent(ctls[-1])
             ctls.append(ctl)
-            rul.connect_transform(ctl, bone, all=True )
+            connect_transform(ctl, bone, all=True )
     ctlRoot = ctls[0].getParent()
     if useLoc:
-        rul.connect_with_loc(
+        connect_with_loc(
             ctls[0],
             ctls[0].outputs(type='joint')[0], all=True)
     if parent:
@@ -1101,43 +1103,43 @@ def create_parent_control(boneRoot, parent='ctlGp',useLoc=False, **kws):
 #--- Rigging Hair Control Methods ---
 @ul.do_function_on()
 def create_long_hair(boneRoot, hairSystem='', circle=True, simplifyCurve=False):
-    dynamicBones = rul.dup_bone_chain(boneRoot, suffix='dynamic')
-    boneGp = rul.create_parent(boneRoot)
-    dupBoneGp = rul.create_parent(dynamicBones[0])
+    dynamicBones = dup_bone_chain(boneRoot, suffix='dynamic')
+    boneGp = create_parent(boneRoot)
+    dupBoneGp = create_parent(dynamicBones[0])
     bonChain = ul.iter_hierachy(boneRoot)
     dupBoneChain = ul.iter_hierachy(dynamicBones[0])
     for bone, dupbone in zip(iter(bonChain),iter(dupBoneChain)):
         tranformBool = any([0<bone.attr(atr).get() or bone.attr(atr).get()>0 for atr in ['rx','ry','rz', 'sx','sy','sz']])
         if tranformBool:
             log.info('%s contain value in rotate or scale. Commencing freeze transform'%bone)
-            rul.freeze_skin_joint(bone)
+            freeze_skin_joint(bone)
             pm.makeIdentity(dupbone, apply=True)
-        offsetBone = rul.create_offset_bone(bone)
-        offsetMeta = rul.as_meta(offsetBone)
+        offsetBone = create_offset_bone(bone)
+        offsetMeta = as_meta(offsetBone)
         offsetMeta.connectChild(dupbone.name(), 'dynamicBone', 'drivenBone')
         #pm.orientConstraint(dupbone, offsetBone, mo=True)
-        rul.connect_transform(dupbone, offsetBone,rotate=True)
+        connect_transform(dupbone, offsetBone,rotate=True)
     ikhandle, ikeffector, ikcurve = pm.ikHandle(
         sj=dynamicBones[0], ee=dynamicBones[-1], solver='ikSplineSolver', ns=3, scv=simplifyCurve)
     ikhandle.setParent(dupBoneGp)
     ikcurve.rename(ul.get_name(boneRoot).replace('bon','ikCurve'))
-    hairSystem = rul.make_curve_dynamic(ikcurve, hairSystem=hairSystem)
+    hairSystem = make_curve_dynamic(ikcurve, hairSystem=hairSystem)
     dynamicCurve, follicle, hairSys = [i for i in hairSystem]
     dynamicCurve.worldSpace[0] >> ikhandle.inCurve
     controls = create_parent_control(boneRoot, parent='',useLoc=True)
     if circle:
         for control in controls:
-            tempShape = rul.createPinCircle(
+            tempShape = createPinCircle(
                 control.name(),
                 axis='YZ',
                 radius=2,
                 length=0)
             ul.parent_shape(tempShape, control)
             #pm.delete(tempShape)
-    controlGp = rul.create_parent(controls[0].getParent())
+    controlGp = create_parent(controls[0].getParent())
     controlGp = controlGp.rename(controlGp.name().split('_')[0]+'_root_ctlGp')
-    controlRoot = rul.createPinCircle(controlGp.name(),axis='YZ',radius=3,length=0)
-    rul.xformTo(controlRoot, controlGp)
+    controlRoot = createPinCircle(controlGp.name(),axis='YZ',radius=3,length=0)
+    xformTo(controlRoot, controlGp)
     controlRoot.setParent(controlGp)
     #loc.getParent().setParent(controlGp)
     dupBoneGp.setParent(controlRoot)
@@ -1145,12 +1147,12 @@ def create_long_hair(boneRoot, hairSystem='', circle=True, simplifyCurve=False):
     follicle.getParent().setParent(controlRoot)
     pm.delete(focGp)
     pm.parentConstraint(dynamicBones[0],create_parent(controls[0]))
-    hairSysMeta = rul.as_meta(hairSys)
+    hairSysMeta = as_meta(hairSys)
     hairSysMeta.connectChildren([c.name() for c in controls], 'boneControl', 'hairSystem', srcSimple=True)
     for ctl, dynamicBone in zip(controls[1:], dynamicBones[1:]):
-        offset = rul.create_parent(ctl)
-        rul.control_tagging(ctl, metaname='DynamicHairControlsSet_MetaNode')
-        loc = rul.connect_with_loc(dynamicBone, offset,all=True)[0]
+        offset = create_parent(ctl)
+        control_tagging(ctl, metaname='DynamicHairControlsSet_MetaNode')
+        loc = connect_with_loc(dynamicBone, offset,all=True)[0]
         loc.getParent().setParent(dynamicBone.getParent())
     #lock ctlRoot translate and scale
     for atr in [
@@ -1171,15 +1173,16 @@ def create_long_hair(boneRoot, hairSystem='', circle=True, simplifyCurve=False):
     else:
         pm.group(hairMiscGp,name='miscGp')
     # add ctl tag
-    rul.control_tagging(controlRoot, metaname='DynamicHairControlsSet_MetaNode')
+    control_tagging(controlRoot, metaname='DynamicHairControlsSet_MetaNode')
 
 @ul.do_function_on()
 def create_short_hair(bone, parent='miscGp', midCtls=0, simplifyCurve=False):
-    bones = ul.iter_hierachy(bone, filter='joint')
+    bones = ul.recurse_collect(ul.iter_hierachy(bone, filter='joint'))
+    print bones
     if len(bones) < 2:
         log.warning('Bone Chains have less than 2 joints')
         return
-    bonename = '_'.join(bone.name().split('|')[-1].split('_')[:-1])
+    bonename = bone.name().split('|')[-1]
     startBone = bones[0]
     endBone = bones[-1]
     ikhandle, ikeffector, ikcurve = pm.ikHandle(
@@ -1188,35 +1191,31 @@ def create_short_hair(bone, parent='miscGp', midCtls=0, simplifyCurve=False):
     ikeffector.rename(bonename+'_ikeffector')
     ikcurve.rename(bonename+'_ikCurve')
     boneRoot = dup_bone(startBone, name = '{}_{}Bon'.format(bonename, 'root'))
-    boneTops = dup_bone(endBone, name = '{}_{}Bon'.format(bonename, 'top'))
+    boneTops = [dup_bone(endBone, name = '{}_{}Bon'.format(bonename, 'top'))]
     #sbonetop.setParent(bone.getParent())
-    if not midCtls and len(bones) > (midCtls+2):
-        midBone = [
-            bones[i+int(round((len(bones)-1)/midCtls))]
-            for i in range(midCtls)]
+    if midCtls and len(bones) > (midCtls+2):
         for i in range(midCtls):
-            inc = (len(bones)-1)/midCtls
-            mboneTop = dup_bon(
+            inc = (len(bones)-1)/(midCtls+1)
+            mboneTop = dup_bone(
                     bones[i + int(round(inc))],
                     name = '{}_midBone_{:02d}'.format(bonename,i+1))
             boneUp = bones[int(math.ceil(inc))]
             boneDown = bones[int(math.floor(inc))]
-            mbonetop.setTranslation(
+            mboneTop.setTranslation(
                 (boneUp.getTranslation('world')+ \
                  boneDown.getTranslation('world'))/2,'world')
             boneTops.insert(-1, mboneTop)
+    print boneTops
     for b in boneTops:
         b.setParent(None)
         b.radius.set(b.radius.get()*1.2)
-    curveSkin = pm.skinCluster(*ul.recurse_collect(boneTops, ikcurve))
+    curveSkin = pm.skinCluster(*ul.recurse_collect(boneRoot, boneTops, ikcurve))
     ctls = [create_free_control(btop,useLoc=True) for btop in boneTops]
     for ctl in ctls:
         if parent:
             ctl.getParent().setParent(parent)
-        rul.control_tagging(ctl, metaname='ShortHairControlsSet_MetaNode')
-        group(ctl, grpname=bonename+'_bontopGp')
-        group(ikcurve, ikhandle, grpname=bonename+'_ikMisc')
-        group(ectl.getParent(), mctl.getParent(), grpname=bonename+'_ctlGp')
+        control_tagging(ctl, metaname='ShortHairControlsSet_MetaNode')
+    group(ikcurve, ikhandle, grpname=bonename+'_ikMisc')
     if parent:
         if pm.objExists(parent):
             ikmiscGp.setParent(parent)
