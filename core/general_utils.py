@@ -227,10 +227,14 @@ def do_function_on(mode='single', type_filter=[]):
             if not selected:
                 # if selected keyword are False
                 return func(*args, **kwargs)
+            do_mode = mode
+            if 'mode' in kwargs:
+                do_mode = kwargs['mode']
+                del kwargs['mode']
 
             class DoFunc:
                 def __init__(self):
-                    self.mode = mode
+                    self.mode = do_mode
                     self.func = func
                     self.filter = type_filter
                     self.args = args
@@ -876,11 +880,16 @@ def parent_shape(src, target, delete_src=True, delete_oldShape=True):
     pm.makeIdentity(src, apply=True)
     pm.delete(src.listRelatives(type='transform'))
     pm.refresh()
-    pm.parent(src.getShape(), target, r=True, s=True)
-    if delete_src:
-        pm.delete(src)
     if delete_oldShape:
         pm.delete(get_shape(target), shape=True)
+    if delete_src:
+        pm.parent(src.getShape(), target, r=True, s=True)
+        pm.delete(src)
+    else:
+        temp = src.duplicate()[0]
+        pm.parent(temp.getShape(), target, r=True, s=True)
+        pm.delete(temp)
+
 
 @do_function_on()
 def un_parent_shape(ob):

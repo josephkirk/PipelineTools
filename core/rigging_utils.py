@@ -247,7 +247,7 @@ def createPinCircle(
 
 @ul.error_alert
 @ul.do_function_on('oneToOne')
-def contraint_multi(ob, target, constraintType='Point'):
+def constraint_multi(ob, target, constraintType='Point'):
     constraintDict = {
         'Point': ul.partial(pm.pointConstraint , mo=True),
         'Parent': ul.partial(pm.parentConstraint , mo=True),
@@ -445,7 +445,7 @@ def connect_transform(ob, target, **kws):
                 log.info('{} connect to {}'.format(
                     ob.attr(attr), target.attr(attr)))
 
-@ul.do_function_on('oneToOne')
+@ul.do_function_on()
 def disconnect_transform(ob , attr='all'):
     attrdict = {
         'translate': ['translate','tx', 'ty', 'tz'],
