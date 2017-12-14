@@ -342,9 +342,8 @@ def connect_with_loc(ctl,bon,**kws):
 @ul.do_function_on(type_filter=['vertex'])
 def create_loc_on_vert(vert,name='guideLoc'):
     if isinstance(vert,pm.general.MeshVertex):
-        print vert, vert.getUV() 
         mesh = vert.node()
-        uv = mesh.getUV(vert.index())
+        uv = ul.get_closest_info(vert.getPosition(), mesh)['Closest UV']
         loc = pm.spaceLocator()
         locGp = create_parent(loc)
         ppconstraint = pm.pointOnPolyConstraint(
@@ -352,7 +351,7 @@ def create_loc_on_vert(vert,name='guideLoc'):
         stripname = ul.get_name(mesh.getParent())
         ppconstraint.attr(stripname + 'U0').set(uv[0])
         ppconstraint.attr(stripname + 'V0').set(uv[1])
-        print ppconstraint.attr(stripname + 'V0').get()
+        print vert, vert.getUVs(), ppconstraint.attr(stripname + 'U0').get()
         return loc
 
 @ul.do_function_on(type_filter=['nurbsCurve'])
@@ -1118,11 +1117,15 @@ def make_curve_dynamic(inputcurve, hairSystem=''):
 
 #--- Rigging Body Controls Methods ---
 @ul.do_function_on()
-def create_prop_control(bone, parent='ctlGp',useLoc=False, **kws):
+def create_prop_control(bone, parent='ctlGp', useLoc=False, customShape=None):
     if 'gp' not in bone.name().lower():
         bonGp = create_parent(bone)
     ctlname = ul.get_name(bone).replace('bon', 'ctl')
-    ctl = createPinCircle(
+    if customShape:
+        ctl = customShape()
+        ctl.rename(ctlname)
+    else:
+        ctl = createPinCircle(
             ctlname,
             step=4,
             sphere=True,
@@ -1143,11 +1146,20 @@ def create_prop_control(bone, parent='ctlGp',useLoc=False, **kws):
     return ctl
 
 @ul.do_function_on()
-def create_free_control(bone, parent='ctlGp',useLoc=False, **kws):
+def create_free_control(bone, parent='ctlGp',useLoc=False, customShape=None):
     if 'gp' not in bone.name().lower():
         bonGp = create_parent(bone)
     ctlname = bone.name().replace('bon', 'ctl')
-    ctl = createPinCircle(ctlname,length=0,sphere=True)
+    if customShape:
+        ctl = customShape()
+        ctl.rename(ctlname)
+    else:
+        ctl = createPinCircle(
+                ctlname,
+                step=12,
+                sphere=True,
+                radius=2,
+                length=0)
     ctlGp = create_parent(ctl)
     xformTo(ctlGp, bone)
     if useLoc:
@@ -1163,7 +1175,7 @@ def create_free_control(bone, parent='ctlGp',useLoc=False, **kws):
     return ctl
 
 @ul.do_function_on()
-def create_parent_control(boneRoot, parent='ctlGp',useLoc=False, **kws):
+def create_parent_control(boneRoot, parent='ctlGp',useLoc=False, customShape=None):
     ctls = []
     boneChain = ul.iter_hierachy(boneRoot)
     for bone in iter(boneChain):
@@ -1174,7 +1186,10 @@ def create_parent_control(boneRoot, parent='ctlGp',useLoc=False, **kws):
             else:
                 create_offset_bone(bone)
             name = ul.get_name(bone).split('_')[0]
-            ctl = createPinCircle(name)
+            if customShape:
+                ctl = customShape()
+            else:
+                ctl = createPinCircle(name)
             ctl.rename(name + '_ctl')
             ctlGp = create_parent(ctl)
             ctlGp.rename(name + '_ctlGp')
@@ -1199,7 +1214,7 @@ def create_parent_control(boneRoot, parent='ctlGp',useLoc=False, **kws):
 
 #--- Rigging Hair Control Methods ---
 @ul.do_function_on()
-def create_long_hair(boneRoot, hairSystem='', circle=True, simplifyCurve=False):
+def create_long_hair(boneRoot, hairSystem='', circle=True, simplifyCurve=False, customShape=None):
     dynamicBones = dup_bone_chain(boneRoot, suffix='dynamic')
     boneGp = create_parent(boneRoot)
     dupBoneGp = create_parent(dynamicBones[0])
@@ -1226,11 +1241,14 @@ def create_long_hair(boneRoot, hairSystem='', circle=True, simplifyCurve=False):
     controls = create_parent_control(boneRoot, parent='',useLoc=True)
     if circle:
         for control in controls:
-            tempShape = createPinCircle(
-                control.name(),
-                axis='YZ',
-                radius=2,
-                length=0)
+            if customShape:
+                tempShape = customShape()
+            else:
+                tempShape = createPinCircle(
+                    control.name(),
+                    axis='YZ',
+                    radius=2,
+                    length=0)
             ul.parent_shape(tempShape, control)
             #pm.delete(tempShape)
     controlGp = create_parent(controls[0].getParent())
@@ -1278,7 +1296,7 @@ def create_long_hair(boneRoot, hairSystem='', circle=True, simplifyCurve=False):
     control_tagging(controlRoot, metaname='DynamicHairControlsSet_MetaNode')
 
 @ul.do_function_on()
-def create_short_hair(bone, parent='miscGp', midCtls=0, simplifyCurve=False):
+def create_short_hair(bone, parent='miscGp', midCtls=0, simplifyCurve=False, customShape=None):
     bones = ul.recurse_collect(ul.iter_hierachy(bone, filter='joint'))
     print bones
     if len(bones) < 2:
@@ -1310,7 +1328,7 @@ def create_short_hair(bone, parent='miscGp', midCtls=0, simplifyCurve=False):
         b.setParent(None)
         b.radius.set(b.radius.get()*1.2)
     curveSkin = pm.skinCluster(*ul.recurse_collect(boneRoot, boneTops, ikcurve))
-    ctls = [create_free_control(btop,useLoc=True) for btop in boneTops]
+    ctls = [create_free_control(btop,useLoc=True, customShape=customShape) for btop in boneTops]
     for ctl in ctls:
         if parent:
             ctl.getParent().setParent(parent)

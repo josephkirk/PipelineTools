@@ -608,7 +608,7 @@ def iter_hierachy(root, filter = 'transform'):
 @error_alert
 def get_closest_component(ob, mesh_node, uv=True, pos=False):
     ob_pos = ob.getTranslation(space='world')
-    closest_info = get_closest_info(ob,mesh_node)
+    closest_info = get_closest_info(ob_pos,mesh_node)
     closest_vert_pos = closest_info['Closest Vertex'].getPosition(space='world')
     closest_components = [closest_vert_pos, closest_info['Closest Mid Edge']]
     distance_cmp = [ob_pos.distanceTo(cp) for cp in closest_components]
@@ -633,10 +633,7 @@ def get_closest_component(ob, mesh_node, uv=True, pos=False):
     return result
 
 @error_alert
-def get_closest_info(ob, mesh_node):
-    if not isinstance(ob, pm.nt.Transform):
-        return
-    ob_pos = ob.getTranslation(space='world')
+def get_closest_info(ob_pos, mesh_node):
     mesh_node = get_shape(pm.PyNode(mesh_node))
     temp_node = pm.nt.ClosestPointOnMesh()
     temp_loc = pm.spaceLocator(p=ob_pos)

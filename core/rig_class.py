@@ -1029,18 +1029,7 @@ class ControlObject(object):
             pm.delete(self.controlGps)
 
     def createControl(self):
-        if pm.selected():
-            newCtl = []
-            for ob in pm.selected():
-                ctl = self._controlType[self._currentType](**self._uiOption)
-                newCtl.append(ctl)
-                if ob:
-                    if ctl.getParent():
-                        ru.xformTo(ctl.getParent(), ob)
-                    else:
-                        ru.xformTo(ctl, ob)
-        else:
-            newCtl = self._controlType[self._currentType](**self._uiOption)
+        newCtl = self._controlType[self._currentType](**self._uiOption)
         return newCtl
 
     def changeControlShape(self, selectControl, *args):

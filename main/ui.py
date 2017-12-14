@@ -123,7 +123,14 @@ class RigTools(object):
             self.nodebase.extend(i.listRelatives(type='transform',ad=True))
         self.nodetrack.reset()
         self.nodetrack.startTrack()
+        #self.ControlObClass.createControl()'
+        sel=selected()
+        if hasattr(self.ControlObClass, '_uiName'):
+            if window(self.ControlObClass._uiName + 'Window', ex=True):
+                kws['customShape'] = self.ControlObClass.createControl
+        select(sel)
         func(**kws)
+        # delete(kws['customShape'])
         self.nodetrack.endTrack()
         self.fullbasetrack.extend(self.nodebase)
         self.fullcreatedtrack.extend(self.nodetrack.getNodes())
