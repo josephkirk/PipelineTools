@@ -865,6 +865,16 @@ def convert_to_curve(sellist, name='converted_curve', smoothness=1):
         ]
     assert 'cvpMatrix' in locals(), 'Cannot create curve for input {}'.format(sellist)
     # cvpMatrix.sort()
+    # temp_list = [cvpMatrix[0]]
+    # id = 0
+    # while id<(len(cvpMatrix)-1):
+    #     distancelist = [(ncvp, cvpMatrix[id].distanceTo(ncvp)) for ncvp in cvpMatrix]
+    #     distancelist.sort(key=lambda x:x[1])
+    #     shortest = distancelist[0][0] if distancelist[0][0]!=temp_list[-1] else distancelist[1][0]
+    #     cvpMatrix.remove(shortest)
+    #     temp_list.append(shortest)
+    #     id += 1
+    # cvpMatrix = temp_list
     if smoothness > 1:
         cvpMatrix = [cvpMatrix[0]]+cvpMatrix+[cvpMatrix[-1]]
     key = range(len(cvpMatrix)+smoothness-1)
@@ -886,6 +896,15 @@ def mirror_transform(ob, axis="x",xform=[0,4]):
     #print obs
     for at in axisDict[axis][xform[0]:xform[1]]:
         ob.attr(at).set(ob.attr(at).get()*-1)
+    pm.makeIdentity(ob,s=True,apply=True)
+    if get_shape(ob):
+        pm.polyNormal(ob, nm=0)
+        pm.bakePartialHistory(ob, all=True)
+    for obs in ob.listRelatives(type='transform'):
+        if get_shape(obs):
+            pm.polyNormal(obs, nm=0)
+            pm.bakePartialHistory(obs, all=True)
+    pm.select(ob)
 
 @do_function_on()
 def lock_transform(
@@ -896,8 +915,11 @@ def lock_transform(
     for at in ['translate','rotate','scale','visibility','tx','ty','tz','rx','ry','rz','sx','sy','sz']:
         ob.attr(at).unlock()
     if pivotToOrigin:
+        oldParent = ob.getParent()
+        ob.setParent(None)
+        pm.xform(ob,pivots=(0,0,0),wd=True, ws=True,dph=True,ztp=True)
+        ob.setParent(oldParent)
         pm.makeIdentity(ob, apply=True)
-        pm.xform(ob,pivots=(0,0,0),ws=True,dph=True,ztp=True)
     if lock is True:
         for at in ['translate','rotate','scale']:
             ob.attr(at).lock()

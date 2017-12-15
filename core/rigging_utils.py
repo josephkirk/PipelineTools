@@ -278,11 +278,26 @@ def constraint_multi(ob, target, constraintType='Point'):
             return
     constraintDict[constraintType](target,ob)
 
-@ul.do_function_on('oneToOne')
+@ul.do_function_on('singleLast')
 def connect_visibility(ob, target, attrname='Vis'):
     if not hasattr(ob, attrname):
         ob.addAttr(ln=attrname,at='bool',k=1)
     ob.attr(attrname) >> target.visibility
+
+@ul.do_function_on('last')
+def connect_visibility_enum(obs, target, enumAttr='EnumVis'):
+    if not hasattr(target, enumAttr):
+        pm.addAttr(target, ln=enumAttr, type='enum', enumName=[ob.name().split('_')[-1] for ob in obs], k=1)
+    for id, ob in enumerate(obs):
+        flogic = pm.nt.FloatLogic()
+        fcondition = pm.nt.FloatCondition()
+        flogic.outValue >> fcondition.condition
+        fcondition.floatB.set(0)
+        fcondition.outValue >> ob.visibility
+        flogic.floatB.set(id)
+        ob.attr(enumAttr) >> flogic.floatA
+        yield (flogic, fcondition)
+
 
 @ul.do_function_on('oneToOne')
 def aim_setup(ctl,loc):

@@ -106,7 +106,7 @@ class RigTools(object):
             cw=[(1,50),],
             cal=[(1,'center'),],
             cat=[(1, 'both',1),],
-            rat=[(1, 'both',1),])
+            rat=[(1, 'top',1),])
         self.subframe = ul.partial(
             frameLayout,
             collapsable=False, la='center', li=60,
@@ -267,7 +267,7 @@ class RigTools(object):
 
                                 with self.subframe(label='IK Chain Control'):
                                     with rowColumnLayout(
-                                            rs=[(1,0),],
+                                            rs=[(1,0.1),],
                                             numberOfColumns=2,
                                             columnWidth=[(1, 180), (2, 50)]):
                                         self._uiElement['SHctlparent'] = textFieldGrp(
@@ -301,6 +301,10 @@ class RigTools(object):
                                     separator()
                                     button(
                                         label='Create Simple IK')
+                                    separator()
+                                    button(
+                                        label='Create Stretch Bone')
+                                    separator()
                         button(
                             label='Delete Created Nodes',
                             c=Callback(
@@ -356,39 +360,6 @@ class RigTools(object):
                             c=Callback(
                                 ru.remove_parent,
                                 sl=True))
-                        psbutton = self.smallbutton(
-                            label='Parent Shape',
-                            c=Callback(
-                                ul.parent_shape,
-                                sl=True))
-                        with popupMenu(b=3):
-                            menuItem(   
-                                label='Unparent Shape',
-                                c=Callback(
-                                    ul.un_parent_shape,
-                                    sl=True))
-                            menuItem(
-                                c=Callback(
-                                    ul.parent_shape,
-                                    delete_src=False,
-                                    sl=True),
-                                label='Keep source shape'
-                            )
-                            menuItem(
-                                c=Callback(
-                                    ul.parent_shape,
-                                    delete_oldShape=False,
-                                    sl=True),
-                                label='Keep target shape'
-                            )
-                            menuItem(
-                                c=Callback(
-                                    ul.parent_shape,
-                                    delete_oldShape=False,
-                                    delete_src=False,
-                                    sl=True),
-                                label='Keep both shape'
-                            )
                         self.smallbutton(
                             label='create Offset bone',
                             c=Callback(
@@ -474,23 +445,6 @@ class RigTools(object):
                                     ru.disconnect_transform,
                                     attr='scale',
                                     sl=True))
-                        self.smallbutton(
-                            label='Lock Transform',
-                            c=Callback(
-                                ul.lock_transform,
-                                sl=True))
-                        with popupMenu(b=3):
-                            menuItem(
-                                label='Unlock Transform',
-                                c=Callback(
-                                    ul.lock_transform,
-                                    lock=False,
-                                    sl=True))
-                        self.smallbutton(
-                            label='Reset Transform',
-                            c=Callback(
-                                ul.reset_transform,
-                                sl=True))
                     button(
                         label='multi Parent Constraint',
                         c=Callback(
@@ -534,32 +488,124 @@ class RigTools(object):
                                 constraintType='LocOP',
                                 sl=True))
 
-                with frameLayout(label='Intergration:'):
-                    with columnLayout():
-                        button(
-                            label='Basic Intergration',
-                            c=Callback(ns57.basic_intergration))
-                        with gridLayout(cw=140):
-                            self._uiElement['visAtrName'] = textFieldGrp(
-                                cl2=('right', 'right'),
-                                co2=(0, 0),
-                                ct2=('right','left'),
-                                cw2=(35, 30),
-                                label='Vis Name:', text='FullRigVis')
-                            self.smallbutton(
-                                label='Connect Visibility', c=lambda x:ru.connect_visibility(
-                                    attrname= self._uiElement['visAtrName'].getText(), sl=True))
-                        with gridLayout(cw=140):
-                            self.smallbutton(label='Channel History OFF', c=Callback(ru.toggleChannelHistory, False))
-                            with popupMenu(b=3):
-                                menuItem(label='Channel History ON', c=Callback(ru.toggleChannelHistory))
-                            self.smallbutton(label='Deform Normal Off', c=Callback(ru.deform_normal_off))
+    def create_intergration_ui(self):
+        with frameLayout(label='Intergration:', cl=False):
+            with columnLayout():
+                button(
+                    label='Basic Intergration',
+                    c=Callback(ns57.basic_intergration))
+                with gridLayout(cw=140):
+                    self._uiElement['visAtrName'] = textFieldGrp(
+                        cl2=('right', 'right'),
+                        co2=(0, 0),
+                        ct2=('right','left'),
+                        cw2=(35, 30),
+                        label='Vis Name:', text='FullRigVis')
+                    self.smallbutton(
+                        label='Connect Visibility', c=lambda x:ru.connect_visibility(
+                            attrname= self._uiElement['visAtrName'].getText(), sl=True))
+                    self._uiElement['visEnumAtrName'] = textFieldGrp(
+                        cl2=('right', 'right'),
+                        co2=(0, 0),
+                        ct2=('right','left'),
+                        cw2=(35, 30),
+                        label='Vis Name:', text='FullRigVis')
+                    self.smallbutton(
+                        label='Connect Visibility Multi', c=lambda x:ru.connect_visibility_enum(
+                            enumAttr= self._uiElement['visEnumAtrName'].getText(), sl=True))
+                with gridLayout(cw=140):
+                    self.smallbutton(
+                        label='Create SkinDeform',
+                        c=Callback(ns57.create_skinDeform, False))
+                    self.smallbutton(
+                        label='Create RenderMesh',
+                        c=Callback(ns57.create_renderMesh, False)) 
+                    self.smallbutton(
+                        label='Channel History OFF',
+                        c=Callback(ru.toggleChannelHistory, False))
+                    with popupMenu(b=3):
+                        menuItem(label='Channel History ON', c=Callback(ru.toggleChannelHistory))
+                    self.smallbutton(label='Deform Normal Off', c=Callback(ru.deform_normal_off))
 
     def create_util_ui(self):
         with columnLayout():
+            with frameLayout(label='Modeling', cl=False):
+                with gridLayout():
+                    self.smallbutton(label='Selected to Curve',
+                        c=Callback(
+                            ul.convert_to_curve,
+                            sl=True))
+                    self.smallbutton(
+                        label='Parent Shape',
+                        c=Callback(
+                            ul.parent_shape,
+                            sl=True))
+                    with popupMenu(b=3):
+                        menuItem(   
+                            label='Unparent Shape',
+                            c=Callback(
+                                ul.un_parent_shape,
+                                sl=True))
+                        menuItem(
+                            c=Callback(
+                                ul.parent_shape,
+                                delete_src=False,
+                                sl=True),
+                            label='Keep source shape'
+                        )
+                        menuItem(
+                            c=Callback(
+                                ul.parent_shape,
+                                delete_oldShape=False,
+                                sl=True),
+                            label='Keep target shape'
+                        )
+                        menuItem(
+                            c=Callback(
+                                ul.parent_shape,
+                                delete_oldShape=False,
+                                delete_src=False,
+                                sl=True),
+                            label='Keep both shape'
+                        )
+                    self.smallbutton(
+                        label='Lock Transform',
+                        c=Callback(
+                            ul.lock_transform,
+                            sl=True))
+                    with popupMenu(b=3):
+                        menuItem(
+                            label='Unlock Transform',
+                            c=Callback(
+                                ul.lock_transform,
+                                lock=False,
+                                sl=True))
+                    self.smallbutton(
+                        label='Reset Transform',
+                        c=Callback(
+                            ul.reset_transform,
+                            sl=True))
+                    self.smallbutton(
+                        label='Mirror Transform',
+                        c=Callback(
+                            ul.mirror_transform,
+                            sl=True))
             with frameLayout(label='Utilities', cl=False):
                 with gridLayout():
-                    self.smallbutton(label='Add Vray OpenSubdiv')
+                    self.smallbutton(
+                        label='Add Vray OpenSubdiv',
+                        c=Callback(
+                            ul.add_vray_opensubdiv,
+                            sl=True))
+                    self.smallbutton(
+                        label='Clean Extra Attributes',
+                        c=Callback(
+                            ul.clean_attributes,
+                            sl=True))
+                    self.smallbutton(
+                        label='Export Cameras To FBX',
+                        c=Callback(
+                            ul.export_cameras_to_fbx))
 
     def _init_ui(self):
         with self.window:
@@ -571,10 +617,12 @@ class RigTools(object):
                 with self.tabLayout:
                     self.create_rig_util_ui()
                     self.create_util_ui()
+                    self.create_intergration_ui()
                 with columnLayout():
                     helpLine()
         self.tabLayout.setTabLabelIndex((1,'Rig Tools'))
         self.tabLayout.setTabLabelIndex((2,'Utilities'))
+        self.tabLayout.setTabLabelIndex((3,'Intergration'))
         self.nodetrack.startTrack()
         #self.ui_update()
 

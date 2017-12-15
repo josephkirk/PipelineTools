@@ -55,7 +55,7 @@ def get_character_infos():
     scene_name = pm.sceneName()
     while True:
         if scene_name == scene_name.parent:
-            break
+            return
         scene_name = scene_name.parent
         if scene_name.parent.endswith('CH'):
             break
@@ -64,45 +64,81 @@ def get_character_infos():
 
 def add_suffix(ob, suff="_skinDeform"):
     pm.rename(ob, ob.name()+str(suff))
-
+@ul.do_function_on()
 def create_skinDeform(ob):
+    print ob
     dupOb = pm.duplicate(ob, name="_".join([ob.name(), "skinDeform"]))
     for child in dupOb[0].listRelatives(ad=True):
         add_suffix(child)
+@ul.do_function_on()
+def create_renderMesh(ob):
+    dupOb = pm.duplicate(ob, name=ob.name().split('_')[:-1])
+    for child in dupOb[0].listRelatives(ad=True):
+        child.rename(child.name().split('_')[:-1])
 
 def basic_intergration():
     pm.PyNode('CH_ReferenceShape').visibility.set(False)
     root = pm.PyNode('ROOT')
+    chref = pm.PyNode('CH_Ctrl_Reference')
     for atr in ['tx', 'ty', 'tz',
                 'rx', 'ry', 'rz',
                 'sx', 'sy', 'sz']:
         root.attr(atr).lock()
         root.attr(atr).set(cb=False, k=False)
+        if atr.startswith('s'):
+            chref.attr(atr).set(cb=False, k=False)
+    temp = pm.circle(radius=100)
+    temp[0].setRotation([-90,0,0])
+    pm.makeIdentity(temp[0], apply=True)
     chref = pm.PyNode('CH_Ctrl_Reference')
-    for atr in ['FacialVis','FacialBS','SecondaryVis','SecondaryBS']:
-        if not chref.hasAttr(atr):
-            chref.addAttr(atr,at='bool',k=1)
-    if not chref.hasAttr('Radius'):
-        chref.addAttr('Radius',at='float',k=1)
-        chref.Radius.set(100)
-    if not chref.Radius.outputs():
-        temp = pm.circle(radius=100)
-        temp[0].setRotation([-90,0,0])
-        pm.makeIdentity(temp[0], apply=True)
-        chref = pm.PyNode('CH_Ctrl_Reference')
-        pm.parent(temp[0].getShape(), chref, r=True, s=True)
-        pm.delete(chref.getShape(), shape=True)
-        chref.Radius >> temp[1].radius
-        pm.delete(temp[0])
+    pm.parent(temp[0].getShape(), chref, r=True, s=True)
+    pm.delete(chref.getShape(), shape=True)
+    pm.delete(temp[0])
+    chref.getShape().overrideEnabled.set(True)
+    chref.getShape().overrideRGBColors.set(True)
+    chref.getShape().overrideColorRGB.set([1,0,0])
+
+    if chref.hasAttr('radius'):
+        chref.radius.delete()
+    chref.addAttr('radius',at='float',k=1)
+    chRad=100
+    if get_character_infos():
+        assert get_character_infos()[0].isdigit(), 'Character ID is not number'
+        chID = int(get_character_infos()[0])
+        if 1 < chID <= 10:
+            chRad = chID * 4
+        elif chID <= 35:
+            chRad = chID * 2 
+        else:
+            chRad = chID - 10
+    chref.radius.set(chRad)
+    chref.radius >> temp[1].radius
+
     if pm.objExists('facialGp'):
+        for atr in ['FacialVis','FacialBS']:
+            if not chref.hasAttr(atr):
+                chref.addAttr(atr,at='bool',k=1)
         chref.FacialVis >> pm.PyNode('facialGp').visibility
-    for bs in ['FacialBS','EyeDeformBS']:
-        if pm.objExists(bs):
-            chref.FacialBS >> pm.PyNode(bs).envelope
+        for bs in ['FacialBS','EyeDeformBS']:
+            if pm.objExists(bs):
+                chref.FacialBS >> pm.PyNode(bs).envelope
+
     if pm.objExists('secondaryGp'):
+        for atr in ['SecondaryVis','SecondaryBS']:
+            if not chref.hasAttr(atr):
+                chref.addAttr(atr,at='bool',k=1)
         chref.SecondaryVis >> pm.PyNode('secondaryGp').visibility
-    if pm.objExists('SecondaryBS'):
-        chref.SecondaryBS >> pm.PyNode('SecondaryBS').envelope
+        if pm.objExists('SecondaryBS'):
+            chref.SecondaryBS >> pm.PyNode('SecondaryBS').envelope
+
+    if pm.objExists('xgenGp'):
+        for atr in ['XgenVis','XgenBS']:
+            if not chref.hasAttr(atr):
+                chref.addAttr(atr,at='bool',k=1)
+        chref.XgenVis >> pm.PyNode('xgenGp').visibility
+        if pm.objExists('XgenBS'):
+            chref.XgenBS >> pm.PyNode('XgenBS').envelope
+
 
 # def create_sway_short_hair(bone,rootTop):
 #     bones = get_current_chain(bone)
