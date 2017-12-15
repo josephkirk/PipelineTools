@@ -1298,7 +1298,6 @@ def create_long_hair(boneRoot, hairSystem='', circle=True, simplifyCurve=False, 
 @ul.do_function_on()
 def create_short_hair(bone, parent='miscGp', midCtls=0, simplifyCurve=False, customShape=None):
     bones = ul.recurse_collect(ul.iter_hierachy(bone, filter='joint'))
-    print bones
     if len(bones) < 2:
         log.warning('Bone Chains have less than 2 joints')
         return

@@ -259,9 +259,21 @@ def do_function_on(mode='single', type_filter=[]):
                         for o in pm.selected():
                             otype = get_type(o)
                             if otype in self.filter:
-                                if otype in ['vertex', 'edge', 'face']:
-                                    vList = convert_component([o])
-                                    self.oblist.extend(vList)
+                                if otype == 'vertex':
+                                    vList = [o.node().vtx[vid] for vid in o.indices()]
+                                    for v in vList:
+                                        if v not in self.oblist:
+                                            self.oblist.append(v)
+                                elif otype == 'edge':
+                                    eList = [o.node().e[eid] for eid in o.indices()]
+                                    for e in eList:
+                                        if e not in self.oblist:
+                                            self.oblist.append(e)
+                                elif otype == 'face':
+                                    fList = [o.node().f[fid] for fid in o.indices()]
+                                    for f in fList:
+                                        if f not in self.oblist:
+                                            self.oblist.append(f)
                                 else:
                                     self.oblist.append(o)
                     else:
@@ -828,10 +840,37 @@ def convert_component(
                     result.append(vert.node().vtx[vertid])
             return result
 
-@do_function_on(type_filter=['edge'])
-def convert_edge_to_curve(edge):
-    pm.polySelect(edge.node(), el=edge.currentItemIndex())
-    pm.polyToCurve(degree=1)
+@do_function_on(
+    'set',
+    type_filter=['transform','joint', 'mesh', 'vertex', 'edge', 'face'])
+def convert_to_curve(sellist, name='converted_curve', smoothness=1):
+    if any([
+            get_type(ob) == typ for ob in sellist
+            for typ in ['transform', 'joint', 'mesh']]):
+        cvpMatrix = [ob.getTranslation('world') for ob in sellist if hasattr(ob, 'getTranslation')]
+    if any([get_type(cpn) == 'vertex' for cpn in sellist]):
+        cvpMatrix = [get_closest_info(cpn.getPosition('world'), cpn.node())['Closest Point'] for cpn in sellist]
+    if any([get_type(cpn) == 'edge' for cpn in sellist]):
+        cvpMatrix = [get_closest_info(pm.dt.center(*[cpn.getPoint(i,'world') for i in range(2)]), cpn.node())['Closest Mid Edge'] for cpn in sellist]
+    if any([get_type(cpn) == 'face' for cpn in sellist]):
+        flist = []
+        for mfn in sellist:
+            for mfid in mfn.indices():
+                mf = mfn.node().f[mfid]
+                if mf not in flist:
+                    flist.append(mf)
+        cvpMatrix = [
+            get_closest_info(pm.dt.center(*[mf.getPoint(i,'world') for i in range(4)]), mf.node())['Closest Point']
+            for mf in flist
+        ]
+    assert 'cvpMatrix' in locals(), 'Cannot create curve for input {}'.format(sellist)
+    # cvpMatrix.sort()
+    if smoothness > 1:
+        cvpMatrix = [cvpMatrix[0]]+cvpMatrix+[cvpMatrix[-1]]
+    key = range(len(cvpMatrix)+smoothness-1)
+    crv = pm.curve(d=smoothness, p=cvpMatrix, k=key)
+    crv.rename(name)
+    return crv
 
 @do_function_on('singleLast', type_filter=['transform', 'mesh'])
 def snap_nearest(ob, mesh_node):
