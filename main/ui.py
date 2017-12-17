@@ -49,6 +49,7 @@ class RigTools(object):
         self.fullcreatedtrack = []
         self.ControlObClass = rcl.ControlObject()
         self.SkinSetterClass = SkinWeightSetter()
+        self.window
 
     @property
     def name(self):
@@ -79,6 +80,10 @@ class RigTools(object):
     def reset_window_height(self):
         #self._window.setSizeable(True)
         self._window.setHeight(10)
+
+    def setUIValue(self, key, value):
+        self._uiElement[key] = value
+        print key, self._uiElement[key]
 
     @property
     def template(self):
@@ -246,7 +251,7 @@ class RigTools(object):
                                             columnWidth=[(1, 180), (2, 50)]):
                                         hairSysName = '{}_hairSystem'.format(
                                             ns57.get_character_infos()[-1]) \
-                                            if ns57.get_character_infos()[-1] else 'hairSytem1'
+                                            if ns57.get_character_infos() else 'hairSytem1'
                                         self._uiElement['Hair System'] = textFieldGrp(
                                             cl2=('right', 'right'),
                                             co2=(5, 10),
@@ -445,11 +450,12 @@ class RigTools(object):
                                     ru.disconnect_transform,
                                     attr='scale',
                                     sl=True))
+                    self._uiElement['PCAddAttr'] = False
                     button(
                         label='multi Parent Constraint',
-                        c=Callback(
-                            ru.constraint_multi,
+                        c=lambda x: ru.constraint_multi(
                             constraintType='Parent',
+                            addChildAttr=self._uiElement['PCAddAttr'],
                             sl=True))
                     with popupMenu(b=3):
                         menuItem(
@@ -487,6 +493,14 @@ class RigTools(object):
                                 ru.constraint_multi,
                                 constraintType='LocOP',
                                 sl=True))
+                        menuItem(
+                            label='Add ParentFollow Attributes',
+                            checkBox= self._uiElement['PCAddAttr'],
+                            c=Callback(
+                                self.setUIValue,
+                                'PCAddAttr',
+                                not self._uiElement['PCAddAttr']))
+                #scriptedPanel(type="nodeEditorPanel", label="Node Editor")
 
     def create_intergration_ui(self):
         with frameLayout(label='Intergration:', cl=False):
@@ -494,38 +508,40 @@ class RigTools(object):
                 button(
                     label='Basic Intergration',
                     c=Callback(ns57.basic_intergration))
-                with gridLayout(cw=140):
-                    self._uiElement['visAtrName'] = textFieldGrp(
-                        cl2=('right', 'right'),
-                        co2=(0, 0),
-                        ct2=('right','left'),
-                        cw2=(35, 30),
-                        label='Vis Name:', text='FullRigVis')
-                    self.smallbutton(
-                        label='Connect Visibility', c=lambda x:ru.connect_visibility(
-                            attrname= self._uiElement['visAtrName'].getText(), sl=True))
-                    self._uiElement['visEnumAtrName'] = textFieldGrp(
-                        cl2=('right', 'right'),
-                        co2=(0, 0),
-                        ct2=('right','left'),
-                        cw2=(35, 30),
-                        label='Vis Name:', text='FullRigVis')
-                    self.smallbutton(
-                        label='Connect Visibility Multi', c=lambda x:ru.connect_visibility_enum(
-                            enumAttr= self._uiElement['visEnumAtrName'].getText(), sl=True))
-                with gridLayout(cw=140):
-                    self.smallbutton(
-                        label='Create SkinDeform',
-                        c=Callback(ns57.create_skinDeform, False))
-                    self.smallbutton(
-                        label='Create RenderMesh',
-                        c=Callback(ns57.create_renderMesh, False)) 
-                    self.smallbutton(
-                        label='Channel History OFF',
-                        c=Callback(ru.toggleChannelHistory, False))
-                    with popupMenu(b=3):
-                        menuItem(label='Channel History ON', c=Callback(ru.toggleChannelHistory))
-                    self.smallbutton(label='Deform Normal Off', c=Callback(ru.deform_normal_off))
+                with frameLayout(label='Visbility Connect:', cl=False):
+                    with gridLayout(cw=140):
+                        self._uiElement['visAtrName'] = textFieldGrp(
+                            cl2=('right', 'right'),
+                            co2=(0, 0),
+                            ct2=('right','left'),
+                            cw2=(35, 30),
+                            label='Vis Name:', text='FullRigVis')
+                        self.smallbutton(
+                            label='Connect Single', c=lambda x:ru.connect_visibility(
+                                attrname= self._uiElement['visAtrName'].getText(), sl=True))
+                        self._uiElement['visEnumAtrName'] = textFieldGrp(
+                            cl2=('right', 'right'),
+                            co2=(0, 0),
+                            ct2=('right','left'),
+                            cw2=(35, 30),
+                            label='Vis Name:', text='FullRigVis')
+                        self.smallbutton(
+                            label='Connect Multi', c=lambda x:ru.connect_visibility_enum(
+                                enumAttr= self._uiElement['visEnumAtrName'].getText(), sl=True))
+                with frameLayout(label='Utils:', cl=False):
+                    with gridLayout(cw=140):
+                        self.smallbutton(
+                            label='Create SkinDeform',
+                            c=Callback(ns57.create_skinDeform, sl=True))
+                        self.smallbutton(
+                            label='Create RenderMesh',
+                            c=Callback(ns57.create_renderMesh, sl=True)) 
+                        self.smallbutton(
+                            label='Channel History OFF',
+                            c=Callback(ru.toggleChannelHistory, False))
+                        with popupMenu(b=3):
+                            menuItem(label='Channel History ON', c=Callback(ru.toggleChannelHistory))
+                        self.smallbutton(label='Deform Normal Off', c=Callback(ru.deform_normal_off))
 
     def create_util_ui(self):
         with columnLayout():
@@ -568,6 +584,10 @@ class RigTools(object):
                                 sl=True),
                             label='Keep both shape'
                         )
+                    self.smallbutton(
+                        label='Rename Shape',
+                        c=Callback(
+                            ul.rename_shape))
                     self.smallbutton(
                         label='Lock Transform',
                         c=Callback(

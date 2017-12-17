@@ -791,6 +791,16 @@ def rename( ob, prefix="", suffix="" , separator='_'):
                     log.error("Can't perform rename for %s"%o)
                     raise
 
+def rename_shape():
+    for ob in pm.ls():
+        if hasattr(ob,'getShape'):
+            try:
+                if ob.getShape():
+                    for obShape in ob.listRelatives(shapes=True):
+                        obShape.rename(get_name(ob)+'Shape')
+            except RuntimeError:
+                log.warning("Can't perform rename for {}".format(ob.getShape()))
+
 def remove_number(string):
     for index, character in enumerate(string):
         if character.isdigit():

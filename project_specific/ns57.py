@@ -64,17 +64,20 @@ def get_character_infos():
 
 def add_suffix(ob, suff="_skinDeform"):
     pm.rename(ob, ob.name()+str(suff))
+
 @ul.do_function_on()
 def create_skinDeform(ob):
-    print ob
-    dupOb = pm.duplicate(ob, name="_".join([ob.name(), "skinDeform"]))
-    for child in dupOb[0].listRelatives(ad=True):
-        add_suffix(child)
+    if not ob.name().endswith('skinDeform'):
+        dupOb = ob.duplicate(name="_".join([ob.name(), "skinDeform"]))
+        for child in dupOb[0].listRelatives(ad=True):
+            add_suffix(child)
+
 @ul.do_function_on()
 def create_renderMesh(ob):
-    dupOb = pm.duplicate(ob, name=ob.name().split('_')[:-1])
-    for child in dupOb[0].listRelatives(ad=True):
-        child.rename(child.name().split('_')[:-1])
+    if '_' in ul.get_name(ob):
+        dupOb = ob.duplicate(name="_".join(ul.get_name(ob).split('_')[:-1]))
+        for child in dupOb[0].listRelatives(ad=True):
+            child.rename(child.name().split('_')[:-1])
 
 def basic_intergration():
     pm.PyNode('CH_ReferenceShape').visibility.set(False)

@@ -247,7 +247,7 @@ def createPinCircle(
 
 @ul.error_alert
 @ul.do_function_on('oneToOne')
-def constraint_multi(ob, target, constraintType='Point'):
+def constraint_multi(ob, target, constraintType='Point', addChildAttr=False):
     constraintDict = {
         'Point': ul.partial(pm.pointConstraint , mo=True),
         'Parent': ul.partial(pm.parentConstraint , mo=True),
@@ -260,42 +260,48 @@ def constraint_multi(ob, target, constraintType='Point'):
     }
     assert (constraintDict.has_key(constraintType)), 'wrong Constraint Type'
     if constraintType == 'PointOrient':
-        constraintDict['Point'](target,ob)
-        constraintDict['Orient'](target,ob)
-        return
+        ct1 = constraintDict['Point'](target,ob)
+        ct2 = constraintDict['Orient'](target,ob)
+        return (ct1, ct2)
     if constraintType.startswith('Loc'):
         assert (isinstance(ob,pm.general.MeshVertex)), 'target %s is not a vertex'%ob
         loc = create_loc_on_vert(ob)
         if constraintType == 'LocP':
-            constraintDict['Point'](loc, target)
-            return
+            ct = constraintDict['Point'](loc, target)
+            return (loc, ct)
         if constraintType == 'LocO':
-            constraintDict['Orient'](loc, target)
-            return
+            ct = constraintDict['Orient'](loc, target)
+            return (loc, ct)
         if constraintType == 'LocOP':
-            constraintDict['Point'](loc, target)
-            constraintDict['Orient'](loc, target)
-            return
-    constraintDict[constraintType](target,ob)
+            ct1 = constraintDict['Point'](loc, target)
+            ct2 = constraintDict['Orient'](loc, target)
+            return (loc, ct1, ct2)
+    ct = constraintDict[constraintType](target, ob)
+    if addChildAttr:
+        if not hasattr(ob, 'constraintFollow'):
+            ob.addAttr(
+                'constraintFollow', type='float',
+                defaultValue=1.0, minValue=0.0, maxValue=1.0, k=1)
+        ob.constraintFollow >> ct.attr(ul.get_name(target)+'W0')
 
 @ul.do_function_on('singleLast')
 def connect_visibility(ob, target, attrname='Vis'):
     if not hasattr(ob, attrname):
-        ob.addAttr(ln=attrname,at='bool',k=1)
+        ob.addAttr(attrname, type='bool', k=1)
     ob.attr(attrname) >> target.visibility
 
 @ul.do_function_on('last')
 def connect_visibility_enum(obs, target, enumAttr='EnumVis'):
     if not hasattr(target, enumAttr):
-        pm.addAttr(target, ln=enumAttr, type='enum', enumName=[ob.name().split('_')[-1] for ob in obs], k=1)
+        target.addAttr(enumAttr, type='enum', enumName=[ob.name().split('_')[-1] for ob in obs], k=1)
     for id, ob in enumerate(obs):
         flogic = pm.nt.FloatLogic()
         fcondition = pm.nt.FloatCondition()
-        flogic.outValue >> fcondition.condition
+        flogic.outBool >> fcondition.condition
         fcondition.floatB.set(0)
-        fcondition.outValue >> ob.visibility
+        fcondition.outFloat >> ob.visibility
         flogic.floatB.set(id)
-        ob.attr(enumAttr) >> flogic.floatA
+        target.attr(enumAttr) >> flogic.floatA
         yield (flogic, fcondition)
 
 
