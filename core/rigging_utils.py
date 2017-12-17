@@ -368,11 +368,10 @@ def create_loc_on_vert(vert,name='guideLoc'):
         loc = pm.spaceLocator()
         locGp = create_parent(loc)
         ppconstraint = pm.pointOnPolyConstraint(
-            mesh.getParent(), locGp, mo=False)
+            mesh, locGp, mo=False)
         stripname = ul.get_name(mesh.getParent())
         ppconstraint.attr(stripname + 'U0').set(uv[0])
         ppconstraint.attr(stripname + 'V0').set(uv[1])
-        print vert, vert.getUVs(), ppconstraint.attr(stripname + 'U0').get()
         return loc
 
 @ul.do_function_on(type_filter=['nurbsCurve'])
