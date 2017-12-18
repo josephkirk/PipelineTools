@@ -77,18 +77,14 @@ def toggleChannelHistory(state=True):
         ob.isHistoricallyInteresting.set(state)
         log.info('{} Channel History Display Set To {}'.format(ob,state))
 
-@ul.do_function_on('set')
-def group(*args, **kwargs):
+# @ul.do_function_on()
+def group(ob, grpname='', *args):
     '''group control under newTransform'''
-    obs = ul.recurse_collect(*args)
-    obs = [pm.PyNode(o) for o in obs if pm.objExists(o)]
-    if 'grpname' not in kwargs['grpname']:
+    obs = ul.recurse_collect([ob, args])
+    # obs = [pm.PyNode(o) for o in obs if pm.objExists(o)]
+    if not grpname:
         grpname = obs[0].name() + 'Gp'
-    else:
-        grpname = kwargs['grpname']
-    if not pm.objExists(grpname):
-        Gp = pm.nt.Transform(name=grpname)
-    Gp = ul.get_node(grpname)
+    Gp = pm.nt.Transform(name=grpname)
     for ob in obs:
         ob.setParent(Gp)
         log.info('group {} under {}'.format(ob, Gp))
@@ -295,14 +291,13 @@ def connect_visibility_enum(obs, target, enumAttr='EnumVis'):
     if not hasattr(target, enumAttr):
         target.addAttr(enumAttr, type='enum', enumName=[ob.name().split('_')[-1] for ob in obs], k=1)
     for id, ob in enumerate(obs):
-        flogic = pm.nt.FloatLogic()
-        fcondition = pm.nt.FloatCondition()
-        flogic.outBool >> fcondition.condition
-        fcondition.floatB.set(0)
-        fcondition.outFloat >> ob.visibility
-        flogic.floatB.set(id)
-        target.attr(enumAttr) >> flogic.floatA
-        yield (flogic, fcondition)
+        flogic = pm.nt.Condition()
+        flogic.colorIfTrueR.set(1)
+        flogic.colorIfFalseR.set(0)
+        flogic.outColorR >> ob.visibility
+        target.attr(enumAttr) >> flogic.firstTerm
+        flogic.secondTerm.set(id)
+        yield flogic
 
 
 @ul.do_function_on('oneToOne')
@@ -1316,7 +1311,7 @@ def create_long_hair(boneRoot, hairSystem='', circle=True, simplifyCurve=False, 
     control_tagging(controlRoot, metaname='DynamicHairControlsSet_MetaNode')
 
 @ul.do_function_on()
-def create_short_hair(bone, parent='miscGp', midCtls=0, simplifyCurve=False, customShape=None):
+def create_short_hair(bone, midCtls=2, simplifyCurve=False, customShape=None):
     bones = ul.recurse_collect(ul.iter_hierachy(bone, filter='joint'))
     if len(bones) < 2:
         log.warning('Bone Chains have less than 2 joints')
@@ -1329,33 +1324,21 @@ def create_short_hair(bone, parent='miscGp', midCtls=0, simplifyCurve=False, cus
     ikhandle.rename(bonename+'_ikhandle')
     ikeffector.rename(bonename+'_ikeffector')
     ikcurve.rename(bonename+'_ikCurve')
-    boneRoot = dup_bone(startBone, name = '{}_{}Bon'.format(bonename, 'root'))
-    boneTops = [dup_bone(endBone, name = '{}_{}Bon'.format(bonename, 'top'))]
     #sbonetop.setParent(bone.getParent())
-    if midCtls:
-        pncInfo = ul.get_points_on_curve(ikcurve, amount=midCtls)
-        for tr,rot in pncInfo:
-            mboneTop = pm.nt.Joint(
-                    name = '{}_midBone_{:02d}'.format(bonename,i+1))
-            boneUp = bones[i + int(math.ceil(inc))]
-            boneDown = bones[i + int(math.floor(inc))]
-            mboneTop.setTranslation(tr)
-            mboneTop.setRotation(rot)
-            boneTops.insert(-1, mboneTop)
-    print boneTops
-    for b in boneTops:
-        b.setParent(None)
-        b.radius.set(b.radius.get()*1.2)
-    curveSkin = pm.skinCluster(*ul.recurse_collect(boneRoot, boneTops, ikcurve))
-    ctls = [create_free_control(btop,useLoc=True, customShape=customShape) for btop in boneTops]
-    for ctl in ctls:
-        if parent:
-            ctl.getParent().setParent(parent)
-        control_tagging(ctl, metaname='ShortHairControlsSet_MetaNode')
-    group(ikcurve, ikhandle, grpname=bonename+'_ikMisc')
-    if parent:
-        if pm.objExists(parent):
-            ikmiscGp.setParent(parent)
-        else:
-            group(ikmiscGp, grpname=parent)
-    return (ul.recurse_collect(boneRoot,boneTops), ctls, (ikcurve, ikhandle))
+    boneTops = []
+    ctls = []
+    pncInfo = ul.get_points_on_curve(ikcurve, amount=midCtls)
+    for i, (tr, rot) in enumerate(pncInfo):
+        mboneTop = pm.nt.Joint(
+                name = '{}_topBone_{:02d}'.format(bonename,i+1))
+        mboneTop.setParent(None)
+        mboneTop.radius.set(1.1)
+        mboneTop.setTranslation(tr)
+        mboneTop.setRotation(rot)
+        ctl = create_free_control(mboneTop,useLoc=True, customShape=customShape)
+        ctls.append(ctl)
+        boneTops.append(mboneTop)
+    curveSkin = pm.skinCluster(*ul.recurse_collect(boneTops, ikcurve))
+    ikmiscGp = group([ikcurve, ikhandle], grpname=bonename+'_ikMisc')
+    bonGp = group([b.getParent() for b in boneTops], grpname=bonename+'_topBonGp')
+    return (boneTops)

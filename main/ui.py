@@ -39,10 +39,54 @@ def batch_export_cam():
         mm.eval("paneLayout -e -m true $gMainPane")
 
 # UI Class
+class UITemplate:
+    def __init__(self, name):
+        self._name = name
+        self._uiTemplate = uiTemplate('{}{}'.format(name, 'UITemplate'), force=True)
+        self._uiTemplate.define(
+            button, height=30, align='left', bgc=[0.15,0.25,0.35])
+        self._uiTemplate.define(
+            columnLayout, adjustableColumn=1,
+            cal='center', cat =('both',1))
+        self._uiTemplate.define(
+            frameLayout, borderVisible=False,
+            collapsable=True,
+            cl=True, labelVisible=True,
+            cc=Callback(self.reset_window_height),
+            mh=2, mw=2, font='boldLabelFont',
+            bgc=[0.2,0.2,0.2])
+        self._uiTemplate.define(
+            gridLayout,
+            numberOfColumns=2, cw=140)
+        self._uiTemplate.define(
+            rowColumnLayout,
+            rs=[(1, 1),],
+            numberOfColumns=2,
+            cw=[(1,50),],
+            cal=[(1,'center'),],
+            cat=[(1, 'both',1),],
+            rat=[(1, 'top',1),])
+        self.subframe = ul.partial(
+            frameLayout,
+            collapsable=False, la='center', li=60,
+            bgs=True, bgc=[0.22,0.22,0.22])
+        self.smallbutton = ul.partial(button, h=30, bgc=[0.35,0.4,0.4])
+
+    def reset_window_height(self):
+        if window(self._name, exists=True):
+            window(self._name,e=True, h=1)
+
+    def define(self,*args,**kws):
+        self._uiTemplate.define(*args, **kws)
+
+    def get(self):
+        return self._uiTemplate
+
 class RigTools(object):
     def __init__(self):
         self._name = 'Jet Maya Tools'
         self._windowname = self._name.replace(' ','')+'Window'
+        self.template = UITemplate(self._windowname)
         self.nodebase = []
         self.nodetrack = NodeTracker()
         self.fullbasetrack = []
@@ -69,7 +113,7 @@ class RigTools(object):
             self._windowname, title=self._name,
             menuBar=True,
             rtf=True)
-        self._windowSize = (250, 10)
+        self._windowSize = (250, 1)
         self._uiElement = {}
         return self._window
 
@@ -79,45 +123,11 @@ class RigTools(object):
 
     def reset_window_height(self):
         #self._window.setSizeable(True)
-        self._window.setHeight(10)
+        self._window.setHeight(1)
 
     def setUIValue(self, key, value):
         self._uiElement[key] = value
         print key, self._uiElement[key]
-
-    @property
-    def template(self):
-        self._uiTemplate = uiTemplate(self._windowname.replace('Window', 'UITemplate'), force=True)
-        self._uiTemplate.define(
-            button, height=30, align='left', bgc=[0.15,0.25,0.35])
-        self._uiTemplate.define(
-            columnLayout, adjustableColumn=1,
-            cw=self._windowSize[0],
-            cal='center', cat =('both',1))
-        self._uiTemplate.define(
-            frameLayout, borderVisible=False,
-            collapsable=True,
-            cc=Callback(self.reset_window_height),
-            cl=True, labelVisible=True,
-            mh=2, mw=2, font='boldLabelFont',
-            bgc=[0.2,0.2,0.2])
-        self._uiTemplate.define(
-            gridLayout,
-            numberOfColumns=2, cw=120)
-        self._uiTemplate.define(
-            rowColumnLayout,
-            rs=[(1, 1),],
-            numberOfColumns=2,
-            cw=[(1,50),],
-            cal=[(1,'center'),],
-            cat=[(1, 'both',1),],
-            rat=[(1, 'top',1),])
-        self.subframe = ul.partial(
-            frameLayout,
-            collapsable=False, la='center', li=60,
-            bgs=True, bgc=[0.22,0.22,0.22])
-        self.smallbutton = ul.partial(button, h=30, bgc=[0.35,0.4,0.4])
-        return self._uiTemplate
 
     def get_hair_system(self):
         hairSystem = ls(type='hairSystem')
@@ -189,11 +199,8 @@ class RigTools(object):
             except (MayaNodeError,TypeError) as why:
                 warning(why)
 
-    def defineUI(self,*args,**kws):
-        self.template.define(*args, **kws)
 
     def create_rig_util_ui(self):
-
             with columnLayout():
                 with frameLayout(label='Tools:', cl=False): 
                     button(
@@ -208,19 +215,19 @@ class RigTools(object):
                         ann='Utilities to create NurbsCurve Shape for Control',
                         c=Callback(self.ControlObClass._showUI))
                     with columnLayout():
-                        with self.subframe(label='Control Types', li=80):
+                        with self.template.subframe(label='Control Types', li=80):
                             self._uiElement['useLoc'] = checkBox(label='Connect using Locator')
                             with columnLayout():
-                                with self.subframe(label='Single Bone Control'):
+                                with self.template.subframe(label='Single Bone Control'):
                                     with gridLayout():
-                                        self.smallbutton(
+                                        self.template.smallbutton(
                                             label='Prop Control',
                                             c=Callback(
                                                 self.do_func,
                                                 ru.create_prop_control,
                                                 useLoc=self._uiElement['useLoc'].getValue,
                                                 sl=True))
-                                        self.smallbutton(
+                                        self.template.smallbutton(
                                             label='Free Control',
                                             c=Callback(
                                                 self.do_func,
@@ -228,23 +235,23 @@ class RigTools(object):
                                                 useLoc=self._uiElement['useLoc'].getValue,
                                                 sl=True))
 
-                                with self.subframe(label='Bone Chain Control'):
+                                with self.template.subframe(label='Bone Chain Control'):
                                     with gridLayout():
-                                        self.smallbutton(
+                                        self.template.smallbutton(
                                             label='Parent Control',
                                             c=Callback(
                                                 self.do_func,
                                                 ru.create_parent_control,
                                                 useLoc=self._uiElement['useLoc'].getValue,
                                                 sl=True))
-                                        self.smallbutton(
+                                        self.template.smallbutton(
                                             label='Aim Setup',
                                             c=Callback(
                                                 self.do_func,
                                                 ru.aim_setup,
                                                 sl=True))
 
-                                with self.subframe(label='Dynamic Chain Control'):
+                                with self.template.subframe(label='Dynamic Chain Control'):
                                     with rowColumnLayout(
                                             rs=[(1,0),],
                                             numberOfColumns=2,
@@ -258,7 +265,7 @@ class RigTools(object):
                                             ct2=('right','left'),
                                             cw2=(70, 100),
                                             label='Hair System :', text=hairSysName)
-                                        self.smallbutton(
+                                        self.template.smallbutton(
                                             label='Get',
                                             h=20,
                                             c=Callback(self.get_hair_system))
@@ -270,38 +277,25 @@ class RigTools(object):
                                             hairSystem=self._uiElement['Hair System'].getText,
                                             sl=True))
 
-                                with self.subframe(label='IK Chain Control'):
+                                with self.template.subframe(label='IK Chain Control'):
                                     with rowColumnLayout(
                                             rs=[(1,0.1),],
                                             numberOfColumns=2,
                                             columnWidth=[(1, 180), (2, 50)]):
-                                        self._uiElement['SHctlparent'] = textFieldGrp(
-                                            cl2=('right', 'right'),
-                                            co2=(5, 10),
-                                            ct2=('right','left'),
-                                            cw2=(70, 100),
-                                            label='Parent :', text='')
-                                        self.smallbutton(
-                                            label='Get',
-                                            h=20,
-                                            c=lambda x: \
-                                                self._uiElement['SHctlparent'].setText(
-                                                    selected()[-1].name()))
                                         self._uiElement['SHctlcount'] = intFieldGrp(
                                             numberOfFields=1,
                                             cl2=('right', 'right'),
                                             co2=(5, 10),
                                             ct2=('right','left'),
                                             cw2=(70, 100),
-                                            label='Controls :', value1=0)
+                                            label='Controls :', value1=2)
 
                                     button(
                                         label='Create Spline IK',
                                         c=Callback(
                                             self.do_func,
                                             ru.create_short_hair,
-                                            parent=self._uiElement['SHctlparent'].getText,
-                                            midCtls=self._uiElement['SHctlcount'].getValue,
+                                            midCtls=self._uiElement['SHctlcount'].getValue1,
                                             sl=True))
                                     separator()
                                     button(
@@ -320,186 +314,159 @@ class RigTools(object):
                                 c=Callback(
                                     self.delete_created_nodes,
                                     all=True))
-
-                with frameLayout(label='Control Tag:'):
-                    with gridLayout(cw=130):
-                        self.smallbutton(
-                            label='Tag as controller',
+                        button(
+                            label='Controller Tagging',
                             c=Callback(
-                                ru.control_tagging,
-                                sl=True))
-                        self.smallbutton(
-                            label='Remove tag',
-                            c=Callback(
-                                ru.control_tagging,
-                                remove=True,
-                                sl=True))
-                        self.smallbutton(
-                            label='Select all controllers',
-                            c=Callback(
-                                ru.remove_all_control_tags,
-                                select=True))
-                        with popupMenu(b=3):
-                            menuItem(
-                                label='Select controller meta',
-                                c=Callback(
-                                    ru.select_controller_metanode))
-                        self.smallbutton(
-                            label='Remove all tag',
-                            c=Callback(
-                                ru.remove_all_control_tags))
-                    button(
-                            label='Reset all controllers transform',
-                            c=Callback(
-                                ru.reset_controller_transform))
+                                ControlMetaUI.show))
 
                 with frameLayout(label='Utilities:'):
-                    with gridLayout(cw=130):
-                        self.smallbutton(
-                            label='create Parent',
-                            c=Callback(
-                                ru.create_parent,
-                                sl=True))
-                        self.smallbutton(
-                            label='delete Parent',
-                            c=Callback(
-                                ru.remove_parent,
-                                sl=True))
-                        self.smallbutton(
-                            label='create Offset bone',
-                            c=Callback(
-                                ru.create_offset_bone,
-                                sl=True))
-                        self.smallbutton(
-                            label='create Loc',
-                            c=Callback(
-                                ru.create_loc_control,
-                                connect=False,sl=True))
-                        self.smallbutton(
-                            label='create Loc control',
-                            c=Callback(
-                                ru.create_loc_control,
-                                all=True,
-                                sl=True))
-                        self.smallbutton(
-                            label='connect with Loc',
-                            c=Callback(
-                                ru.connect_with_loc,
-                                all=True,
-                                sl=True))
-                        with popupMenu(b=3):
-                            menuItem(label='translate only', c=Callback(
-                                ru.connect_with_loc,
-                                translate=True,
-                                sl=True))
-                            menuItem(label='rotate only', c=Callback(
-                                ru.connect_with_loc,
-                                rotate=True,
-                                sl=True))
-                        self.smallbutton(
-                            label='vertex to Loc',
-                            c=Callback(
-                                ru.create_loc_on_vert,
-                                sl=True))
-                        self.smallbutton(
-                            label='Connect Transform',
-                            c=Callback(
-                                ru.connect_transform,
-                                all=True,
-                                sl=True))
-                        with popupMenu(b=3):
-                            menuItem(
-                                label='Connect Translate',
+                    with columnLayout():
+                        with gridLayout(cw=150):
+                            self.template.smallbutton(
+                                label='create Parent',
+                                c=Callback(
+                                    ru.create_parent,
+                                    sl=True))
+                            self.template.smallbutton(
+                                label='delete Parent',
+                                c=Callback(
+                                    ru.remove_parent,
+                                    sl=True))
+                            self.template.smallbutton(
+                                label='create Offset bone',
+                                c=Callback(
+                                    ru.create_offset_bone,
+                                    sl=True))
+                            self.template.smallbutton(
+                                label='create Loc',
+                                c=Callback(
+                                    ru.create_loc_control,
+                                    connect=False,sl=True))
+                            self.template.smallbutton(
+                                label='create Loc control',
+                                c=Callback(
+                                    ru.create_loc_control,
+                                    all=True,
+                                    sl=True))
+                            self.template.smallbutton(
+                                label='connect with Loc',
+                                c=Callback(
+                                    ru.connect_with_loc,
+                                    all=True,
+                                    sl=True))
+                            with popupMenu(b=3):
+                                menuItem(label='translate only', c=Callback(
+                                    ru.connect_with_loc,
+                                    translate=True,
+                                    sl=True))
+                                menuItem(label='rotate only', c=Callback(
+                                    ru.connect_with_loc,
+                                    rotate=True,
+                                    sl=True))
+                            self.template.smallbutton(
+                                label='vertex to Loc',
+                                c=Callback(
+                                    ru.create_loc_on_vert,
+                                    sl=True))
+                            self.template.smallbutton(
+                                label='Connect Transform',
                                 c=Callback(
                                     ru.connect_transform,
-                                    translate=True, rotate=False, scale=False,
+                                    all=True,
                                     sl=True))
-                            menuItem(
-                                label='Connect Rotate',
-                                c=Callback(
-                                    ru.connect_transform,
-                                    translate=False, rotate=True, scale=False,
-                                    sl=True))
-                            menuItem(
-                                label='Connect Scale',
-                                c=Callback(
-                                    ru.connect_transform,
-                                    translate=False, rotate=False, scale=True,
-                                    sl=True))
-                        self.smallbutton(
-                            label='Disconnect Transform',
-                            c=Callback(
-                                ru.disconnect_transform,
-                                sl=True))
-                        with popupMenu(b=3):
-                            menuItem(
-                                label='Disconnect Translate',
-                                c=Callback(
-                                    ru.disconnect_transform,
-                                    attr='translate',
-                                    sl=True))
-                            menuItem(
-                                label='Disconnect Rotate',
+                            with popupMenu(b=3):
+                                menuItem(
+                                    label='Connect Translate',
+                                    c=Callback(
+                                        ru.connect_transform,
+                                        translate=True, rotate=False, scale=False,
+                                        sl=True))
+                                menuItem(
+                                    label='Connect Rotate',
+                                    c=Callback(
+                                        ru.connect_transform,
+                                        translate=False, rotate=True, scale=False,
+                                        sl=True))
+                                menuItem(
+                                    label='Connect Scale',
+                                    c=Callback(
+                                        ru.connect_transform,
+                                        translate=False, rotate=False, scale=True,
+                                        sl=True))
+                            self.template.smallbutton(
+                                label='Disconnect Transform',
                                 c=Callback(
                                     ru.disconnect_transform,
-                                    attr='rotate',
                                     sl=True))
-                            menuItem(
-                                label='Disconnect Scale',
-                                c=Callback(
-                                    ru.disconnect_transform,
-                                    attr='scale',
+                            with popupMenu(b=3):
+                                menuItem(
+                                    label='Disconnect Translate',
+                                    c=Callback(
+                                        ru.disconnect_transform,
+                                        attr='translate',
+                                        sl=True))
+                                menuItem(
+                                    label='Disconnect Rotate',
+                                    c=Callback(
+                                        ru.disconnect_transform,
+                                        attr='rotate',
+                                        sl=True))
+                                menuItem(
+                                    label='Disconnect Scale',
+                                    c=Callback(
+                                        ru.disconnect_transform,
+                                        attr='scale',
+                                        sl=True))
+                            self._uiElement['PCAddAttr'] = False
+                            self.template.smallbutton(
+                                label='multi Parent Constraint',
+                                c=lambda x: ru.constraint_multi(
+                                    constraintType='Parent',
+                                    addChildAttr=self._uiElement['PCAddAttr'],
                                     sl=True))
-                    self._uiElement['PCAddAttr'] = False
-                    button(
-                        label='multi Parent Constraint',
-                        c=lambda x: ru.constraint_multi(
-                            constraintType='Parent',
-                            addChildAttr=self._uiElement['PCAddAttr'],
-                            sl=True))
-                    with popupMenu(b=3):
-                        menuItem(
-                            label='multi Point Constraint', c=Callback(
-                                ru.constraint_multi,
-                                constraintType='Point',
-                                sl=True))
-                        menuItem(
-                            label='multi Orient Constraint', c=Callback(
-                                ru.constraint_multi,
-                                constraintType='Orient',
-                                sl=True))
-                        menuItem(
-                            label='multi Point&Orient Constraint', c=Callback(
-                                ru.constraint_multi,
-                                constraintType='PointOrient',
-                                sl=True))
-                        menuItem(
-                            label='multi Aim Constraint', c=Callback(
-                                ru.constraint_multi,
-                                constraintType='Aim',
-                                sl=True))
-                        menuItem(
-                            label='multi Loc Point Constraint', c=Callback(
-                                ru.constraint_multi,
-                                constraintType='LocP',
-                                sl=True))
-                        menuItem(
-                            label='multi Loc Orient Constraint', c=Callback(
-                                ru.constraint_multi,
-                                constraintType='LocO',
-                                sl=True))
-                        menuItem(
-                            label='multi Loc Point&Orient Constraint', c=Callback(
-                                ru.constraint_multi,
-                                constraintType='LocOP',
-                                sl=True))
-                        menuItem(
-                            label='Add ParentFollow Attributes',
-                            checkBox= self._uiElement['PCAddAttr'],
-                            c=Callback(
-                                self.setUIValue,
-                                'PCAddAttr',
-                                not self._uiElement['PCAddAttr']))
+                            with popupMenu(b=3):
+                                menuItem(
+                                    label='multi Point Constraint', c=Callback(
+                                        ru.constraint_multi,
+                                        constraintType='Point',
+                                        sl=True))
+                                menuItem(
+                                    label='multi Orient Constraint', c=Callback(
+                                        ru.constraint_multi,
+                                        constraintType='Orient',
+                                        sl=True))
+                                menuItem(
+                                    label='multi Point&Orient Constraint', c=Callback(
+                                        ru.constraint_multi,
+                                        constraintType='PointOrient',
+                                        sl=True))
+                                menuItem(
+                                    label='multi Aim Constraint', c=Callback(
+                                        ru.constraint_multi,
+                                        constraintType='Aim',
+                                        sl=True))
+                                menuItem(
+                                    label='multi Loc Point Constraint', c=Callback(
+                                        ru.constraint_multi,
+                                        constraintType='LocP',
+                                        sl=True))
+                                menuItem(
+                                    label='multi Loc Orient Constraint', c=Callback(
+                                        ru.constraint_multi,
+                                        constraintType='LocO',
+                                        sl=True))
+                                menuItem(
+                                    label='multi Loc Point&Orient Constraint', c=Callback(
+                                        ru.constraint_multi,
+                                        constraintType='LocOP',
+                                        sl=True))
+                                menuItem(
+                                    label='Add ParentFollow Attributes',
+                                    checkBox= self._uiElement['PCAddAttr'],
+                                    c=Callback(
+                                        self.setUIValue,
+                                        'PCAddAttr',
+                                        not self._uiElement['PCAddAttr']))
                 #scriptedPanel(type="nodeEditorPanel", label="Node Editor")
 
     def create_intergration_ui(self):
@@ -516,7 +483,7 @@ class RigTools(object):
                             ct2=('right','left'),
                             cw2=(35, 30),
                             label='Vis Name:', text='FullRigVis')
-                        self.smallbutton(
+                        self.template.smallbutton(
                             label='Connect Single', c=lambda x:ru.connect_visibility(
                                 attrname= self._uiElement['visAtrName'].getText(), sl=True))
                         self._uiElement['visEnumAtrName'] = textFieldGrp(
@@ -525,33 +492,33 @@ class RigTools(object):
                             ct2=('right','left'),
                             cw2=(35, 30),
                             label='Vis Name:', text='FullRigVis')
-                        self.smallbutton(
+                        self.template.smallbutton(
                             label='Connect Multi', c=lambda x:ru.connect_visibility_enum(
                                 enumAttr= self._uiElement['visEnumAtrName'].getText(), sl=True))
                 with frameLayout(label='Utils:', cl=False):
                     with gridLayout(cw=140):
-                        self.smallbutton(
+                        self.template.smallbutton(
                             label='Create SkinDeform',
                             c=Callback(ns57.create_skinDeform, sl=True))
-                        self.smallbutton(
+                        self.template.smallbutton(
                             label='Create RenderMesh',
                             c=Callback(ns57.create_renderMesh, sl=True)) 
-                        self.smallbutton(
+                        self.template.smallbutton(
                             label='Channel History OFF',
                             c=Callback(ru.toggleChannelHistory, False))
                         with popupMenu(b=3):
                             menuItem(label='Channel History ON', c=Callback(ru.toggleChannelHistory))
-                        self.smallbutton(label='Deform Normal Off', c=Callback(ru.deform_normal_off))
+                        self.template.smallbutton(label='Deform Normal Off', c=Callback(ru.deform_normal_off))
 
     def create_util_ui(self):
         with columnLayout():
             with frameLayout(label='Modeling', cl=False):
                 with gridLayout():
-                    self.smallbutton(label='Selected to Curve',
+                    self.template.smallbutton(label='Selected to Curve',
                         c=Callback(
                             ul.convert_to_curve,
                             sl=True))
-                    self.smallbutton(
+                    self.template.smallbutton(
                         label='Parent Shape',
                         c=Callback(
                             ul.parent_shape,
@@ -584,11 +551,11 @@ class RigTools(object):
                                 sl=True),
                             label='Keep both shape'
                         )
-                    self.smallbutton(
+                    self.template.smallbutton(
                         label='Rename Shape',
                         c=Callback(
                             ul.rename_shape))
-                    self.smallbutton(
+                    self.template.smallbutton(
                         label='Lock Transform',
                         c=Callback(
                             ul.lock_transform,
@@ -600,36 +567,36 @@ class RigTools(object):
                                 ul.lock_transform,
                                 lock=False,
                                 sl=True))
-                    self.smallbutton(
+                    self.template.smallbutton(
                         label='Reset Transform',
                         c=Callback(
                             ul.reset_transform,
                             sl=True))
-                    self.smallbutton(
+                    self.template.smallbutton(
                         label='Mirror Transform',
                         c=Callback(
                             ul.mirror_transform,
                             sl=True))
             with frameLayout(label='Utilities', cl=False):
                 with gridLayout():
-                    self.smallbutton(
+                    self.template.smallbutton(
                         label='Add Vray OpenSubdiv',
                         c=Callback(
                             ul.add_vray_opensubdiv,
                             sl=True))
-                    self.smallbutton(
+                    self.template.smallbutton(
                         label='Clean Extra Attributes',
                         c=Callback(
                             ul.clean_attributes,
                             sl=True))
-                    self.smallbutton(
+                    self.template.smallbutton(
                         label='Export Cameras To FBX',
                         c=Callback(
                             ul.export_cameras_to_fbx))
 
     def _init_ui(self):
         with self.window:
-            with self.template:
+            with self.template.get():
                 with menuBarLayout(bgc=[0.2,0.2,0.2]):
                     with menu(label='Option'):
                         menuItem( label='Reset' )
@@ -650,6 +617,63 @@ class RigTools(object):
     def show(cls):
         cls()._init_ui()
 
+class ControlMetaUI:
+    def __init__(self):
+        self._name = 'ControlMetaUI'
+        self._title = 'Controller Meta Manager'
+        self.template = UITemplate(self._name)
+    
+    @property
+    def window(self):
+        if window(self._name, ex=True):
+            deleteUI(self._name)
+        self._window = window(
+            self._name,
+            title=self._title,
+            rtf=True,
+            width=10, height=10)
+        return self._window
+
+    def _initUI(self):
+        with self.window:
+            with self.template.get():
+                with frameLayout(label='Control Tag:',cl=False):
+                    with columnLayout():
+                        with gridLayout(cw=130):
+                            self.template.smallbutton(
+                                label='Tag as controller',
+                                c=Callback(
+                                    ru.control_tagging,
+                                    sl=True))
+                            self.template.smallbutton(
+                                label='Remove tag',
+                                c=Callback(
+                                    ru.control_tagging,
+                                    remove=True,
+                                    sl=True))
+                            self.template.smallbutton(
+                                label='Select all controllers',
+                                c=Callback(
+                                    ru.remove_all_control_tags,
+                                    select=True))
+                            with popupMenu(b=3):
+                                menuItem(
+                                    label='Select controller meta',
+                                    c=Callback(
+                                        ru.select_controller_metanode))
+                            self.template.smallbutton(
+                                label='Remove all tag',
+                                c=Callback(
+                                    ru.remove_all_control_tags))
+                        button(
+                                label='Reset all controllers transform',
+                                c=Callback(
+                                    ru.reset_controller_transform))
+
+    @classmethod
+    def show(cls):
+        cls()._initUI()
+                
 class SendCurrentFile(object):
     def __init__(self):
         self._name = 'SendCurrentFileUI'
@@ -732,6 +756,10 @@ class SendCurrentFile(object):
                                 text(label='Number:')
                                 self.elements['version'] = intField(value=1, min=1)
                         button(label="Send", c=Callback(self.send))
+                        button(
+                            label="Create Send Folder",
+                            c=lambda x: ns57.create_send_folder(
+                                self.elements['version'].getValue()))
                         # self.window().setResizeToFitChildren(True)
 
     def get_value(self):
@@ -753,7 +781,6 @@ class SendCurrentFile(object):
         kwargs = self.get_value()
         print kwargs
         ul.send_current_file(**kwargs)
-
 
 class FacialRig(object):
     def __init__(self):
@@ -795,11 +822,13 @@ class FacialRig(object):
     def apply(*args, **kwargs):
         rig.create_facial_rig()
 
-
 class SkinWeightSetter(object):
     '''Tools to set skin weight and transfer skinCluster
     '''
     def __init__(self):
+        self._name = 'SkinWeightSetterUI'
+        self._title = 'Skin Weight Setter'
+        self.template = UITemplate(self._name)
         self.skin_type = 'Classic'
         self.last_selected = []
         self.weight_value = 1.0
@@ -811,6 +840,17 @@ class SkinWeightSetter(object):
         self.dual_interactive = False
         self.weight_tick = 5
         self.ui = {}
+
+    @property
+    def window(self):
+        if window(self._name, ex=True):
+            deleteUI(self._name)
+        self._window = window(
+            self._name,
+            title=self._title,
+            rtf=True,
+            width=10, height=10)
+        return self._window
 
     def last_selection(self):
         self.last_selected = selected()
@@ -918,195 +958,187 @@ class SkinWeightSetter(object):
         headsUpMessage("Dual Quarternion Weight Set!", time=0.2)
 
     def init_ui(self):
-        if window('SkinWeightSetterUI', ex=True):
-            deleteUI('SkinWeightSetterUI', window=True)
-            windowPref('SkinWeightSetterUI', remove=True)
-        with window(
-                'SkinWeightSetterUI',
-                t="Skin Weight Setter",
-                rtf=True):
-            with frameLayout(
-                label='Set Weight Tool',
-                borderVisible=True):
-                with columnLayout(adjustableColumn=1):
-                    self.ui['skinType'] = optionMenu(
-                        label='Skin Type:',
-                        changeCommand=self.set_skin_type)
-                    with self.ui['skinType']:
-                        menuItem(label='Classis')
-                        menuItem(label='Dual')
-                        menuItem(label='Blend')
-                    separator(height=10)
+        with self.window:
+            with self.template.get():
+                with frameLayout(
+                        label='Set Weight Tool',cl=False):
+                    with columnLayout(adjustableColumn=1):
+                        self.ui['skinType'] = optionMenu(
+                            label='Skin Type:',
+                            changeCommand=self.set_skin_type)
+                        with self.ui['skinType']:
+                            menuItem(label='Classis')
+                            menuItem(label='Dual')
+                            menuItem(label='Blend')
+                        separator(height=10)
 
-                    with rowColumnLayout(
-                        numberOfColumns=2,
-                        columnWidth=[(1, 320), (2, 120)]):
-                        self.skin_weight_theshold = floatFieldGrp(
-                            numberOfFields=2,
-                            label='Weight Threshold:',
-                            value1=self.weight_threshold[0], value2=self.weight_threshold[1],
-                            cc=self.set_weight_threshold)
-                        button(
-                            label='Select Vertices',
-                            annotation='Select Skin Vertex with weight within threshold',
-                            c=Callback(self.select_skin_vertex))
-                    separator(height=10)
-                with columnLayout(
-                    adjustableColumn=1):
-                    with rowColumnLayout(
-                        numberOfColumns=3,
-                        columnWidth=[(1, 140), (2, 80)]):
-                        text(label='Option: ', align='right')
-                        checkBox(
-                            label='Normalize',
-                            annotation='if Normalize is uncheck, set all selected joint weight the same',
-                            value=self.normalize,
-                            cc=self.set_normalize_state)
-                        checkBox(
-                            label='Hierachy',
-                            annotation='if Hierachy is check, set weight value for child Joint',
-                            value=self.hierachy,
-                            cc=self.set_hierachy_state)
-                    self.skin_weight_slider_ui = floatSliderButtonGrp(
-                        label='Skin Weight: ',
-                        annotation='Click "Set" to set skin weight or use loop button to turn on interactive mode',
-                        field=True, precision=2,
-                        value=self.weight_value,
-                        minValue=0.0, maxValue=1.0,
-                        cc=self.set_weight,
-                        buttonLabel='Set',
-                        bc=Callback(self.apply_weight),
-                        image='playbackLoopingContinuous.png',
-                        sbc=self.set_interactive_state)
-                    separator(height=5, style='none')
-                with columnLayout(adjustableColumn=1):
-                    with gridLayout(
-                        numberOfColumns=self.weight_tick,
-                        cellWidthHeight=(95, 30)):
-                        weight_value = 1.0 / (self.weight_tick - 1)
-                        for i in range(self.weight_tick):
+                        with rowColumnLayout(
+                            numberOfColumns=2,
+                            columnWidth=[(1, 320), (2, 120)]):
+                            self.skin_weight_theshold = floatFieldGrp(
+                                numberOfFields=2,
+                                label='Weight Threshold:',
+                                value1=self.weight_threshold[0], value2=self.weight_threshold[1],
+                                cc=self.set_weight_threshold)
                             button(
-                                label=str(weight_value * i),
-                                annotation='Set skin weight to %04.2f' % (
-                                    weight_value * i),
-                                c=Callback(
-                                    self.set_weight, weight_value * i))
-                    separator(height=10)
+                                label='Select Vertices',
+                                annotation='Select Skin Vertex with weight within threshold',
+                                c=Callback(self.select_skin_vertex))
+                        separator(height=10)
+                        with rowColumnLayout(
+                            numberOfColumns=3,
+                            columnWidth=[(1, 140), (2, 80)]):
+                            text(label='Option: ', align='right')
+                            checkBox(
+                                label='Normalize',
+                                annotation='if Normalize is uncheck, set all selected joint weight the same',
+                                value=self.normalize,
+                                cc=self.set_normalize_state)
+                            checkBox(
+                                label='Hierachy',
+                                annotation='if Hierachy is check, set weight value for child Joint',
+                                value=self.hierachy,
+                                cc=self.set_hierachy_state)
+                        self.skin_weight_slider_ui = floatSliderButtonGrp(
+                            label='Skin Weight: ',
+                            annotation='Click "Set" to set skin weight or use loop button to turn on interactive mode',
+                            field=True, precision=2,
+                            value=self.weight_value,
+                            minValue=0.0, maxValue=1.0,
+                            cc=self.set_weight,
+                            buttonLabel='Set',
+                            bc=Callback(self.apply_weight),
+                            image='playbackLoopingContinuous.png',
+                            sbc=self.set_interactive_state)
+                        separator(height=5, style='none')
+                        with gridLayout(
+                            numberOfColumns=self.weight_tick,
+                            cellWidthHeight=(95, 30)):
+                            weight_value = 1.0 / (self.weight_tick - 1)
+                            for i in range(self.weight_tick):
+                                button(
+                                    label=str(weight_value * i),
+                                    annotation='Set skin weight to %04.2f' % (
+                                        weight_value * i),
+                                    c=Callback(
+                                        self.set_weight, weight_value * i))
+                        separator(height=10)
 
-                    self.dual_weight_slider_ui = floatSliderButtonGrp(
-                        label='Dual Quarternion Weight: ',
-                        annotation='Click "Set" to set skin weight or use loop button to turn on interactive mode',
-                        field=True, precision=2,
-                        value=self.dual_weight_value,
-                        minValue=0.0, maxValue=1.0,
-                        cc=self.set_dual_weight,
-                        buttonLabel='Set',
-                        bc=Callback(self.apply_dual_weight),
-                        image='playbackLoopingContinuous.png',
-                        sbc=self.set_dual_interactive_state)
-                    separator(height=5, style='none')
+                        self.dual_weight_slider_ui = floatSliderButtonGrp(
+                            label='Dual Quarternion Weight: ',
+                            annotation='Click "Set" to set skin weight or use loop button to turn on interactive mode',
+                            field=True, precision=2,
+                            value=self.dual_weight_value,
+                            minValue=0.0, maxValue=1.0,
+                            cc=self.set_dual_weight,
+                            buttonLabel='Set',
+                            bc=Callback(self.apply_dual_weight),
+                            image='playbackLoopingContinuous.png',
+                            sbc=self.set_dual_interactive_state)
+                        separator(height=5, style='none')
 
-                    with gridLayout(
-                        numberOfColumns=self.weight_tick,
-                        cellWidthHeight=(95, 30)):
-                        for i in range(self.weight_tick):
+                        with gridLayout(
+                            numberOfColumns=self.weight_tick,
+                            cellWidthHeight=(95, 30)):
+                            for i in range(self.weight_tick):
+                                button(
+                                    label=str(weight_value * i),
+                                    annotation='Set dual quaternion weight to %04.2f' % (weight_value * i),
+                                    c=Callback(
+                                        self.set_dual_weight, weight_value * i))
+                            self.ui['dualInfo']=text(label='',align='left')
+                        #separator(height=5, style='none')
+
+                with frameLayout(label='Utils', cl=False):
+                    with columnLayout():
+                        with frameLayout(label='Bone Rename', collapsable=False):
+                            with rowColumnLayout(
+                                numberOfColumns=7,
+                                columnWidth=[
+                                    (1,200),
+                                    (2,60),
+                                    (3,40),]):
+                                self.ui['renameBone']=[]
+                                self.ui['renameBone'].append(textField())
+                                self.ui['renameBone'].append(optionMenu())
+                                with self.ui['renameBone'][1]:
+                                    menuItem(label='')
+                                    menuItem(label='Front')
+                                    menuItem(label='Left')
+                                    menuItem(label='Right')
+                                    menuItem(label='Center')
+                                    menuItem(label='Back')
+                                    menuItem(label='Middle')
+                                self.ui['renameBone'].append(intField(value=0))
+                                self.ui['renameBone'].append(intField(value=1))
+                                self.ui['renameBone'].append(textField(text='bon'))
+                                button(
+                                    label='Rename',
+                                    c=lambda x:ru.rename_bone_Chain(
+                                                self.ui['renameBone'][0].getText()+self.ui['renameBone'][1].getValue(),
+                                                self.ui['renameBone'][2].getValue(),
+                                                self.ui['renameBone'][3].getValue(),
+                                                self.ui['renameBone'][4].getText(),
+                                                sl=True))
+                                button(
+                                    label='Label',
+                                    annotation='use joint name as label',
+                                    c=Callback(ru.label_joint, sl=True))
+                        with gridLayout(
+                                numberOfColumns=5,
+                                cellWidth=140):
                             button(
-                                label=str(weight_value * i),
-                                annotation='Set dual quaternion weight to %04.2f' % (weight_value * i),
+                                label='add Influence',
+                                annotation='add influence to skin mesh',
                                 c=Callback(
-                                    self.set_dual_weight, weight_value * i))
-                        self.ui['dualInfo']=text(label='',align='left')
-                    #separator(height=5, style='none')
-
-            with frameLayout(label='Utils',borderVisible=True):
-                with columnLayout():
-                    text(label='Bone Naming Tool:')
-                    with rowColumnLayout(
-                        numberOfColumns=7,
-                        columnWidth=[
-                            (1,150),
-                            (2,60),
-                            (3,40),]):
-                        self.ui['renameBone']=[]
-                        self.ui['renameBone'].append(textField())
-                        self.ui['renameBone'].append(optionMenu())
-                        with self.ui['renameBone'][1]:
-                            menuItem(label='')
-                            menuItem(label='Front')
-                            menuItem(label='Left')
-                            menuItem(label='Right')
-                            menuItem(label='Center')
-                            menuItem(label='Back')
-                            menuItem(label='Middle')
-                        self.ui['renameBone'].append(intField(value=0))
-                        self.ui['renameBone'].append(intField(value=1))
-                        self.ui['renameBone'].append(textField(text='bon'))
-                        button(
-                            label='Rename',
-                            c=lambda x:ru.rename_bone_Chain(
-                                        self.ui['renameBone'][0].getText()+self.ui['renameBone'][1].getValue(),
-                                        self.ui['renameBone'][2].getValue(),
-                                        self.ui['renameBone'][3].getValue(),
-                                        self.ui['renameBone'][4].getText(),
+                                    ru.add_joint_influence,
+                                    sl=True))
+                            button(
+                                label='Freeze Skin Joint',
+                                annotation='Freeze transform for joint connect to Skin Cluster',
+                                c=Callback(
+                                    ru.freeze_skin_joint,
+                                    sl=True))
+                            button(
+                                label = 'Freeze Skin Joint Chain',
+                                annotation='Freeze transform for joint Chain connect to Skin Cluster',
+                                c = Callback(
+                                    ru.freeze_skin_joint,
+                                    hi=True,
+                                    sl=True))
+                            button(
+                                label = 'Transfer Weight',
+                                annotation='*Select 2 bone*. Transfer skin weight from one bone to another',
+                                c=Callback(
+                                    ru.move_skin_weight,
+                                    sl=True))
+                            button(
+                                label = 'Transfer Weight Chain',
+                                annotation='*Select 2 bone root*. Transfer skin weight from one bone Chain to another',
+                                c = Callback(
+                                        ru.move_skin_weight,
+                                        hi=True,
                                         sl=True))
-                        button(
-                            label='Label',
-                            annotation='use joint name as label',
-                            c=Callback(ru.label_joint, sl=True))
-                with rowColumnLayout(
-                    numberOfColumns=4,
-                    columnWidth=[(1,100),]):
-                    button(
-                        label='add Influence',
-                        annotation='add influence to skin mesh',
-                        c=Callback(
-                            ru.add_joint_influence,
-                            sl=True))
-                    button(
-                        label='Freeze Skin Joint',
-                        annotation='Freeze transform for joint connect to Skin Cluster',
-                        c=Callback(
-                            ru.freeze_skin_joint,
-                            sl=True))
-                    button(
-                        label = 'Freeze Skin Joint Chain',
-                        annotation='Freeze transform for joint Chain connect to Skin Cluster',
-                        c = Callback(
-                            ru.freeze_skin_joint,
-                            hi=True,
-                            sl=True))
-                    button(
-                        label = 'Transfer Weight',
-                        annotation='*Select 2 bone*. Transfer skin weight from one bone to another',
-                        c=Callback(
-                            ru.move_skin_weight,
-                            sl=True))
-                    button(
-                        label = 'Transfer Weight Chain',
-                        annotation='*Select 2 bone root*. Transfer skin weight from one bone Chain to another',
-                        c = Callback(
-                                ru.move_skin_weight,
-                                hi=True,
-                                sl=True))
-                    button(
-                        label = 'Reset BindPose',
-                        annotation='Reset skin bind pose',
-                        c = Callback(
-                            ru.reset_bindPose_all))
-                separator(height=10, style='none')
+                            button(
+                                label = 'Reset BindPose',
+                                annotation='Reset skin bind pose',
+                                c = Callback(
+                                    ru.reset_bindPose_all))
+                        separator(height=10, style='none')
 
-            with frameLayout(label='Status',borderVisible=True):
-                with columnLayout(adjustableColumn=1):
-                    with rowColumnLayout(
-                        numberOfColumns=2,
-                        columnWidth=[(1,100), (2, 300)]):
-                        text(label='Current Selection:',align='left')
-                        self.ui['messageLine'] = text(
-                            label='',
-                            align='left')
-                    separator(height=10, style='none')
-                    self.ui['helpLine'] = helpLine(
-                        annotation='copyright 2017 by Nguyen Phi Hung')
+                with frameLayout(label='Status', collapsable=False):
+                    with columnLayout(adjustableColumn=1):
+                        with rowColumnLayout(
+                            numberOfColumns=2,
+                            columnWidth=[(1,100), (2, 300)]):
+                            text(label='Current Selection:',align='left')
+                            self.ui['messageLine'] = text(
+                                label='',
+                                align='left')
+                        separator(height=10, style='none')
+                        self.ui['helpLine'] = helpLine(
+                            annotation='copyright 2017 by Nguyen Phi Hung')
+
         self.autoUpdateUI()
 
     @classmethod

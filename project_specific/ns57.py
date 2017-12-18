@@ -66,18 +66,40 @@ def add_suffix(ob, suff="_skinDeform"):
     pm.rename(ob, ob.name()+str(suff))
 
 @ul.do_function_on()
-def create_skinDeform(ob):
+def create_skinDeform(ob, bsName='BodyBS'):
     if not ob.name().endswith('skinDeform'):
         dupOb = ob.duplicate(name="_".join([ob.name(), "skinDeform"]))
         for child in dupOb[0].listRelatives(ad=True):
             add_suffix(child)
+    try:
+        pm.delete(bsName)
+    except pm.MayaNodeError:
+        pass
+    finally:
+        pm.blendShape(ob, dupOb, name=bsName)
 
 @ul.do_function_on()
-def create_renderMesh(ob):
+def create_renderMesh(ob, bsName='BodyBS'):
     if '_' in ul.get_name(ob):
         dupOb = ob.duplicate(name="_".join(ul.get_name(ob).split('_')[:-1]))
         for child in dupOb[0].listRelatives(ad=True):
-            child.rename(child.name().split('_')[:-1])
+            child.rename(name="_".join(ul.get_name(child).split('_')[:-1]))
+        pm.reorder(dupOb[0], f=True)
+    try:
+        pm.delete(bsName)
+    except pm.MayaNodeError:
+        pass
+    finally:
+        pm.blendShape(ob, dupOb, name=bsName)
+
+@ul.error_alert
+def create_send_folder(version=1):
+    ws = pm.workspace
+    todayFolder = pm.date(f='YYMMDD')
+    if version>1:
+        todayFolder = "{}_{:02d}".format(todayFolder,int(version))
+    ws.path.makedirs(ws.path.join([ws.path.replace('Works','%s/Works'%todayFolder),'scenes']))
+    # ws.path.makedirs(ws.path.replace('Works','%s/Works'%todayFolder)+'sourceimages')
 
 def basic_intergration():
     pm.PyNode('CH_ReferenceShape').visibility.set(False)

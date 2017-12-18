@@ -1005,7 +1005,7 @@ class ControlObject(object):
         if not control:
             for control in self.controls:
                 self.setAxis(control)
-
+    @ul.do_function_on()
     def setColor(self, control, newColor):
         self.color = newColor
         try:
@@ -1031,7 +1031,7 @@ class ControlObject(object):
     def createControl(self):
         newCtl = self._controlType[self._currentType](**self._uiOption)
         return newCtl
-
+    @ul.do_function_on()
     def changeControlShape(self, selectControl, *args):
         temp = self.createControl()
         #temp.setParent(selectControl.getParent())
@@ -1067,7 +1067,7 @@ class ControlObject(object):
 
     def _showUI(self, parent=None):
         self._uiName = 'CreateControlUI'
-        self._windowSize = (250, 10)
+        self._windowSize = (260, 10)
         if pm.window(self._uiName + 'Window', ex=True):
             pm.deleteUI(self._uiName + 'Window', window=True)
             pm.windowPref(self._uiName + 'Window', remove=True)
@@ -1078,9 +1078,14 @@ class ControlObject(object):
                 self._uiName + 'Window', title=self._uiName,
                 rtf=True, widthHeight=self._windowSize)
         self._uiTemplate = pm.uiTemplate('CreateControlUITemplace', force=True)
-        self._uiTemplate.define(pm.button, width=5, height=40, align='left')
+        self._uiTemplate.define(
+            pm.button, width=5, height=40, align='left',
+            bgc=[0.15,0.25,0.35])
         self._uiTemplate.define(pm.columnLayout, adjustableColumn=1, w=10)
-        self._uiTemplate.define(pm.frameLayout, borderVisible=True, labelVisible=True, width=self._windowSize[0])
+        self._uiTemplate.define(
+            pm.frameLayout, borderVisible=False, labelVisible=True,
+            mh=2, mw=2,
+            width=self._windowSize[0], bgc=[0.2,0.2,0.2])
         self._uiTemplate.define(
             pm.rowColumnLayout,
             rs=[(1, 5), ],
@@ -1090,71 +1095,72 @@ class ControlObject(object):
         with self._window:
             with self._uiTemplate:
                 with pm.frameLayout(label='Create Control'):
-                    with pm.rowColumnLayout():
-                        self._uiElement['ctlName'] = pm.textFieldGrp(
-                            cl2=('left', 'right'),
-                            co2=(0, 0),
-                            cw2=(40, 100),
-                            label='Name:', text=self.name,
+                    with pm.columnLayout():
+                        with pm.rowColumnLayout():
+                            self._uiElement['ctlName'] = pm.textFieldGrp(
+                                cl2=('left', 'right'),
+                                co2=(0, 0),
+                                cw2=(40, 100),
+                                label='Name:', text=self.name,
+                                cc = self._getUIValue)
+                            self._uiElement['ctlType'] = pm.optionMenu(label='Type:', cc = self._getUIValue)
+                            with self._uiElement['ctlType']:
+                                for ct in self._controlType:
+                                    pm.menuItem(label=ct)
+                        with pm.rowColumnLayout(
+                                numberOfColumns=3,
+                                columnWidth=[(1, 10), ]):
+                            self._uiElement['ctlLength'] = pm.floatFieldGrp(
+                                cl2=('left', 'right'),
+                                co2=(0, 0),
+                                cw2=(40, 30),
+                                numberOfFields=1,
+                                label='Length:',
+                                value1=3.0,
+                                cc = self._getUIValue)
+                            self._uiElement['ctlRadius'] = pm.floatFieldGrp(
+                                cl2=('left', 'right'),
+                                co2=(0, 0),
+                                cw2=(40, 30),
+                                numberOfFields=1,
+                                label='Radius:',
+                                value1=0.5,
+                                cc = self._getUIValue)
+                            self._uiElement['ctlRes'] = pm.optionMenu(label='Step:', cc = self._getUIValue)
+                            with self._uiElement['ctlRes']:
+                                for ct in self._resolutions:
+                                    pm.menuItem(label=ct)
+                        with pm.rowColumnLayout():
+                            self._uiElement['ctlColor'] = pm.colorSliderGrp(
+                                label='Color:',
+                                rgb=(0, 0, 1),
+                                co3=(0, 0, 0),
+                                cw3=(30, 60, 60),
+                                cl3=('left', 'center', 'right'),
+                                cc = self._getUIValue)
+                            self._uiElement['ctlAxis'] = pm.optionMenu(label='Axis:', cc = self._getUIValue)
+                            with self._uiElement['ctlAxis']:
+                                for ct in self._axisList:
+                                    pm.menuItem(label=ct)
+                        self._uiElement['ctlOffset'] = pm.floatFieldGrp(
+                            cl4=('left', 'center', 'center', 'center'),
+                            co4=(0, 5, 0, 0),
+                            cw4=(45, 50, 50, 50),
+                            numberOfFields=3,
+                            label='Offset:',
                             cc = self._getUIValue)
-                        self._uiElement['ctlType'] = pm.optionMenu(label='Type:', cc = self._getUIValue)
-                        with self._uiElement['ctlType']:
-                            for ct in self._controlType:
-                                pm.menuItem(label=ct)
-                    with pm.rowColumnLayout(
-                            numberOfColumns=3,
-                            columnWidth=[(1, 10), ]):
-                        self._uiElement['ctlLength'] = pm.floatFieldGrp(
-                            cl2=('left', 'right'),
-                            co2=(0, 0),
-                            cw2=(40, 30),
-                            numberOfFields=1,
-                            label='Length:',
-                            value1=3.0,
+                        self._uiElement['ctlOption'] = pm.checkBoxGrp(
+                            cl5=('left', 'center', 'center', 'center', 'center'),
+                            co5=(0, 5, 0, 0, 0),
+                            cw5=(45, 50, 50, 50, 50),
+                            numberOfCheckBoxes=4,
+                            label='Options:',
+                            labelArray4=['group', 'setAxis', 'sphere', 'mirror'],
                             cc = self._getUIValue)
-                        self._uiElement['ctlRadius'] = pm.floatFieldGrp(
-                            cl2=('left', 'right'),
-                            co2=(0, 0),
-                            cw2=(40, 30),
-                            numberOfFields=1,
-                            label='Radius:',
-                            value1=0.5,
-                            cc = self._getUIValue)
-                        self._uiElement['ctlRes'] = pm.optionMenu(label='Step:', cc = self._getUIValue)
-                        with self._uiElement['ctlRes']:
-                            for ct in self._resolutions:
-                                pm.menuItem(label=ct)
-                    with pm.rowColumnLayout():
-                        self._uiElement['ctlColor'] = pm.colorSliderGrp(
-                            label='Color:',
-                            rgb=(0, 0, 1),
-                            co3=(0, 0, 0),
-                            cw3=(30, 60, 60),
-                            cl3=('left', 'center', 'right'),
-                            cc = self._getUIValue)
-                        self._uiElement['ctlAxis'] = pm.optionMenu(label='Axis:', cc = self._getUIValue)
-                        with self._uiElement['ctlAxis']:
-                            for ct in self._axisList:
-                                pm.menuItem(label=ct)
-                    self._uiElement['ctlOffset'] = pm.floatFieldGrp(
-                        cl4=('left', 'center', 'center', 'center'),
-                        co4=(0, 5, 0, 0),
-                        cw4=(45, 50, 50, 50),
-                        numberOfFields=3,
-                        label='Offset:',
-                        cc = self._getUIValue)
-                    self._uiElement['ctlOption'] = pm.checkBoxGrp(
-                        cl5=('left', 'center', 'center', 'center', 'center'),
-                        co5=(0, 5, 0, 0, 0),
-                        cw5=(45, 50, 50, 50, 50),
-                        numberOfCheckBoxes=4,
-                        label='Options:',
-                        labelArray4=['group', 'setAxis', 'sphere', 'mirror'],
-                        cc = self._getUIValue)
-                    pm.button(label='Create', c=pm.Callback(self.createControl))
-                    with pm.popupMenu(b=3):
-                        pm.menuItem(label='Change Current Select', c=ul.do_function_on()(self.changeControlShape))
-                        pm.menuItem(label='Set Color Select', c=ul.do_function_on()(self.setColor))
+                        pm.button(label='Create', c=pm.Callback(self.createControl))
+                        # with pm.popupMenu(b=3):
+                            # pm.menuItem(label='Change Current Select', c=pm.Callback(self.changeControlShape, sl=True))
+                            # pm.menuItem(label='Set Color Select', c=pm.Callback(self.setColor,self.color, sl=True))
         self._getUIValue()
         self.reset_window_height()
         #self._window.setHeight(10)
