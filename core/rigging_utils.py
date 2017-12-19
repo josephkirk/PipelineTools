@@ -329,6 +329,9 @@ def aim_setup(ctl,loc):
 
 @ul.do_function_on()
 def create_offset_bone(bone, child=False, suffix='offset_bon'):
+    if not ul.get_type(bone) == 'joint':
+        log.warning('{} is not joint'.format(bone))
+        return
     newname = bone.name().split('|')[-1].split('_')[0] + '_' + suffix
     offsetbone = pm.duplicate(bone, name=newname, po=True)[0]
     offsetbone.drawStyle.set(2)
@@ -540,7 +543,7 @@ def rebuild_blendshape_target(
         pm.select(target_rebuild_list, r=True)
         pm.select(base_dup, add=True)
         pm.blendShape()
-        blend_reget = get_blendshape_target(blendshape_name)
+        blend_reget = rebuild_blendshape_target(blendshape_name)
         blendshape = blend_reget[0]
         target_list = blend_reget[1]
     return (blendshape, target_list)
@@ -1164,14 +1167,16 @@ def create_prop_control(bone, parent='ctlGp', useLoc=False, customShape=None):
 def create_free_control(bone, parent='ctlGp',useLoc=False, customShape=None):
     if 'gp' not in bone.name().lower():
         bonGp = create_parent(bone)
-    ctlname = bone.name().replace('bon', 'ctl')
+    for suf in ['bone', 'bon']:
+        bonname = ul.get_name(bone).replace(suf,'')
+    ctlname = bonname+'ctl'
     if customShape:
         ctl = customShape()
         ctl.rename(ctlname)
     else:
         ctl = createPinCircle(
                 ctlname,
-                step=12,
+                step=24,
                 sphere=True,
                 radius=2,
                 length=0)
@@ -1194,6 +1199,8 @@ def create_parent_control(boneRoot, parent='ctlGp',useLoc=False, customShape=Non
     ctls = []
     boneChain = ul.iter_hierachy(boneRoot)
     for bone in iter(boneChain):
+        if not ul.get_type(bone) == 'joint':
+            continue
         if 'offset' not in ul.get_name(bone):
             if bone.getParent():
                 if 'offset' not in ul.get_name(bone.getParent()):
@@ -1311,12 +1318,12 @@ def create_long_hair(boneRoot, hairSystem='', circle=True, simplifyCurve=False, 
     control_tagging(controlRoot, metaname='DynamicHairControlsSet_MetaNode')
 
 @ul.do_function_on()
-def create_short_hair(bone, midCtls=2, simplifyCurve=False, customShape=None):
+def create_splineIK(bone, midCtls=2, simplifyCurve=False, customShape=None):
     bones = ul.recurse_collect(ul.iter_hierachy(bone, filter='joint'))
     if len(bones) < 2:
         log.warning('Bone Chains have less than 2 joints')
         return
-    bonename = bone.name().split('|')[-1]
+    bonename = ul.get_name(bone)
     startBone = bones[0]
     endBone = bones[-1]
     ikhandle, ikeffector, ikcurve = pm.ikHandle(
@@ -1335,10 +1342,69 @@ def create_short_hair(bone, midCtls=2, simplifyCurve=False, customShape=None):
         mboneTop.radius.set(1.1)
         mboneTop.setTranslation(tr)
         mboneTop.setRotation(rot)
-        ctl = create_free_control(mboneTop,useLoc=True, customShape=customShape)
-        ctls.append(ctl)
+        if i > 0:
+            ctl = create_free_control(mboneTop,useLoc=True, customShape=customShape)
+            ctls.append(ctl)
+        else:
+            create_parent(mboneTop)
         boneTops.append(mboneTop)
+    endCtl = ctls[-1]
+    endCtl.addAttr('roll', type='float',k=1)
+    endCtl.roll >> ikhandle.roll
+    endCtl.addAttr('twist', type='float',k=1)
+    endCtl.twist >> ikhandle.twist
+    endCtl.addAttr(
+        'ikFkSwitch', type='float',
+        defaultValue=1, minValue=0, maxValue=1, k=1)
+    endCtl.ikFkSwitch >> ikhandle.ikBlend
     curveSkin = pm.skinCluster(*ul.recurse_collect(boneTops, ikcurve))
+    circleShape = ul.partial(
+        createPinCircle,
+        'control',
+        axis='YZ',
+        radius=2,
+        step=8,
+        sphere=False,
+        length=0)
+    pCtls = create_parent_control(startBone, customShape=circleShape)
+    endCtl.addAttr(
+        'fkvis', type='bool', defaultValue=False, k=1
+    )
+    endCtl.fkvis >> pCtls[0].getParent().visibility
+    constraint_multi(pCtls[0], endCtl, constraintType='Aim')
+    time = pm.PyNode('time1')
+    mul = pm.nt.MultiplyDivide()
+    ocontraint = endCtl.outputs(type='orientConstraint')[0]
+    for at in ['X','Y','Z']:
+        atName = 'swaySpeed%s'%at
+        endCtl.addAttr(
+            atName, type='float',
+            defaultValue=0.1, minValue=0, k=1)
+        time.outTime >> mul.attr('input1%s'%at)
+        endCtl.attr(atName) >> mul.attr('input2%s'%at)
+        mul.attr('output%s'%at) >> ocontraint.attr('offset%s'%at)
+    # constraint_multi(en)
     ikmiscGp = group([ikcurve, ikhandle], grpname=bonename+'_ikMisc')
     bonGp = group([b.getParent() for b in boneTops], grpname=bonename+'_topBonGp')
     return (boneTops)
+
+@ul.do_function_on()
+def create_simpleIK(boneRoot, customShape=None):
+    bones = ul.recurse_collect(ul.iter_hierachy(boneRoot, filter='joint'))
+    if len(bones) < 2:
+        log.warning('Bone Chains have less than 2 joints')
+        return
+    bonename = ul.get_name(boneRoot)
+    startBone = bones[0]
+    endBone = bones[-1]
+    ikhandle, ikeffector = pm.ikHandle(
+        sj=startBone, ee=endBone, ns=3)
+    ikhandle.rename(bonename+'_ikhandle')
+    ikeffector.rename(bonename+'_ikeffector')
+    ctl = create_free_control(ikhandle, useLoc=True, customShape=customShape)
+    ctl.addAttr('roll', type='float', k=1)
+    ctl.roll >> ikhandle.twist
+    return ctl
+
+def create_stretch_bone():
+    pass

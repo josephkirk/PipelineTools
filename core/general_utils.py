@@ -774,6 +774,19 @@ def get_pos_center_from_edge(edge):
         return vert_pos
 
 # --- Transformation and Shape --- #
+@do_function_on()
+def setColor(ob, color=[1,0,0,0]):
+    try:
+        control.overrideEnabled.set(True)
+        control.overrideRGBColors.set(True)
+        control.overrideColorRGB.set(self.color)
+        sg = control.shadingGroups()[0] if control.shadingGroups() else None
+        if sg:
+            shdr = sg.inputs()[0]
+            shdr.outColor.set(color)
+            shdr.outTransparency.set([color[-1] for i in range(3)])
+    except AttributeError as why:
+        log.error(why)
 
 def rename( ob, prefix="", suffix="" , separator='_'):
     try:

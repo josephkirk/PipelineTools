@@ -1005,9 +1005,11 @@ class ControlObject(object):
         if not control:
             for control in self.controls:
                 self.setAxis(control)
-    @ul.do_function_on()
-    def setColor(self, control, newColor):
-        self.color = newColor
+
+    def setColor(self, control, newColor=None):
+        print control.name
+        if newColor:
+            self.color = newColor
         try:
             control.overrideEnabled.set(True)
             control.overrideRGBColors.set(True)
@@ -1031,13 +1033,13 @@ class ControlObject(object):
     def createControl(self):
         newCtl = self._controlType[self._currentType](**self._uiOption)
         return newCtl
-    @ul.do_function_on()
+
     def changeControlShape(self, selectControl, *args):
         temp = self.createControl()
         #temp.setParent(selectControl.getParent())
         ru.xformTo(temp, selectControl)
         pm.delete(selectControl.getShape(), shape=True)
-        pm.parent(temp[0].getShape(), selectControl, r=True, s=True)
+        pm.parent(temp.getShape(), selectControl, r=True, s=True)
         pm.delete(temp)
         return selectControl
 
@@ -1158,9 +1160,12 @@ class ControlObject(object):
                             labelArray4=['group', 'setAxis', 'sphere', 'mirror'],
                             cc = self._getUIValue)
                         pm.button(label='Create', c=pm.Callback(self.createControl))
-                        # with pm.popupMenu(b=3):
-                            # pm.menuItem(label='Change Current Select', c=pm.Callback(self.changeControlShape, sl=True))
-                            # pm.menuItem(label='Set Color Select', c=pm.Callback(self.setColor,self.color, sl=True))
+                        pm.button(
+                            label='Change Current Select',
+                            c=lambda x: ul.do_function_on()(self.changeControlShape)(sl=True))
+                        pm.button(
+                            label='Set Color Select',
+                            c=lambda x: ul.do_function_on()(self.setColor)(sl=True))
         self._getUIValue()
         self.reset_window_height()
         #self._window.setHeight(10)
