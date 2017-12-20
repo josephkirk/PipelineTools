@@ -8,18 +8,16 @@ All code written by me unless specify
 """
 from __future__ import with_statement
 
-import maya.cmds as cm
-import maya.mel as mm
-from pymel.core import *
 import types
 from .. import core
 from ..project_specific import ns57
-
+from pymel.core import *
 # core._reload()
+
+# Global Var
 ul = core.ul
 ru = core.rul
 rcl = core.rcl
-# Global Var
 # Function
 def batch_export_cam():
     '''Export all Baked Cam to Fbx Files'''
