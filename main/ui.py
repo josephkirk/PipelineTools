@@ -279,35 +279,65 @@ class RigTools(object):
                                             sl=True))
 
                                 with self.template.subframe(label='IK Chain Control'):
-                                    with rowColumnLayout(
-                                            rs=[(1,0.1),],
-                                            numberOfColumns=2,
-                                            columnWidth=[(1, 180), (2, 50)]):
-                                        self._uiElement['SHctlcount'] = intFieldGrp(
-                                            numberOfFields=1,
-                                            cl2=('right', 'right'),
-                                            co2=(5, 10),
-                                            ct2=('right','left'),
-                                            cw2=(70, 100),
-                                            label='Controls :', value1=2)
-
-                                    button(
-                                        label='Create Spline IK',
-                                        c=Callback(
-                                            self.do_func,
-                                            ru.create_splineIK,
-                                            midCtls=self._uiElement['SHctlcount'].getValue1,
-                                            sl=True))
-                                    separator()
                                     button(
                                         label='Create Simple IK',
                                         c=Callback(
                                             self.do_func,
                                             ru.create_simpleIK,
                                             sl=True))
+                                    with gridLayout(cr=True,cw=150, ch=30):
+                                        with columnLayout():
+                                            with rowColumnLayout(
+                                                    rs=[(1,0.1),],
+                                                    numberOfColumns=2,
+                                                    columnWidth=[(1, 180), (2, 50)]):
+                                                self._uiElement['SHctlcount'] = intFieldGrp(
+                                                    numberOfFields=1,
+                                                    cl2=('right', 'right'),
+                                                    co2=(5, 10),
+                                                    ct2=('right','left'),
+                                                    cw2=(70, 100),
+                                                    label='Controls :', value1=2)
+                                        with columnLayout():
+                                            button(
+                                                label='Create Spline IK',
+                                                c=Callback(
+                                                    self.do_func,
+                                                    ru.create_splineIK,
+                                                    midCtls=self._uiElement['SHctlcount'].getValue1,
+                                                    sl=True))
                                     separator()
-                                    button(
-                                        label='Create Stretch Bone')
+                                    with gridLayout(cr=True,cw=150, ch=60):
+                                        with columnLayout():
+                                            with rowColumnLayout(
+                                                    rs=[(1,0.1),],
+                                                    numberOfColumns=2,
+                                                    columnWidth=[(1, 180), (2, 50)]):
+                                                self._uiElement['Sbonecount'] = intFieldGrp(
+                                                    numberOfFields=1,
+                                                    cl2=('right', 'right'),
+                                                    co2=(5, 10),
+                                                    ct2=('right','left'),
+                                                    cw2=(70, 100),
+                                                    label='Bones :', value1=6)
+                                            with rowColumnLayout(
+                                                    rs=[(1,0.1),],
+                                                    numberOfColumns=2,
+                                                    columnWidth=[(1, 180), (2, 50)]):
+                                                self._uiElement['Sctlcount'] = intFieldGrp(
+                                                    numberOfFields=1,
+                                                    cl2=('right', 'right'),
+                                                    co2=(5, 10),
+                                                    ct2=('right','left'),
+                                                    cw2=(70, 100),
+                                                    label='Controls :', value1=3)
+                                        with columnLayout():
+                                            button(
+                                                label='Create Stretch Bone',
+                                                c=lambda x:ru.create_stretchIK(
+                                                    ctlAmount=self._uiElement['Sctlcount'].getValue1(),
+                                                    boneAmount=self._uiElement['Sbonecount'].getValue1(),
+                                                    sl=True))
                                     separator()
                         button(
                             label='Delete Created Nodes',
@@ -377,19 +407,36 @@ class RigTools(object):
                                 ru.create_parent,
                                 sl=True))
                         self.template.smallbutton(
-                            label='Celete Parent',
+                            label='Delete Parent',
                             c=Callback(
                                 ru.remove_parent,
                                 sl=True))
                         self.template.smallbutton(
                             label='Create bone',
+                            annotation='create Bone on selected',
                             c=Callback(
                                 ru.create_joint,
                                 sl=True))
+                        with popupMenu(b=3):
+                            menuItem(
+                                label='Create bone in center',
+                                c=Callback(
+                                    ru.create_middle_joint,
+                                    sl=True))
                         self.template.smallbutton(
                             label='Create Offset bone',
                             c=Callback(
                                 ru.create_offset_bone,
+                                sl=True))
+                        self.template.smallbutton(
+                            label='Parent bone',
+                            c=Callback(
+                                ru.parent_bone,
+                                sl=True))
+                        self.template.smallbutton(
+                            label='Mirror bone',
+                            c=Callback(
+                                ru.mirror_joint_multi,
                                 sl=True))
                         self.template.smallbutton(
                             label='create Loc',
