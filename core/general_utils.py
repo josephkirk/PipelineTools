@@ -198,40 +198,50 @@ def error_alert(func):
             raise
     return wrapper
 
-def do_function_on(mode='single', type_filter=[]):
+def do_function_on(mode='single', type_filter=['transform', 'mesh']):
     """Decorator that feed function with selected object
-    :Parameter mode: String indicate how to feed selecled object
-        to function. Valid String value is:
-            'single': feed each selected object to function
-            'oneToOne': feed first and last selected to function
-            'hierachy': feed all children of selected object to function
-            'set': feed selected objects as a list to function
-            'singlelast': feed each selected object
-                that is not the last selected and
-                the last selected object to function
-            'last': feed a list of selected object
-                that is not the last selected and
-                the last selected object to function
-            'lastType': feed each member of 2 sets of different type
-            'multitype': feed list of object of different type
+        :Parameter mode: String indicate how to feed selecled object
+            to function. Valid String value is:
+
+        :string: 'single'    : feed each selected object to function.
+        :string: 'oneToOne'  : feed first and last selected to function.
+        :string: 'hierachy'  : feed all children of selected object to function.
+        :string: 'set'       : feed selected objects as a list to function.
+        :string: 'singlelast': feed each selected object
+                               that is not the last selected and
+                               the last selected object to function.
+        :string: 'last'      : feed a list of selected object
+                               that is not the last selected and
+                               the last selected object to function.
+        :string: 'lastType'  : feed each member of 2 sets of different type.
+        :string: 'multitype' : feed list of object of different type.
     """
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            # test keywords for 'selected' or 'sl' keyword
+            # test for decorator keywords
             selected = False
+            filter_args = False
+            do_mode = mode
+
             for k in ['selected', 'sl']:
                 if k in kwargs:
                     selected = kwargs[k]
                     del kwargs[k]
-            if not selected:
-                # if selected keyword are False
-                return func(*args, **kwargs)
-            do_mode = mode
+            for k in ['filter_args', 'fta']:
+                if k in kwargs:
+                    filter_args = kwargs['filter_args']
+                    del kwargs['filter_args']
             if 'mode' in kwargs:
                 do_mode = kwargs['mode']
                 del kwargs['mode']
 
+            if not selected:
+                if filter_args:
+                    return func(*filter_type(args, type_filter), **kwargs)
+                else:
+                    return func(*args, **kwargs)
+            # Select feed Class
             class DoFunc:
                 def __init__(self):
                     self.mode = do_mode
@@ -254,28 +264,8 @@ def do_function_on(mode='single', type_filter=[]):
 
                 def _get_oblist(self):
                     '''get selected object as PyNode'''
-                    self.oblist = []
                     if self.filter:
-                        for o in pm.selected():
-                            otype = get_type(o)
-                            if otype in self.filter:
-                                if otype == 'vertex':
-                                    vList = [o.node().vtx[vid] for vid in o.indices()]
-                                    for v in vList:
-                                        if v not in self.oblist:
-                                            self.oblist.append(v)
-                                elif otype == 'edge':
-                                    eList = [o.node().e[eid] for eid in o.indices()]
-                                    for e in eList:
-                                        if e not in self.oblist:
-                                            self.oblist.append(e)
-                                elif otype == 'face':
-                                    fList = [o.node().f[fid] for fid in o.indices()]
-                                    for f in fList:
-                                        if f not in self.oblist:
-                                            self.oblist.append(f)
-                                else:
-                                    self.oblist.append(o)
+                        self.oblist = filter_type(pm.selected(), self.filter)
                     else:
                         self.oblist = pm.selected()
                     if not self.oblist:
@@ -287,7 +277,7 @@ def do_function_on(mode='single', type_filter=[]):
                         log.error(msg)
                         raise RuntimeError(msg)
                     return self.oblist
-
+                @error_alert
                 def single(self):
                     '''Feed function with each selected object yield result'''
                     for ob in self.oblist:
@@ -535,11 +525,29 @@ def sys_cop(src, dest):
     return ','.join(status)
 
 # --- Query Infos --- #
-def filter_type(o, type_list):
-    otype = get_type(o)
-    if otype in type_list:
-        return o if otype not in [
-            'vertex', 'edge', 'face'] else convert_component(o)
+def filter_type(ob_list, type_list):
+    filter_result = []
+    for o in ob_list:
+        otype = get_type(o)
+        if otype in type_list:
+            if otype == 'vertex':
+                vList = [o.node().vtx[vid] for vid in o.indices()]
+                for v in vList:
+                    if v not in ob_list:
+                        filter_result.append(v)
+            elif otype == 'edge':
+                eList = [o.node().e[eid] for eid in o.indices()]
+                for e in eList:
+                    if e not in ob_list:
+                        filter_result.append(e)
+            elif otype == 'face':
+                fList = [o.node().f[fid] for fid in o.indices()]
+                for f in fList:
+                    if f not in ob_list:
+                        filter_result.append(f)
+            else:
+                filter_result.append(o)
+    return filter_result
 
 @error_alert
 def get_type(ob):

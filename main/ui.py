@@ -45,11 +45,11 @@ class UITemplate:
             button, height=30, align='left', bgc=[0.15,0.25,0.35])
         self._uiTemplate.define(
             columnLayout, adjustableColumn=1,
-            cal='center', cat =('both',1))
+            cal='right', cat =('both',0))
         self._uiTemplate.define(
             frameLayout, borderVisible=False,
-            collapsable=True,
-            cl=True, labelVisible=True,
+            collapsable=False,
+            cl=False, labelVisible=True,
             cc=Callback(self.reset_window_height),
             mh=2, mw=2, font='boldLabelFont',
             bgc=[0.2,0.2,0.2])
@@ -67,7 +67,7 @@ class UITemplate:
         self.subframe = ul.partial(
             frameLayout,
             collapsable=False, la='center', li=60,
-            bgs=True, bgc=[0.22,0.22,0.22])
+            bgs=True, bgc=[0.35]*3)
         self.smallbutton = ul.partial(button, h=30, bgc=[0.35,0.4,0.4])
 
     def reset_window_height(self):
@@ -111,7 +111,7 @@ class RigTools(object):
             self._windowname, title=self._name,
             menuBar=True,
             rtf=True)
-        self._windowSize = (250, 1)
+        self._windowSize = (1, 1)
         self._uiElement = {}
         return self._window
 
@@ -157,7 +157,8 @@ class RigTools(object):
         sel=selected()
         if hasattr(self.ControlObClass, '_uiName'):
             if window(self.ControlObClass._uiName + 'Window', ex=True):
-                kws['customShape'] = self.ControlObClass.createControl
+                if self._uiElement['useUIShape'].getValue():
+                    kws['customShape'] = self.ControlObClass.createControl
         select(sel)
         func(**kws)
         # delete(kws['customShape'])
@@ -214,7 +215,10 @@ class RigTools(object):
                         c=Callback(self.ControlObClass._showUI))
                     with columnLayout():
                         with self.template.subframe(label='Control Types', li=80):
-                            self._uiElement['useLoc'] = checkBox(label='Connect using Locator')
+                            with columnLayout(cat =('both',15)):
+                                with gridLayout():
+                                    self._uiElement['useLoc'] = checkBox(label='Connect using Locator')
+                                    self._uiElement['useUIShape'] = checkBox(label='Use UI Shape')
                             with columnLayout():
                                 with self.template.subframe(label='Single Bone Control'):
                                     with gridLayout():
@@ -245,7 +249,6 @@ class RigTools(object):
                                         self.template.smallbutton(
                                             label='Aim Setup',
                                             c=Callback(
-                                                self.do_func,
                                                 ru.aim_setup,
                                                 sl=True))
 
@@ -1051,40 +1054,6 @@ class SkinWeightSetter(object):
                         #separator(height=5, style='none')
 
                 with frameLayout(label='Utils', cl=False):
-                    with columnLayout():
-                        with frameLayout(label='Bone Rename', collapsable=False):
-                            with rowColumnLayout(
-                                numberOfColumns=7,
-                                columnWidth=[
-                                    (1,200),
-                                    (2,60),
-                                    (3,40),]):
-                                self.ui['renameBone']=[]
-                                self.ui['renameBone'].append(textField())
-                                self.ui['renameBone'].append(optionMenu())
-                                with self.ui['renameBone'][1]:
-                                    menuItem(label='')
-                                    menuItem(label='Front')
-                                    menuItem(label='Left')
-                                    menuItem(label='Right')
-                                    menuItem(label='Center')
-                                    menuItem(label='Back')
-                                    menuItem(label='Middle')
-                                self.ui['renameBone'].append(intField(value=0))
-                                self.ui['renameBone'].append(intField(value=1))
-                                self.ui['renameBone'].append(textField(text='bon'))
-                                button(
-                                    label='Rename',
-                                    c=lambda x:ru.rename_bone_Chain(
-                                                self.ui['renameBone'][0].getText()+self.ui['renameBone'][1].getValue(),
-                                                self.ui['renameBone'][2].getValue(),
-                                                self.ui['renameBone'][3].getValue(),
-                                                self.ui['renameBone'][4].getText(),
-                                                sl=True))
-                                button(
-                                    label='Label',
-                                    annotation='use joint name as label',
-                                    c=Callback(ru.label_joint, sl=True))
                         with gridLayout(
                                 numberOfColumns=5,
                                 cellWidth=140):
