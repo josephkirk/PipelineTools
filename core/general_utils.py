@@ -198,7 +198,7 @@ def error_alert(func):
             raise
     return wrapper
 
-def do_function_on(mode='single', type_filter=['transform', 'mesh']):
+def do_function_on(mode='single', type_filter=[]):
     """Decorator that feed function with selected object
         :Parameter mode: String indicate how to feed selecled object
             to function. Valid String value is:
@@ -277,11 +277,13 @@ def do_function_on(mode='single', type_filter=['transform', 'mesh']):
                         log.error(msg)
                         raise RuntimeError(msg)
                     return self.oblist
-                @error_alert
+                # @error_alert
                 def single(self):
                     '''Feed function with each selected object yield result'''
                     for ob in self.oblist:
-                        result = self.func(ob, *self.args, **self.kwargs)
+                        # self.args.insert(0,ob)
+                        # print self.args
+                        result = self.func(ob,*self.args, **self.kwargs)
                         self.results.append(result)
                     return self.results
 
@@ -525,6 +527,7 @@ def sys_cop(src, dest):
     return ','.join(status)
 
 # --- Query Infos --- #
+@error_alert
 def filter_type(ob_list, type_list):
     filter_result = []
     for o in ob_list:
@@ -533,17 +536,17 @@ def filter_type(ob_list, type_list):
             if otype == 'vertex':
                 vList = [o.node().vtx[vid] for vid in o.indices()]
                 for v in vList:
-                    if v not in ob_list:
+                    if v not in filter_result:
                         filter_result.append(v)
             elif otype == 'edge':
                 eList = [o.node().e[eid] for eid in o.indices()]
                 for e in eList:
-                    if e not in ob_list:
+                    if e not in filter_result:
                         filter_result.append(e)
             elif otype == 'face':
                 fList = [o.node().f[fid] for fid in o.indices()]
                 for f in fList:
-                    if f not in ob_list:
+                    if f not in filter_result:
                         filter_result.append(f)
             else:
                 filter_result.append(o)
@@ -768,6 +771,7 @@ def get_shape(ob):
             log.error('%s have no shape'%ob)
             raise
 
+@error_alert
 def get_pos_center_from_edge(edge):
     if type(edge) == pm.general.MeshEdge:
         t_node = edge.node()
@@ -781,6 +785,30 @@ def get_pos_center_from_edge(edge):
         vert_pos = sum([v.getPosition('world') for v in list(verts_set)])/len(verts_set)
         return vert_pos
 
+@error_alert
+def get_points(sellist):
+    '''
+    Get all Point position from a list of define object type
+    '''
+    transformtype = [
+        ob.getTranslation('world')
+        for ob in filter_type(sellist,['transform', 'joint', 'mesh'])
+        if hasattr(ob, 'getTranslation')]
+    vertextype = [
+        get_closest_info(cpn.getPosition('world'), cpn.node())['Closest Point']
+        for cpn in filter_type(sellist,['vertex'])]
+    edgetype = [
+        get_closest_info(pm.dt.center(*[cpn.getPoint(i,'world')
+        for i in range(2)]), cpn.node())['Closest Mid Edge']
+        for cpn in filter_type(sellist,['edge'])]
+    flist = [mfn.node().f[mfid] for mfn in filter_type(sellist,['face']) for mfid in mfn.indices()]
+    print flist
+    facetype = [
+        get_closest_info(pm.dt.center(*[mf.getPoint(i,'world')
+        for i in range(4)]), mf.node())['Closest Point']
+        for mf in flist
+    ]
+    return (transformtype + vertextype + edgetype + facetype)
 # --- Transformation and Shape --- #
 @do_function_on()
 def setColor(ob, color=[1,0,0,0]):
@@ -832,7 +860,9 @@ def convert_component(
         toVertex=True,
         toEdge=False,
         toFace=False):
-    ''' convert tranform to component or from component to other component type'''
+    '''
+    Convert tranform to component or from component to other component type
+    '''
     # check if arg contain tranform node, if True return Shape Vertex
     filter_transform = [
         o for o in components_list if type(o) is pm.nt.Transform]
@@ -871,10 +901,14 @@ def convert_component(
                     result.append(vert.node().vtx[vertid])
             return result
 
+
 @do_function_on(
     'set',
     type_filter=['transform','joint', 'mesh', 'vertex', 'edge', 'face'])
 def convert_to_curve(sellist, name='converted_curve', smoothness=1):
+    '''
+    Connect object in list with a Nurbs Curve
+    '''
     if any([
             get_type(ob) == typ for ob in sellist
             for typ in ['transform', 'joint', 'mesh']]):
@@ -957,12 +991,10 @@ def lock_transform(
 
 @do_function_on()
 def reset_transform(ob):
-    for atr in ['translate', 'rotate', 'scale']:
-        try:
-            reset_value = [0,0,0] if atr is not 'scale' else [1,1,1]
-            ob.attr(atr).set(reset_value)
-        except RuntimeError as why:
-            log.warning(why)
+    for at in ['tx','ty','tz','rx','ry','rz']:
+        ob.attr(at).set(0)
+    for at in ['sx','sy','sz']:
+        ob.attr(at).set(1)
 
 @do_function_on('oneToOne')
 def parent_shape(src, target, delete_src=True, delete_oldShape=True):

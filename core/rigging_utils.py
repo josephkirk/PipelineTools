@@ -378,6 +378,7 @@ def create_locs_on_curve(inputcurve, name='curveLoc', amount=3, constraint=True)
     pm.loadPlugin('matrixNodes.mll')
     inc = 1.0/(amount-1)
     curveShape = inputcurve.getShape()
+    locs = []
     for i in range(amount):
         infoNode = pm.nt.PointOnCurveInfo()
         infoNode.rename('{}{:02d}_pointOnCurveInfo'.format(name, i+1))
@@ -418,7 +419,12 @@ def create_locs_on_curve(inputcurve, name='curveLoc', amount=3, constraint=True)
         # pairblend_node.outRotate >> loc.rotate
         loc.addAttr('parameter', at='float', k=1, max=1.0, min=0.0, defaultValue=i*inc)
         loc.parameter >> infoNode.parameter
-        yield loc
+        locs.append(loc)
+    pm.aimConstraint(locs[1], locs[0])
+    pm.aimConstraint(locs[-2], locs[-1])
+    # constraint_multi(locs[0], locs[1], constraintType='Aim')
+    # constraint_multi(locs[-1], locs[-2], constraintType='Aim')
+    return locs
 # --- Transformation ---
 
 @ul.do_function_on('oneToOne')
@@ -725,11 +731,13 @@ def curve_to_bone(inputcurve, amount=3):
     return newBones
 
 @ul.do_function_on(type_filter=['nurbsCurve'])
-def create_bone_on_curve(inputcurve, amount=3):
+def create_bone_on_curve(inputcurve, amount=3, parent=True):
     cvlocs = create_locs_on_curve(inputcurve, amount=amount)
     newBones = []
     tempTr = []
+    loclist = []
     for cvloc in cvlocs:
+        loclist.append(cvloc)
         if newBones:
             pm.select(newBones[-1], r=True)
         else:
@@ -740,17 +748,28 @@ def create_bone_on_curve(inputcurve, amount=3):
         ul.reset_transform(temp_transform)
         tempTr.append(temp_transform)
         newBones.append(newBone)
-    pm.joint(newBones[0], e=True, oj='xyz', secondaryAxisOrient='yup', ch=True, zso=True)
-    for tr, bone in zip(tempTr, newBones):
-        offsetBone = create_offset_bone(bone)
-        trParent = create_parent(tr)
-        match_transform(trParent, offsetBone)
-        pm.parentConstraint(tr, offsetBone)
         # connect_with_loc(tr,bone)
         # connect_transform(tr, bone, translate=True, rotate=True)
-    return newBones
+    if not parent:
+        for tr, bone in zip(tempTr, newBones):
+            bone.setParent(tr)
+            tempP = create_parent(bone)
+            ul.reset_transform(bone.getParent())
+            bone.setParent(tr)
+            pm.delete(tempP)
+    else:
+        pm.joint(newBones[0], e=True, oj='xyz', secondaryAxisOrient='yup', ch=True, zso=True)
+        for tr, bone in zip(tempTr, newBones):
+            offsetBone = create_offset_bone(bone)
+            trParent = create_parent(tr)
+            match_transform(trParent, offsetBone)
+            pm.parentConstraint(tr, offsetBone)
+    result = [(bone,tr,loc) for bone,tr,loc in zip(newBones, tempTr, loclist)]
+    return result
 
-@ul.do_function_on('set')
+@ul.do_function_on(
+    'set',
+    type_filter=['transform', 'mesh', 'vertex', 'edge', 'face'])
 def create_joint(ob_list):
     new_joints = []
     for ob in ob_list:
@@ -767,6 +786,29 @@ def create_joint(ob_list):
         if new_joint == new_joints[-1]:
             pm.joint(new_joint, edit=True, oj='none', ch=True, zso=True)
     return new_joints
+
+@ul.do_function_on(
+    'set',
+    type_filter=['transform', 'mesh', 'vertex', 'edge', 'face'])
+def create_middle_joint(ob_list):
+    pos_list = ul.get_points(ob_list)
+    print type(pos_list)
+    if len(pos_list) > 1 and len(pos_list) != 0:
+        pos_center = sum(pos_list)/len(pos_list)
+    elif len(pos_list) == 1:
+        pos_center = pos_list[0]
+    else:
+        pos_center = [0,0,0]
+    new_joint = pm.joint(p=pos_center)
+    return new_joint
+
+@ul.do_function_on('set', type_filter=['joint'])
+def parent_bone(boneList):
+    boneLists = boneList
+    while boneLists:
+        bone = boneLists.pop()
+        if boneLists:
+            bone.setParent(boneLists[-1])
 
 @ul.do_function_on(type_filter=['joint'])
 def insert_joint(joint, num_joint=2):
@@ -1000,8 +1042,8 @@ def label_joint(
     except AttributeError as why:
         log.error(why)
 
-@ul.do_function_on(type_filter=['joint'])
-def rename_bone_Chain(boneRoots, newName, startcollumn=0, startNum=1, suffix='bon'):
+@ul.do_function_on('set', type_filter=['joint'])
+def rename_bonechain(boneRoots, newName, startcollumn=0, startNum=1, suffix='bon'):
     collumNames = list(alphabet)
     collumNames.extend(
         [''.join(list(i)) for i in list(
@@ -1406,5 +1448,40 @@ def create_simpleIK(boneRoot, customShape=None):
     ctl.roll >> ikhandle.twist
     return ctl
 
-def create_stretch_bone():
-    pass
+@ul.do_function_on(type_filter=['nurbsCurve'])
+def create_stretchIK(inputcurve, ctlAmount=3, boneAmount=3):
+    boneCVs = create_bone_on_curve(inputcurve, amount=boneAmount, parent=False)
+    sphereShape = ul.partial(
+        createPinCircle,
+        'control',
+        axis='YZ',
+        radius=1,
+        step=24,
+        sphere=True,
+        length=0)
+    ctls =[]
+    ctlLocs =[]
+    for id,(bone,tr,loc) in enumerate(boneCVs):
+        ctlLoc = loc.duplicate(po=True,rr=True)[0]
+        connect_transform(loc, ctlLoc, all=True)
+        ctl = create_free_control(bone, customShape=sphereShape)
+        ctl.getParent().setParent(ctlLoc)
+        ctls.append(ctl)
+        ctlLocs.append(ctlLoc)
+    boneTops = []
+    topCtls = []
+    pncInfo = ul.get_points_on_curve(inputcurve, amount=ctlAmount)
+    for i, (tr, rot) in enumerate(pncInfo):
+        pm.select(cl=True)
+        mboneTop = pm.nt.Joint(
+            name = 'topBone_{:02d}'.format(i+1),
+            p=tr)
+        mboneTop.setParent(None)
+        mboneTop.radius.set(1.1)
+        # mboneTop.setTranslation(tr)
+        # mboneTop.setRotation(rot)
+        ctl = create_free_control(mboneTop)
+        topCtls.append(ctl)
+        boneTops.append(mboneTop)
+    curveSkin = pm.skinCluster(*ul.recurse_collect(boneTops, inputcurve))
+    # topCtls[0].rotate >> ctls[0].getParent.rotate
