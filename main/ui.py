@@ -13,7 +13,11 @@ from .. import core
 from ..project_specific import ns57
 import maya.mel as mm
 from pymel.core import *
-# core._reload()
+# try load External Skinning Tool
+try:
+    from skinningTool import SkinningToolsUI
+except:
+    print 'skinningTool not Present'
 
 # Global Var
 ul = core.ul
@@ -202,7 +206,12 @@ class RigTools(object):
 
     def create_rig_util_ui(self):
             with columnLayout():
-                with frameLayout(label='Tools:', cl=False): 
+                with frameLayout(label='Tools:', cl=False):
+                    if 'SkinningToolsUI' in globals():
+                        button(
+                            label='Skinning Tools',
+                            ann='Utilities to help with skinning and bone creation',
+                            c=Callback(SkinningToolsUI.startUI))
                     button(
                         label='Bone and Skin Tools',
                         ann='Utilities to help with skinning and bone creation',

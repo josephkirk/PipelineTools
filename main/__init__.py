@@ -1,5 +1,5 @@
 import ui
-import qtui
+import utilsUI
 def _reload():
     reload(ui)
-    reload(qtui)
+    reload(utilsUI)
