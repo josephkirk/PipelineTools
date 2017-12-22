@@ -11,6 +11,7 @@ from __future__ import with_statement
 import types
 from .. import core
 from ..project_specific import ns57
+import maya.mel as mm
 from pymel.core import *
 # core._reload()
 
