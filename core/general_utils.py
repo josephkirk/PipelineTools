@@ -614,7 +614,7 @@ def recurse_collect(*args, **kwargs):
     return collectors
 
 @error_alert
-def iter_hierachy(root, filter = 'transform'):
+def iter_hierachy(root, filter = ['transform']):
     '''yield hierachy generator object with stack method'''
     stack = [root]
     level = 0
@@ -622,15 +622,16 @@ def iter_hierachy(root, filter = 'transform'):
         level +=1
         node = stack.pop()
         yield node
-        childs = node.getChildren( type=filter )
-        if len(childs) > 1:
-            log.debug('\nsplit to %s, %s'%(len(childs),str(childs)))
-            for child in childs:
-                subStack = iter_hierachy(child)
-                for subChild in subStack:
-                    yield subChild
-        else:
-            stack.extend( childs )
+        if hasattr(node, 'getChildren'):
+            childs = node.getChildren( type=filter )
+            if len(childs) > 1:
+                log.debug('\nsplit to %s, %s'%(len(childs),str(childs)))
+                for child in childs:
+                    subStack = iter_hierachy(child)
+                    for subChild in subStack:
+                        yield subChild
+            else:
+                stack.extend( childs )
 
 @error_alert
 def get_closest_component(ob, mesh_node, uv=True, pos=False):

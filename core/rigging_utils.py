@@ -1054,12 +1054,13 @@ def rename_bonechain(boneRoots, newName, startcollumn=0, startNum=1, suffix='bon
         assert ((startcollumn+id)<len(collumNames)), 'Maximum Bone Collumn reach, maximum: %d'%len(collumNames)
         collumnName = collumNames[startcollumn+id]
         for bone in iter(boneChain):
-            bone.rename('{}{}{:02d}_{}'.format(
-                newName,
-                collumnName,
-                i,
-                suffix))
-            i += 1
+            if hasattr(bone,'rename'):
+                bone.rename('{}{}{:02d}_{}'.format(
+                    newName,
+                    collumnName,
+                    i,
+                    suffix))
+                i += 1
 
 @ul.do_function_on(type_filter=['joint'])
 def create_roll_joint(oldJoint):

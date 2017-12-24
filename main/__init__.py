@@ -1,5 +1,5 @@
 import ui
-import utilsUI
+import RenamerUI
 def _reload():
     reload(ui)
-    reload(utilsUI)
+    reload(RenamerUI)

@@ -11,6 +11,7 @@ from __future__ import with_statement
 import types
 from .. import core
 from ..project_specific import ns57
+import RenamerUI
 import maya.mel as mm
 from pymel.core import *
 # try load External Skinning Tool
@@ -408,176 +409,10 @@ class RigTools(object):
 
     def create_util_ui(self):
         with columnLayout():
-            with frameLayout(label='Rigging:', cl=False):
-                with columnLayout():
-                    with gridLayout(cw=150):
-                        self.template.smallbutton(
-                            label='Create Parent',
-                            c=Callback(
-                                ru.create_parent,
-                                sl=True))
-                        self.template.smallbutton(
-                            label='Delete Parent',
-                            c=Callback(
-                                ru.remove_parent,
-                                sl=True))
-                        self.template.smallbutton(
-                            label='Create bone',
-                            annotation='create Bone on selected',
-                            c=Callback(
-                                ru.create_joint,
-                                sl=True))
-                        with popupMenu(b=3):
-                            menuItem(
-                                label='Create bone in center',
-                                c=Callback(
-                                    ru.create_middle_joint,
-                                    sl=True))
-                        self.template.smallbutton(
-                            label='Create Offset bone',
-                            c=Callback(
-                                ru.create_offset_bone,
-                                sl=True))
-                        self.template.smallbutton(
-                            label='Parent bone',
-                            c=Callback(
-                                ru.parent_bone,
-                                sl=True))
-                        self.template.smallbutton(
-                            label='Mirror bone',
-                            c=Callback(
-                                ru.mirror_joint_multi,
-                                sl=True))
-                        self.template.smallbutton(
-                            label='create Loc',
-                            c=Callback(
-                                ru.create_loc_control,
-                                connect=False,sl=True))
-                        self.template.smallbutton(
-                            label='create Loc control',
-                            c=Callback(
-                                ru.create_loc_control,
-                                all=True,
-                                sl=True))
-                        self.template.smallbutton(
-                            label='connect with Loc',
-                            c=Callback(
-                                ru.connect_with_loc,
-                                all=True,
-                                sl=True))
-                        with popupMenu(b=3):
-                            menuItem(label='translate only', c=Callback(
-                                ru.connect_with_loc,
-                                translate=True,
-                                sl=True))
-                            menuItem(label='rotate only', c=Callback(
-                                ru.connect_with_loc,
-                                rotate=True,
-                                sl=True))
-                        self.template.smallbutton(
-                            label='vertex to Loc',
-                            c=Callback(
-                                ru.create_loc_on_vert,
-                                sl=True))
-                        self.template.smallbutton(
-                            label='Connect Transform',
-                            c=Callback(
-                                ru.connect_transform,
-                                all=True,
-                                sl=True))
-                        with popupMenu(b=3):
-                            menuItem(
-                                label='Connect Translate',
-                                c=Callback(
-                                    ru.connect_transform,
-                                    translate=True, rotate=False, scale=False,
-                                    sl=True))
-                            menuItem(
-                                label='Connect Rotate',
-                                c=Callback(
-                                    ru.connect_transform,
-                                    translate=False, rotate=True, scale=False,
-                                    sl=True))
-                            menuItem(
-                                label='Connect Scale',
-                                c=Callback(
-                                    ru.connect_transform,
-                                    translate=False, rotate=False, scale=True,
-                                    sl=True))
-                        self.template.smallbutton(
-                            label='Disconnect Transform',
-                            c=Callback(
-                                ru.disconnect_transform,
-                                sl=True))
-                        with popupMenu(b=3):
-                            menuItem(
-                                label='Disconnect Translate',
-                                c=Callback(
-                                    ru.disconnect_transform,
-                                    attr='translate',
-                                    sl=True))
-                            menuItem(
-                                label='Disconnect Rotate',
-                                c=Callback(
-                                    ru.disconnect_transform,
-                                    attr='rotate',
-                                    sl=True))
-                            menuItem(
-                                label='Disconnect Scale',
-                                c=Callback(
-                                    ru.disconnect_transform,
-                                    attr='scale',
-                                    sl=True))
-                        self._uiElement['PCAddAttr'] = False
-                        self.template.smallbutton(
-                            label='multi Parent Constraint',
-                            c=lambda x: ru.constraint_multi(
-                                constraintType='Parent',
-                                addChildAttr=self._uiElement['PCAddAttr'],
-                                sl=True))
-                        with popupMenu(b=3):
-                            menuItem(
-                                label='multi Point Constraint', c=Callback(
-                                    ru.constraint_multi,
-                                    constraintType='Point',
-                                    sl=True))
-                            menuItem(
-                                label='multi Orient Constraint', c=Callback(
-                                    ru.constraint_multi,
-                                    constraintType='Orient',
-                                    sl=True))
-                            menuItem(
-                                label='multi Point&Orient Constraint', c=Callback(
-                                    ru.constraint_multi,
-                                    constraintType='PointOrient',
-                                    sl=True))
-                            menuItem(
-                                label='multi Aim Constraint', c=Callback(
-                                    ru.constraint_multi,
-                                    constraintType='Aim',
-                                    sl=True))
-                            menuItem(
-                                label='multi Loc Point Constraint', c=Callback(
-                                    ru.constraint_multi,
-                                    constraintType='LocP',
-                                    sl=True))
-                            menuItem(
-                                label='multi Loc Orient Constraint', c=Callback(
-                                    ru.constraint_multi,
-                                    constraintType='LocO',
-                                    sl=True))
-                            menuItem(
-                                label='multi Loc Point&Orient Constraint', c=Callback(
-                                    ru.constraint_multi,
-                                    constraintType='LocOP',
-                                    sl=True))
-                            menuItem(
-                                label='Add ParentFollow Attributes',
-                                checkBox= self._uiElement['PCAddAttr'],
-                                c=Callback(
-                                    self.setUIValue,
-                                    'PCAddAttr',
-                                    not self._uiElement['PCAddAttr']))
+            button(
+                label='Renamer UI',
+                c=Callback(RenamerUI.show))
+
             with frameLayout(label='Modeling', cl=False):
                 with gridLayout(cw=150):
                     self.template.smallbutton(label='Selected to Curve',
@@ -653,6 +488,177 @@ class RigTools(object):
                         c=Callback(
                             ul.clean_attributes,
                             sl=True))
+
+            with frameLayout(label='Rigging:', cl=False):
+                with columnLayout():
+                    with gridLayout(cw=150):
+                        self.template.smallbutton(
+                            label='Create Parent',
+                            c=Callback(
+                                ru.create_parent,
+                                sl=True))
+                        self.template.smallbutton(
+                            label='Delete Parent',
+                            c=Callback(
+                                ru.remove_parent,
+                                sl=True))
+                        self.template.smallbutton(
+                            label='Create bone',
+                            annotation='Create Bone on selected',
+                            c=Callback(
+                                ru.create_joint,
+                                sl=True))
+                        with popupMenu(b=3):
+                            menuItem(
+                                label='Create bone in center',
+                                c=Callback(
+                                    ru.create_middle_joint,
+                                    sl=True))
+                        self.template.smallbutton(
+                            label='Create Offset bone',
+                            c=Callback(
+                                ru.create_offset_bone,
+                                sl=True))
+                        self.template.smallbutton(
+                            label='Parent bone',
+                            c=Callback(
+                                ru.parent_bone,
+                                sl=True))
+                        self.template.smallbutton(
+                            label='Mirror bone',
+                            c=Callback(
+                                ru.mirror_joint_multi,
+                                sl=True))
+                        self.template.smallbutton(
+                            label='Create Loc',
+                            c=Callback(
+                                ru.create_loc_control,
+                                connect=False,sl=True))
+                        self.template.smallbutton(
+                            label='Create Loc control',
+                            c=Callback(
+                                ru.create_loc_control,
+                                all=True,
+                                sl=True))
+                        self.template.smallbutton(
+                            label='Connect with Loc',
+                            c=Callback(
+                                ru.connect_with_loc,
+                                all=True,
+                                sl=True))
+                        with popupMenu(b=3):
+                            menuItem(label='Translate only', c=Callback(
+                                ru.connect_with_loc,
+                                translate=True,
+                                sl=True))
+                            menuItem(label='Rotate only', c=Callback(
+                                ru.connect_with_loc,
+                                rotate=True,
+                                sl=True))
+                        self.template.smallbutton(
+                            label='Vertex to Loc',
+                            c=Callback(
+                                ru.create_loc_on_vert,
+                                sl=True))
+                        self.template.smallbutton(
+                            label='Connect Transform',
+                            c=Callback(
+                                ru.connect_transform,
+                                all=True,
+                                sl=True))
+                        with popupMenu(b=3):
+                            menuItem(
+                                label='Connect Translate',
+                                c=Callback(
+                                    ru.connect_transform,
+                                    translate=True, rotate=False, scale=False,
+                                    sl=True))
+                            menuItem(
+                                label='Connect Rotate',
+                                c=Callback(
+                                    ru.connect_transform,
+                                    translate=False, rotate=True, scale=False,
+                                    sl=True))
+                            menuItem(
+                                label='Connect Scale',
+                                c=Callback(
+                                    ru.connect_transform,
+                                    translate=False, rotate=False, scale=True,
+                                    sl=True))
+                        self.template.smallbutton(
+                            label='Disconnect Transform',
+                            c=Callback(
+                                ru.disconnect_transform,
+                                sl=True))
+                        with popupMenu(b=3):
+                            menuItem(
+                                label='Disconnect Translate',
+                                c=Callback(
+                                    ru.disconnect_transform,
+                                    attr='translate',
+                                    sl=True))
+                            menuItem(
+                                label='Disconnect Rotate',
+                                c=Callback(
+                                    ru.disconnect_transform,
+                                    attr='rotate',
+                                    sl=True))
+                            menuItem(
+                                label='Disconnect Scale',
+                                c=Callback(
+                                    ru.disconnect_transform,
+                                    attr='scale',
+                                    sl=True))
+                        self._uiElement['PCAddAttr'] = False
+                        self.template.smallbutton(
+                            label='Multi Parent Constraint',
+                            c=lambda x: ru.constraint_multi(
+                                constraintType='Parent',
+                                addChildAttr=self._uiElement['PCAddAttr'],
+                                sl=True))
+                        with popupMenu(b=3):
+                            menuItem(
+                                label='Multi Point Constraint', c=Callback(
+                                    ru.constraint_multi,
+                                    constraintType='Point',
+                                    sl=True))
+                            menuItem(
+                                label='Multi Orient Constraint', c=Callback(
+                                    ru.constraint_multi,
+                                    constraintType='Orient',
+                                    sl=True))
+                            menuItem(
+                                label='Multi Point&Orient Constraint', c=Callback(
+                                    ru.constraint_multi,
+                                    constraintType='PointOrient',
+                                    sl=True))
+                            menuItem(
+                                label='Multi Aim Constraint', c=Callback(
+                                    ru.constraint_multi,
+                                    constraintType='Aim',
+                                    sl=True))
+                            menuItem(
+                                label='Multi Loc Point Constraint', c=Callback(
+                                    ru.constraint_multi,
+                                    constraintType='LocP',
+                                    sl=True))
+                            menuItem(
+                                label='Multi Loc Orient Constraint', c=Callback(
+                                    ru.constraint_multi,
+                                    constraintType='LocO',
+                                    sl=True))
+                            menuItem(
+                                label='Multi Loc Point&Orient Constraint', c=Callback(
+                                    ru.constraint_multi,
+                                    constraintType='LocOP',
+                                    sl=True))
+                            menuItem(
+                                label='Add ParentFollow Attributes',
+                                checkBox= self._uiElement['PCAddAttr'],
+                                c=Callback(
+                                    self.setUIValue,
+                                    'PCAddAttr',
+                                    not self._uiElement['PCAddAttr']))
 
     def _init_ui(self):
         with self.window:
