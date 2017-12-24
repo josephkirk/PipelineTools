@@ -1,12 +1,10 @@
-import maya.cmds as cm
-import maya.mel as mm
 import pymel.core as pm
 import logging
 from functools import partial
 from string import ascii_uppercase as alphabet
 from itertools import product
-from ..core import general_utils as ul
-from ..core import rigging_utils as rul
+# from ..core import general_utils as ul
+# from ..core import rigging_utils as rul
 try:
     from PySide2 import QtWidgets, QtCore, QtGui
 except ImportError:
@@ -42,16 +40,12 @@ class Renamer(QtWidgets.QMainWindow):
         self.setWindowFlags(QtCore.Qt.Window)
         self.setWindowTitle('Renamer')
         self.setObjectName('RenamerWindow')
-        # self.setFixedSize(500,300)
-        self._initUIValue()
-        self._getUIValue()
+        # init UI
         self._initMainUI()
-        # self._initMainUI()
-        self._updateUIValue()
-        self._connectFunction()
+        self.createMenuBar()
+        self.statusBar()
 
     # Util Function
-
     @staticmethod
     def getUIValue(valueName, defaultValue=""):
         if valueName in pm.optionVar:
@@ -78,8 +72,15 @@ class Renamer(QtWidgets.QMainWindow):
         # layout.setContentsMargins(0,0,0,0)
         return createWidget
 
-    # Initial Value Definition
+    @staticmethod
+    def createSeparator():
+        line = QtWidgets.QFrame()
+        line.setFrameShape(QtWidgets.QFrame.HLine)
+        line.setFixedHeight(1)
+        line.setStyleSheet("QFrame { background-color: gray;}")
+        return line
 
+    # Initial Value Definition
     def _initUIValue(self):
         # Main Name Value
         self.nameValue = ""
@@ -92,6 +93,9 @@ class Renamer(QtWidgets.QMainWindow):
         suffix_list.extend([i+'Gp' for i in baseSuffix_list])
         suffix_list.extend([i+'Grp' for i in baseSuffix_list])
         self.suffix_list = ','.join(suffix_list)
+        # Replace Name Value
+        self.searchName = 'Left'
+        self.replaceName = 'Right'
         # Optional Name Variable Toggle State
         self.numBool = True
         self.numAddSepBool = False
@@ -103,13 +107,18 @@ class Renamer(QtWidgets.QMainWindow):
         self.renameChildBool = False
         self.renameAllBool = False
         # Optional Name Variable Position
-        self.numPos = 'After Name'
-        self.letterPos = 'After Name'
-        self.dirPos = 'After Name'
+        self.numPos = 0
+        self.letterPos = 0
+        self.dirPos = 1
         # Optional Name Variable Value
         self.startNum = 1
         self.numPadding = 2
+        self.letterList = list(alphabet)
+        self.letterList.extend(
+            [''.join(list(i)) for i in list(
+                product(alphabet, repeat=2))])
         self.startLetter = 0
+        self.directionList = ("Left,Right,Up,Down,Center,Bottom,Middle,L,R,T,B,C,M,Mid")
         self.direction = 0
 
     def _getUIValue(self):
@@ -120,6 +129,9 @@ class Renamer(QtWidgets.QMainWindow):
         self.prefix_list = self.getUIValue('renameUI_prefixList', self.prefix_list)
         self.suffixValue = self.getUIValue('renameUI_suffixValue', self.suffixValue)
         self.suffix_list = self.getUIValue('renameUI_suffixList', self.suffix_list)
+        # Name Replace Value
+        self.searchName = self.getUIValue('renameUI_searchValue', self.searchName)
+        self.replaceName = self.getUIValue('renameUI_replaceValue', self.replaceName)
         # Optional Name Variable Toggle State
         self.numBool = self.getUIValue('renameUI_numberToggle', self.numBool)
         self.numAddSepBool = self.getUIValue('renameUI_numberAddSepToggle', self.numAddSepBool)
@@ -138,47 +150,82 @@ class Renamer(QtWidgets.QMainWindow):
         self.startNum = self.getUIValue('renameUI_startNumberValue', self.startNum)
         self.numPadding = self.getUIValue('renameUI_paddingValue', self.numPadding)
         self.startLetter = self.getUIValue('renameUI_startLetterValue', self.startLetter)
+        self.directionList = self.getUIValue('renameUI_directionList', self.directionList)
         self.direction = self.getUIValue('renameUI_dirValue', self.direction)
 
-    def _updateUIValue(self):
-        # Save Name Value
-        updateNameText = partial(self.setUIValue,'renameUI_nameValue')
-        self.name_text.textChanged.connect(updateNameText)
-        # Save Prefix Value 
-        def updatePrefixText(value):
-            self.prefix_list = ','.join([
-                self.prefix_combobox.itemText(i)
-                for i in range(self.prefix_combobox.count())
-                if i not in self.prefix_list.split(',')])
-            self.setUIValue('renameUI_prefixList', self.prefix_list)
-            self.setUIValue('renameUI_prefixValue', value)
-        self.prefix_combobox.activated.connect(updatePrefixText)
-
     def _initMainUI(self):
+        self._initUIValue()
+        self._getUIValue()
+        # create Widget
+        self.topFiller = QtWidgets.QWidget(self)
+        self.topFiller.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        self.bottomFiller = QtWidgets.QWidget(self)
+        self.bottomFiller.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
         self.mainCtner = QtWidgets.QWidget(self)
+        # Create Layout
         self.mainLayout = QtWidgets.QVBoxLayout(self.mainCtner)
+        # Add widget
+        self.addWidgets()
+        # Set Layout
         self.mainCtner.setLayout(self.mainLayout)
         self.setCentralWidget(self.mainCtner)
-        self.addWidgets()
         self.setStyle()
+        self._connectFunction()
+
 
     def addWidgets(self):
+        # self.mainLayout.addWidget(self.createSeparator())
+        # self.mainLayout.addWidget(self.topFiller)
         self.mainLayout.addWidget(self.mainNameBox())
         self.mainLayout.addWidget(self.replaceNameBox())
         self.mainLayout.addWidget(self.optionBox())
         self.mainLayout.addWidget(self.buttonBox())
+        self.mainLayout.addWidget(self.bottomFiller)
 
     def setStyle(self):
         styleSheet = """
-            QPushButton {
-                background-color: rgb(60,60,60);
-                }
-            QGroupBox {
-                background-color: rgb(80,80,80);
+            QFrame {
+                font: italic 12px; 
+                border: 2px solid rgb(20,20,20);
                 border-radius: 4px;
+                border-width: 0px;
+                padding: 2px;
+                background-color: rgb(70,70,70);
+                }
+
+            QMenu {
+                margin: 2px; /* some spacing around the menu */
+            }
+
+            QMenuBar {
+                font: bold 12px;
+                border-color: lightgray;
+                border-width: 2px;
+                background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 rgb(30,30,30), stop:1 rgb(40,40,40));
+            }
+
+            QPushButton {
+                background-color: rgb(100,100,100);
+                }
+
+            QGroupBox {
+                font: bold 12px;
+                color: rgb(200,200,200);
+                padding-top: 10px;
+                background-color: rgb(80,80,80);
+                border: 1px solid gray;
+                border-radius: 4px;
+                margin-top: 5px;
+            }
+
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                subcontrol-position: top center; /* position at the top center */
+                padding: 0px 5px;
             }
             """
-        self.mainCtner.setStyleSheet(styleSheet)
+        self.setStyleSheet(styleSheet)
 
     def _connectFunction(self):
         def connect(button,func):
@@ -192,10 +239,41 @@ class Renamer(QtWidgets.QMainWindow):
         connect(self.deleteNameAfter_button, self.onDeleteNameAfterClick)
         connect(self.nameReplace_button, self.onReplaceNameClick)
         connect(self.apply_button, self.onApplyClick)
+        connect(self.matchShapeName_button, self.onRenameShapeClick)
+        connect(self.labelJoint_button, self.onLabelJointClick)
+        # Connect Change Signal
+        self.name_text.textChanged.connect(self.updateNameText)
+        self.prefix_combobox.activated.connect(self.updatePrefixText)
+        self.suffix_combobox.activated.connect(self.updateSuffixText)
+        self.nameSearch_text.textChanged.connect(self.updateSearchNameText)
+        self.nameReplace_text.textChanged.connect(self.updateReplaceNameText)
+        self.directionEnable_checkbox.stateChanged.connect(self.updateDirEnableState)
+        self.directionAddSeparator_checkbox.stateChanged.connect(self.updateDirAddSepState)
+        self.direction_comboBox.activated.connect(self.updateDirectionValue)
+        self.directionPosition_comboBox.activated.connect(self.updateDirectionPos)
+        self.letterEnable_checkbox.stateChanged.connect(self.updateLetterEnableState)
+        self.letterAddSeparator_checkbox.stateChanged.connect(self.updateLetterEnableState)
+        self.startletter_comboBox.activated.connect(self.updateLetterValue)
+        self.letterIterate_comboBox.activated.connect(self.updateLetterIterState)
+        self.letterPosition_comboBox.activated.connect(self.updateLetterPos)
+        self.numberEnable_checkbox.stateChanged.connect(self.updateNumEnableState)
+        self.numberAddSeparator_checkbox.stateChanged.connect(self.updateNumAddSepState)
+        self.startNumber_spinBox.valueChanged.connect(self.updateNumValue)
+        self.numPadding_spinBox.valueChanged.connect(self.updateNumPaddingValue)
+        self.renameChild_radialbutton.toggled.connect(self.updateRenameChildState)
+        self.renameAll_radialbutton.toggled.connect(self.updateRenameAllState)
 
-    def menuBar(self):
-        pass
-        # self.menuBar = QtWidgets.QMenu
+    def createMenuBar(self):
+        # create Action
+        self.reset_action = QtWidgets.QAction('Reset', self)
+        self.reset_action.setToolTip('Reset UI To Default Value')
+        self.reset_action.setStatusTip('Reset UI To Default Value')
+        self.reset_action.triggered.connect(self.resetUI)
+        # create Menu
+        self.menubar = self.menuBar()
+        self.optionmenu = self.menubar.addMenu('Option')
+        self.optionmenu.addAction(self.reset_action)
+        # self.me
 
     def mainNameBox(self):
         self.mainNameGroup = QtWidgets.QGroupBox()
@@ -252,7 +330,7 @@ class Renamer(QtWidgets.QMainWindow):
         return self.mainNameGroup
     
     def optionBox(self):
-        self.incGroup = QtWidgets.QGroupBox()
+        self.incGroup = QtWidgets.QGroupBox('Extra Option')
         # create Layout
         self.incLayout = QtWidgets.QHBoxLayout()
         self.incLayout.addWidget(self.directionBox())
@@ -262,12 +340,12 @@ class Renamer(QtWidgets.QMainWindow):
         return self.incGroup
 
     def numberingBox(self):
-        self.numberGroup = QtWidgets.QGroupBox()
+        self.numberGroup = QtWidgets.QGroupBox("Add Number")
         # Create Layout
         self.numberLayout = QtWidgets.QVBoxLayout()
         self.numberLayout.setAlignment(QtCore.Qt.AlignTop)
         # Create Widget
-        self.numberLayout.addWidget(QtWidgets.QLabel('Numbering:'))
+        # self.numberLayout.addWidget(QtWidgets.QLabel('Numbering:'))
         group = QtWidgets.QHBoxLayout()
         self.numberEnable_checkbox = QtWidgets.QCheckBox('Enable')
         group.addWidget(self.numberEnable_checkbox)
@@ -278,7 +356,7 @@ class Renamer(QtWidgets.QMainWindow):
             'Start At: ',
             QtWidgets.QSpinBox,
             self.numberLayout)
-        self.padding_spinBox = self.labelGroup(
+        self.numPadding_spinBox = self.labelGroup(
             'Padding: ',
             QtWidgets.QSpinBox,
             self.numberLayout)
@@ -287,21 +365,22 @@ class Renamer(QtWidgets.QMainWindow):
             QtWidgets.QComboBox,
             self.numberLayout)
         # Set Widget
-        self.numberEnable_checkbox.setChecked(True)
-        self.startNumber_spinBox.setValue(1)
-        self.padding_spinBox.setValue(2)
+        self.numberEnable_checkbox.setChecked(self.numBool)
+        self.startNumber_spinBox.setValue(self.startNum)
+        self.numPadding_spinBox.setValue(self.numPadding)
         for id, i in enumerate(['After Name', 'After Suffix']):
             self.numberPosition_comboBox.insertItem(id,i)
+        self.numberPosition_comboBox.setCurrentIndex(self.numPos)
         # Add Layout
         self.numberGroup.setLayout(self.numberLayout)
         return self.numberGroup
 
     def letteringBox(self):
-        self.letterGroup = QtWidgets.QGroupBox()
+        self.letterGroup = QtWidgets.QGroupBox('Add Letter')
         self.letterLayout = QtWidgets.QVBoxLayout()
         self.letterLayout.setAlignment(QtCore.Qt.AlignTop)
         # Create Widget
-        self.letterLayout.addWidget(QtWidgets.QLabel('Lettering:'))
+        # self.letterLayout.addWidget(QtWidgets.QLabel('Lettering:'))
         group = QtWidgets.QHBoxLayout()
         self.letterEnable_checkbox = QtWidgets.QCheckBox('Enable')
         group.addWidget(self.letterEnable_checkbox)
@@ -321,24 +400,25 @@ class Renamer(QtWidgets.QMainWindow):
             QtWidgets.QComboBox,
             self.letterLayout)
         # Set Widget
-        self.letterList = list(alphabet)
-        self.letterList.extend(
-            [''.join(list(i)) for i in list(
-                product(alphabet, repeat=2))])
         for id, ch in enumerate(self.letterList):
             self.startletter_comboBox.insertItem(id,ch)
         for id, i in enumerate(['After Name', 'After Suffix']):
             self.letterPosition_comboBox.insertItem(id,i)
         for id, i in enumerate(['False', 'True']):
             self.letterIterate_comboBox.insertItem(id,i)
+        self.letterEnable_checkbox.setChecked(self.letterBool)
+        self.letterAddSeparator_checkbox.setChecked(self.letterAddSepBool)
+        self.letterPosition_comboBox.setCurrentIndex(self.letterPos)
+        self.startletter_comboBox.setCurrentIndex(self.startLetter)
+        self.letterIterate_comboBox.setCurrentIndex(self.letterIterBool)
         # Add Layout
         self.letterGroup.setLayout(self.letterLayout)
         return self.letterGroup
 
     def directionBox(self):
-        self.directionGroup = QtWidgets.QGroupBox()
+        self.directionGroup = QtWidgets.QGroupBox("Add Direction")
         self.directionLayout = QtWidgets.QVBoxLayout()
-        self.directionLayout.addWidget(QtWidgets.QLabel('Direction:'))
+        # self.directionLayout.addWidget(QtWidgets.QLabel('Direction:'))
         self.directionLayout.setAlignment(QtCore.Qt.AlignTop)
         # Create Widget
         group = QtWidgets.QHBoxLayout()
@@ -356,19 +436,21 @@ class Renamer(QtWidgets.QMainWindow):
             QtWidgets.QComboBox,
             self.directionLayout)
         # Set Widget
-        directionList = ("Left,Right,Up,Down,Center,Bottom,Middle,L,R,T,B,C,M,Mid").split(',')
-        for id, ch in enumerate(directionList):
+        for id, ch in enumerate(self.directionList.split(',')):
             self.direction_comboBox.insertItem(id,ch)
         self.direction_comboBox.setEditable(True)
-        for id, i in enumerate(['Before Prefix','Before Name','After Name','After Suffix']):
+        for id, i in enumerate(['Before Name','After Name','After Suffix']):
             self.directionPosition_comboBox.insertItem(id,i)
-        self.directionPosition_comboBox.setCurrentIndex(2)
+        self.directionEnable_checkbox.setChecked(self.directionBool)
+        self.directionAddSeparator_checkbox.setChecked(self.dirAddSepBool)
+        self.direction_comboBox.setCurrentIndex(self.direction)
+        self.directionPosition_comboBox.setCurrentIndex(self.dirPos)
         # Add Layout
         self.directionGroup.setLayout(self.directionLayout)
         return self.directionGroup
 
     def replaceNameBox(self):
-        self.replaceNameGroup = QtWidgets.QGroupBox()
+        self.replaceNameGroup = QtWidgets.QGroupBox("Search && Replace Name")
         self.replaceNameLayout = QtWidgets.QHBoxLayout()
         self.replaceNameLayout.setAlignment(QtCore.Qt.AlignTop)
         # Create Widget
@@ -377,6 +459,8 @@ class Renamer(QtWidgets.QMainWindow):
         self.nameReplace_button = QtWidgets.QPushButton('Apply')
         self.replaceNameLayout.addWidget(self.nameReplace_button)
         # Set Widget
+        self.nameSearch_text.setText(self.searchName)
+        self.nameReplace_text.setText(self.replaceName)
         # Add Layout
         self.replaceNameGroup.setLayout(self.replaceNameLayout)
         return self.replaceNameGroup
@@ -388,30 +472,127 @@ class Renamer(QtWidgets.QMainWindow):
             # layout.setColumnMinimumWidth(i,100)
         self.selectedOnly_radiobutton = QtWidgets.QRadioButton('Selected')
         self.renameChild_radialbutton = QtWidgets.QRadioButton('Hierachy')
-        self.renameAll_radiobutton = QtWidgets.QRadioButton('All')
+        self.renameAll_radialbutton = QtWidgets.QRadioButton('All')
         self.apply_button = QtWidgets.QPushButton('Apply')
-        self.matchShapeName_button = QtWidgets.QPushButton('Rename All Shape')
+        self.matchShapeName_button = QtWidgets.QPushButton('Rename Shape')
+        self.labelJoint_button = QtWidgets.QPushButton('Label Joint')
+        # set Wiget Value
+        # self.apply_button.toolTip().setText('asdasd')
+        self.apply_button.setToolTip('Rename Object')
+        self.apply_button.setStatusTip('Rename Object')
         self.selectedOnly_radiobutton.setChecked(True)
         # Add Widget
         layout.addWidget(self.selectedOnly_radiobutton)
         layout.addWidget(self.renameChild_radialbutton)
-        layout.addWidget(self.renameAll_radiobutton)
+        layout.addWidget(self.renameAll_radialbutton)
         layout.addWidget(self.apply_button)
         layout.addWidget(self.matchShapeName_button)
+        layout.addWidget(self.labelJoint_button)
         layout.setStretch(3,1)
         layout.setStretch(4,1)
-        layout.addStretch(1)
+        # layout.addStretch(1)
         groupbox.setLayout(layout)
         return groupbox
 
     # Function CallBack
 
+    def updateNameText(self, value): 
+        self.nameValue = value
+        self.setUIValue('renameUI_nameValue', value)
+
+    def updatePrefixText(self, value):
+        self.prefix_list = ','.join([
+            self.prefix_combobox.itemText(i)
+            for i in range(self.prefix_combobox.count())
+            if i not in self.prefix_list.split(',')])
+        self.prefixValue = value
+        self.setUIValue('renameUI_prefixList', self.prefix_list)
+        self.setUIValue('renameUI_prefixValue', value)
+
+    def updateSuffixText(self, value):
+        self.suffix_list = ','.join([
+            self.suffix_combobox.itemText(i)
+            for i in range(self.suffix_combobox.count())
+            if i not in self.suffix_list.split(',')])
+        self.suffixValue = value
+        self.setUIValue('renameUI_suffixList', self.suffix_list)
+        self.setUIValue('renameUI_suffixValue', value)
+
+    def updateSearchNameText(self, value):
+        self.searchName = value
+        self.setUIValue('renameUI_searchValue', value)
+
+    def updateReplaceNameText(self, value):
+        self.replaceName = value
+        self.setUIValue('renameUI_replaceValue', value)
+
+    def updateDirEnableState(self, value):
+        self.directionBool = value
+        self.setUIValue('renameUI_dirToggle', value)
+
+    def updateDirAddSepState(self, value):
+        self.dirAddSepBool = value
+        self.setUIValue('renameUI_dirAddSepToggle', value)
+
+    def updateDirectionValue(self, value):
+        self.directionList = ','.join([
+            self.direction_comboBox.itemText(i)
+            for i in range(self.direction_comboBox.count())
+            if i not in self.directionList.split(',')])
+        self.direction = value
+        self.setUIValue('renameUI_directionList', self.directionList)
+        self.setUIValue('renameUI_dirValue', value)
+
+    def updateDirectionPos(self, value):
+        self.dirPos = value
+        self.setUIValue('renameUI_dirPosValue', value)
+
+    def updateLetterEnableState(self, value):
+        self.letterBool = value
+        self.setUIValue('renameUI_letterToggle', value)
+
+    def updateLetterValue(self, value):
+        self.startLetter = value
+        self.setUIValue('renameUI_letterAddSepToggle', value)
+
+    def updateLetterIterState(self, value):
+        self.letterIterBool = value
+        self.setUIValue('renameUI_letterIterToggle', value)
+
+    def updateLetterPos(self, value):
+        self.letterPos = value
+        self.setUIValue('renameUI_letterPosValue', value)
+
+    def updateNumEnableState(self, value):
+        self.numBool = value
+        self.setUIValue('renameUI_numberToggle', value)
+
+    def updateNumAddSepState(self, value):
+        self.setUIValue('renameUI_numberAddSepToggle', value)
+
+    def updateNumValue(self, value):
+        self.startNum = value
+        self.setUIValue('renameUI_startNumberValue', value)
+
+    def updateNumPaddingValue(self, value):
+        self.numPadding = value
+        self.setUIValue('renameUI_paddingValue', value)
+
+    def updateRenameChildState(self, value):
+        self.renameChildBool = value
+        self.setUIValue('renameUI_renameChildToggle', value)
+
+    def updateRenameAllState(self, value):
+        self.renameAllBool = value
+        self.setUIValue('renameUI_renameAllToggle', value)
+
     def resetUI(self):
-        self._initUIValue()
+        resetOptionVar()
         self._initMainUI()
+        self.show()
 
     def getOblist(self):
-        ob_list = pm.selected() if not self.renameAll_radiobutton.isChecked() else pm.ls(type='transform')
+        ob_list = pm.selected() if not self.renameAll_radialbutton.isChecked() else pm.ls(type='transform')
         if not ob_list:
             pm.informBox('Error', 'No Object Selected')
             raise RuntimeError('No Object Selected')
@@ -525,6 +706,59 @@ class Renamer(QtWidgets.QMainWindow):
             newName = name.replace(self.nameSearch_text.text(),self.nameReplace_text.text())
             self.rename(ob, newName)
 
+    def onRenameShapeClick(self):
+        ob_list = self.getOblist()
+        for ob in ob_list:
+            if not hasattr(ob, 'name'):
+                continue
+            name = ob.name().split('|')[-1]
+            newName = name+'Shape'
+            if hasattr(ob, 'getShapes'):
+                for obShape in ob.getShapes():
+                    obShape.rename(newName)
+            if self.renameChild_radialbutton.isChecked():
+                for obChild in ob.getChildren(type='transform', ad=True):
+                    if hasattr(obChild, 'getShapes'):
+                        name = obChild.name().split('|')[-1]
+                        newName = name+'Shape'
+                        for obCShape in obChild.getShapes():
+                            obCShape.rename(newName)
+
+    def onLabelJointClick(self):
+        remove_prefixes=['CH_'],
+        direction_label={
+            'Left': (1, ['left', 'Left', '_L_', 'L_', '_L']),
+            'Right': (2, ['right', 'Right', '_R_', 'R_', '_R'])}
+        ob_list = self.getOblist()
+        for ob in ob_list:
+            if not isinstance(ob, pm.nt.Joint):
+                continue
+            try:
+                ob.attr('type').set(18)
+                wildcard = ''
+                sideid = 0
+                for dir, (side_id, name_wc) in direction_label.items():
+                    for wc in name_wc:
+                        print wc, ob.name()
+                        if wc in ob.name():
+                            wildcard = wc
+                            sideid = side_id
+                            break
+                    if wildcard:
+                        break
+                #print wildcard
+                label_name = ob.name().replace(wildcard, '')
+                if '|' in label_name:
+                    label_name = label_name.split('|')[-1]
+                if remove_prefixes:
+                    for prefix in remove_prefixes:
+                        label_name = label_name.replace(prefix, '')
+                ob.otherType.set(label_name)
+                ob.side.set(sideid)
+                log.info('set {} joint label to {}'.format(ob, label_name))
+            except (AttributeError,RuntimeError) as why:
+                log.error(why)
+
     def onApplyClick(self):
         # Base Name Variable
         separator = self.separator
@@ -540,14 +774,14 @@ class Renamer(QtWidgets.QMainWindow):
         directionBool = self.directionEnable_checkbox.checkState()
         dirAddSepBool = self.directionAddSeparator_checkbox.checkState()
         renameChildBool = self.renameChild_radialbutton.isChecked()
-        renameAllBool = self.renameAll_radiobutton.isChecked()
+        renameAllBool = self.renameAll_radialbutton.isChecked()
         # Optional Name Variable Position
         numPos = self.numberPosition_comboBox.currentText()
         letterPos = self.letterPosition_comboBox.currentText()
         dirPos = self.directionPosition_comboBox.currentText()
         # Optional Name Variable Value
         startNum = self.startNumber_spinBox.value()
-        numPadding = self.padding_spinBox.value()
+        numPadding = self.numPadding_spinBox.value()
         startLetter = self.startletter_comboBox.currentIndex()
         direction = self.direction_comboBox.currentText()
         # Name List generate
@@ -638,6 +872,36 @@ class Renamer(QtWidgets.QMainWindow):
     @classmethod
     def showUI(cls):
         cls().show()
+
+def resetOptionVar():
+    for var in [
+        'renameUI_nameValue',
+        'renameUI_separatorValue',
+        'renameUI_prefixValue',
+        'renameUI_prefixList',
+        'renameUI_suffixValue',
+        'renameUI_suffixList',
+        'renameUI_numberToggle',
+        'renameUI_numberAddSepToggle',
+        'renameUI_letterToggle',
+        'renameUI_letterIterToggle',
+        'renameUI_letterAddSepToggle',
+        'renameUI_dirToggle',
+        'renameUI_dirAddSepToggle',
+        'renameUI_renameChildToggle',
+        'renameUI_renameAllToggle',
+        'renameUI_numberPosValue',
+        'renameUI_letterPosValue',
+        'renameUI_dirPosValue',
+        'renameUI_startNumberValue',
+        'renameUI_paddingValue',
+        'renameUI_startLetterValue',
+        'renameUI_directionList',
+        'renameUI_dirValue']:
+        try:
+            del pm.optionVar[var]
+        except KeyError:
+            pass
 
 def show():
     win = Renamer()
