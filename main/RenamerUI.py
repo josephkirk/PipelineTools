@@ -23,6 +23,25 @@ mayaMainWindow = pm.ui.Window('MayaWindow').asQtObject()
 # Wrapper
 SIGNAL = QtCore.SIGNAL
 SLOT = QtCore.SLOT
+#
+def iter_hierachy(root, filter = ['transform']):
+    '''yield hierachy generator object with stack method'''
+    stack = [root]
+    level = 0
+    while stack:
+        level +=1
+        node = stack.pop()
+        yield node
+        if hasattr(node, 'getChildren'):
+            childs = node.getChildren( type=filter )
+            if len(childs) > 1:
+                log.debug('\nsplit to %s, %s'%(len(childs),str(childs)))
+                for child in childs:
+                    subStack = iter_hierachy(child)
+                    for subChild in subStack:
+                        yield subChild
+            else:
+                stack.extend( childs )
 # UIClass
 class Renamer(QtWidgets.QMainWindow):
     '''
@@ -483,7 +502,12 @@ class Renamer(QtWidgets.QMainWindow):
         # self.apply_button.toolTip().setText('asdasd')
         self.apply_button.setToolTip('Rename Object')
         self.apply_button.setStatusTip('Rename Object')
-        self.selectedOnly_radiobutton.setChecked(True)
+        if not self.renameChildBool and not self.renameAllBool:
+            self.selectedOnly_radiobutton.setChecked(True)
+        else:
+            self.selectedOnly_radiobutton.setChecked(False)
+        self.renameChild_radialbutton.setChecked(self.renameChildBool)
+        self.renameAll_radialbutton.setChecked(self.renameAllBool)
         # Add Widget
         layout.addWidget(self.selectedOnly_radiobutton)
         layout.addWidget(self.renameChild_radialbutton)
@@ -582,10 +606,12 @@ class Renamer(QtWidgets.QMainWindow):
         self.setUIValue('renameUI_paddingValue', value)
 
     def updateRenameChildState(self, value):
+        # print value
         self.renameChildBool = value
         self.setUIValue('renameUI_renameChildToggle', value)
 
     def updateRenameAllState(self, value):
+        # print value
         self.renameAllBool = value
         self.setUIValue('renameUI_renameAllToggle', value)
 
@@ -733,16 +759,16 @@ class Renamer(QtWidgets.QMainWindow):
             'Left': (1, ['left', 'Left', '_L_', 'L_', '_L']),
             'Right': (2, ['right', 'Right', '_R_', 'R_', '_R'])}
         ob_list = self.getOblist()
-        for ob in ob_list:
+        def labelJoint(ob):
             if not isinstance(ob, pm.nt.Joint):
-                continue
+                return
             try:
                 ob.attr('type').set(18)
                 wildcard = ''
                 sideid = 0
                 for dir, (side_id, name_wc) in direction_label.items():
                     for wc in name_wc:
-                        print wc, ob.name()
+                        # print wc, ob.name()
                         if wc in ob.name():
                             wildcard = wc
                             sideid = side_id
@@ -753,14 +779,19 @@ class Renamer(QtWidgets.QMainWindow):
                 label_name = ob.name().replace(wildcard, '')
                 if '|' in label_name:
                     label_name = label_name.split('|')[-1]
-                if remove_prefixes:
                     for prefix in remove_prefixes:
+                        print label_name, prefix
                         label_name = label_name.replace(prefix, '')
                 ob.otherType.set(label_name)
                 ob.side.set(sideid)
                 log.info('set {} joint label to {}'.format(ob, label_name))
             except (AttributeError,RuntimeError) as why:
                 log.error(why)
+        for ob in ob_list:
+            labelJoint(ob)
+            if self.renameChildBool:
+                for obc in ob.getChildren(type='joint', ad=True):
+                    labelJoint(obc)
 
     def onApplyClick(self):
         # Base Name Variable
@@ -846,8 +877,8 @@ class Renamer(QtWidgets.QMainWindow):
                         obname = ob.name()
                     # if len(ob.getChildren()) > 1:
                     childCount = len(ob.getChildren(type='transform'))
-                    print childCount, ob.getChildren(type='transform')
-                    childs = ul.iter_hierachy(ob)
+                    # print childCount, ob.getChildren(type='transform')
+                    childs = iter_hierachy(ob)
                     i = 1
                     l = -1
                     for child in iter(childs):
