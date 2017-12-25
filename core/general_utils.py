@@ -812,11 +812,11 @@ def get_points(sellist):
     return (transformtype + vertextype + edgetype + facetype)
 # --- Transformation and Shape --- #
 @do_function_on()
-def setColor(ob, color=[1,0,0,0]):
+def setColor(control, color=[1,0,0,0]):
     try:
         control.overrideEnabled.set(True)
         control.overrideRGBColors.set(True)
-        control.overrideColorRGB.set(self.color)
+        control.overrideColorRGB.set(color[:-1])
         sg = control.shadingGroups()[0] if control.shadingGroups() else None
         if sg:
             shdr = sg.inputs()[0]

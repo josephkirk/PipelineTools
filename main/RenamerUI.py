@@ -43,7 +43,7 @@ def iter_hierachy(root, filter = ['transform']):
             else:
                 stack.extend( childs )
 # UIClass
-class Renamer(QtWidgets.QMainWindow):
+class main(QtWidgets.QMainWindow):
     '''
     Qt UI to rename Object in Scene
     '''
@@ -193,7 +193,6 @@ class Renamer(QtWidgets.QMainWindow):
         self.setCentralWidget(self.mainCtner)
         self.setStyle()
         self._connectFunction()
-
 
     def addWidgets(self):
         # self.mainLayout.addWidget(self.createSeparator())
@@ -938,7 +937,7 @@ def resetOptionVar():
             pass
 
 def show():
-    win = Renamer()
+    win = main()
     win.show()
     return win
 

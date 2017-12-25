@@ -1128,8 +1128,8 @@ def create_hair_system(name=''):
         time = pm.nt.Time()
     time.outTime >> hairSys.currentTime
     time.outTime >> nucleus.currentTime
-    hairSys.currentState >> nucleus.inputActive[0]
-    hairSys.startState >> nucleus.inputActiveStart[0]
+    hairSys.currentState >> nucleus.inputActive[len(nucleus.inputActive.get())]
+    hairSys.startState >> nucleus.inputActiveStart[len(nucleus.inputActiveStart.get())]
     nucleus.outputObjects[0] >> hairSys.nextState
     nucleus.startFrame >> hairSys.startFrame
     hairSys.active.set(1)
@@ -1242,6 +1242,11 @@ def create_parent_control(boneRoot, parent='ctlGp',useLoc=False, customShape=Non
     ctls = []
     boneChain = ul.iter_hierachy(boneRoot)
     for bone in iter(boneChain):
+        if hasattr(bone, 'getChildren'):
+            if not bone.getChildren(type='joint'):
+                continue
+        else:
+            continue
         if not ul.get_type(bone) == 'joint':
             continue
         if 'offset' not in ul.get_name(bone):
@@ -1269,13 +1274,14 @@ def create_parent_control(boneRoot, parent='ctlGp',useLoc=False, customShape=Non
         loc = connect_with_loc(
             ctls[0],
             ctls[0].outputs(type='joint')[0], all=True)
-        loc[0].getParent().setParent(ctls[0])
+        loc[0].getParent().setParent(ctls[0].getParent())
     if parent:
         if pm.objExists(parent):
             ctlRoot.setParent(parent)
         else:
             pm.group(ctlRoot,name=parent)
-    return ctls
+    result = (ctls,loc[0]) if useLoc else ctls
+    return result
 
 #--- Rigging Hair Control Methods ---
 @ul.do_function_on()
@@ -1303,24 +1309,41 @@ def create_long_hair(boneRoot, hairSystem='', circle=True, simplifyCurve=False, 
     hairSystem = make_curve_dynamic(ikcurve, hairSystem=hairSystem)
     dynamicCurve, follicle, hairSys = [i for i in hairSystem]
     dynamicCurve.worldSpace[0] >> ikhandle.inCurve
-    controls = create_parent_control(boneRoot, parent='',useLoc=True)
+    controls, rootLoc = create_parent_control(boneRoot, parent='',useLoc=True)
+    nurbShapes = []
     if circle:
         for control in controls:
             if customShape:
                 tempShape = customShape()
             else:
-                tempShape = createPinCircle(
-                    control.name(),
-                    axis='YZ',
-                    radius=2,
-                    length=0)
-            ul.parent_shape(tempShape, control)
+                tempShape = pm.circle(radius=2)
+                tempShape[0].setRotation([0,90,0])
+                pm.makeIdentity(tempShape[0], apply=True)
+                nurbShapes.append(tempShape[1])
+            ul.parent_shape(tempShape[0], control)
+            control.addAttr('radius', type='float', defaultValue=2, k=1)
+            control.radius >> tempShape[1].radius
+            ul.setColor(control, color=[1,0,0,0])
             #pm.delete(tempShape)
     controlGp = create_parent(controls[0].getParent())
     controlGp = controlGp.rename(controlGp.name().split('_')[0]+'_root_ctlGp')
-    controlRoot = createPinCircle(controlGp.name(),axis='YZ',radius=3,length=0)
+    controlRoot = pm.circle(radius=3)
+    controlRoot[0].setRotation([0,90,0])
+    pm.makeIdentity(controlRoot[0], apply=True)
+    controlRoot[0].addAttr('radius', type='float', defaultValue=3, k=1)
+    controlRoot[0].addAttr('subRadius', type='float', defaultValue=2, k=1)
+    controlRoot[0].radius >> controlRoot[1].radius
+    controlRoot = controlRoot[0]
     xformTo(controlRoot, controlGp)
     controlRoot.setParent(controlGp)
+    ul.setColor(controlRoot, color=[1,1,0,0])
+    for control in controls:
+        if hasattr(control, 'radius'):
+            controlRoot.subRadius >> control.radius
+    # controlRoot.addAttr('subRadius',type='float',defaultValue=2)
+    # for sh in nurbShapes:
+    #     controlRoot.subRadius >> sh.radius
+    # print nurbShapes
     #loc.getParent().setParent(controlGp)
     dupBoneGp.setParent(controlRoot)
     focGp = follicle.getParent().getParent()
@@ -1338,7 +1361,7 @@ def create_long_hair(boneRoot, hairSystem='', circle=True, simplifyCurve=False, 
         loc = connect_with_loc(dynamicBone, offset,all=True)[0]
         loc.getParent().setParent(dynamicBone.getParent())
         locs.append(loc)
-    print locs
+    # print locs
     #lock ctlRoot translate and scale
     for atr in [
         'tx','ty','tz',
@@ -1349,6 +1372,7 @@ def create_long_hair(boneRoot, hairSystem='', circle=True, simplifyCurve=False, 
     hairMiscGp = pm.PyNode("hairSystem_miscGp")
     hairSys.getParent().setParent(hairMiscGp)
     dynamicCurve.getParent().getParent().setParent(hairMiscGp)
+    rootLoc.getParent().setParent(controlGp)
     if pm.objExists('ctlGp'):
         controlGp.setParent('ctlGp')
     else:
