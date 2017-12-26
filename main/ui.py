@@ -12,6 +12,8 @@ import types
 from .. import core
 from ..project_specific import ns57
 import RenamerUI
+import RebuildBSUI
+import SkinSetterUI
 import maya.mel as mm
 from pymel.core import *
 # try load External Skinning Tool
@@ -491,6 +493,12 @@ class RigTools(object):
 
             with frameLayout(label='Rigging:', cl=False):
                 with columnLayout():
+                    button(
+                        label='Rebuild BlendShape',
+                        c=Callback(RebuildBSUI.show))
+                    button(
+                        label='Set Skin Weight',
+                        c=Callback(SkinSetterUI.show))
                     with gridLayout(cw=150):
                         self.template.smallbutton(
                             label='Create Parent',

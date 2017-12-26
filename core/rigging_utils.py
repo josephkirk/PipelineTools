@@ -487,9 +487,9 @@ def disconnect_transform(ob , attr='all'):
 @ul.do_function_on(type_filter=["blendShape"])
 def rebuild_blendshape_target(
         bsname,
+        newBSName='RebuildBS',
         reset_value=False,
         rebuild=False,
-        delete_old=True,
         parent=None,
         offset=0,
         exclude=[], exclude_last=False):
@@ -528,7 +528,7 @@ def rebuild_blendshape_target(
         blendshape_name = blendshape.name()
         iter = 1
         target_rebuild_list = []
-        if parent != None and type(parent) is str:
+        if parent != None:
             if pm.objExists(parent):
                 pm.delete(pm.PyNode(parent))
             parent = pm.group(name=parent)
@@ -548,7 +548,7 @@ def rebuild_blendshape_target(
                 iter += 1
         pm.select(target_rebuild_list, r=True)
         pm.select(base_dup, add=True)
-        pm.blendShape()
+        pm.blendShape(name=newBSName)
         blend_reget = rebuild_blendshape_target(blendshape_name)
         blendshape = blend_reget[0]
         target_list = blend_reget[1]
@@ -1385,7 +1385,7 @@ def create_long_hair(boneRoot, hairSystem='', circle=True, simplifyCurve=False, 
     control_tagging(controlRoot, metaname='DynamicHairControlsSet_MetaNode')
 
 @ul.do_function_on()
-def create_splineIK(bone, midCtls=2, simplifyCurve=False, customShape=None):
+def create_splineIK(bone, midCtls=2,addFK=False, addSway=False, simplifyCurve=False, customShape=None):
     bones = ul.recurse_collect(ul.iter_hierachy(bone, filter='joint'))
     if len(bones) < 2:
         log.warning('Bone Chains have less than 2 joints')
@@ -1420,40 +1420,42 @@ def create_splineIK(bone, midCtls=2, simplifyCurve=False, customShape=None):
     endCtl.roll >> ikhandle.roll
     endCtl.addAttr('twist', type='float',k=1)
     endCtl.twist >> ikhandle.twist
-    endCtl.addAttr(
-        'ikFkSwitch', type='float',
-        defaultValue=1, minValue=0, maxValue=1, k=1)
-    endCtl.ikFkSwitch >> ikhandle.ikBlend
     curveSkin = pm.skinCluster(*ul.recurse_collect(boneTops, ikcurve))
-    circleShape = ul.partial(
-        createPinCircle,
-        'control',
-        axis='YZ',
-        radius=2,
-        step=8,
-        sphere=False,
-        length=0)
-    pCtls = create_parent_control(startBone, customShape=circleShape)
-    endCtl.addAttr(
-        'fkvis', type='bool', defaultValue=False, k=1
-    )
-    endCtl.fkvis >> pCtls[0].getParent().visibility
-    constraint_multi(pCtls[0], endCtl, constraintType='Aim')
-    time = pm.PyNode('time1')
-    mul = pm.nt.MultiplyDivide()
-    ocontraint = endCtl.outputs(type='orientConstraint')[0]
-    for at in ['X','Y','Z']:
-        atName = 'swaySpeed%s'%at
+    if addFK:
+        circleShape = ul.partial(
+            createPinCircle,
+            'control',
+            axis='YZ',
+            radius=2,
+            step=8,
+            sphere=False,
+            length=0)
         endCtl.addAttr(
-            atName, type='float',
-            defaultValue=0.1, minValue=0, k=1)
-        time.outTime >> mul.attr('input1%s'%at)
-        endCtl.attr(atName) >> mul.attr('input2%s'%at)
-        mul.attr('output%s'%at) >> ocontraint.attr('offset%s'%at)
-    # constraint_multi(en)
-    ikmiscGp = group([ikcurve, ikhandle], grpname=bonename+'_ikMisc')
-    bonGp = group([b.getParent() for b in boneTops], grpname=bonename+'_topBonGp')
-    return (boneTops)
+            'ikFkSwitch', type='float',
+            defaultValue=1, minValue=0, maxValue=1, k=1)
+        endCtl.ikFkSwitch >> ikhandle.ikBlend
+        pCtls = create_parent_control(startBone, customShape=circleShape)
+        endCtl.addAttr(
+            'fkvis', type='bool', defaultValue=False, k=1
+        )
+    if addSway:
+        endCtl.fkvis >> pCtls[0].getParent().visibility
+        constraint_multi(pCtls[0], endCtl, constraintType='Aim')
+        time = pm.PyNode('time1')
+        mul = pm.nt.MultiplyDivide()
+        ocontraint = endCtl.outputs(type='orientConstraint')[0]
+        for at in ['X','Y','Z']:
+            atName = 'swaySpeed%s'%at
+            endCtl.addAttr(
+                atName, type='float',
+                defaultValue=0.1, minValue=0, k=1)
+            time.outTime >> mul.attr('input1%s'%at)
+            endCtl.attr(atName) >> mul.attr('input2%s'%at)
+            mul.attr('output%s'%at) >> ocontraint.attr('offset%s'%at)
+        # constraint_multi(en)
+        ikmiscGp = group([ikcurve, ikhandle], grpname=bonename+'_ikMisc')
+        bonGp = group([b.getParent() for b in boneTops], grpname=bonename+'_topBonGp')
+        return (boneTops)
 
 @ul.do_function_on()
 def create_simpleIK(boneRoot, customShape=None):

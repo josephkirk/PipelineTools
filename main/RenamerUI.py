@@ -6,6 +6,7 @@ import logging
 from functools import partial
 from string import ascii_uppercase as alphabet
 from itertools import product
+import uiStyle
 # from ..core import general_utils as ul
 # from ..core import rigging_utils as rul
 try:
@@ -48,7 +49,7 @@ class main(QtWidgets.QMainWindow):
     Qt UI to rename Object in Scene
     '''
     def __init__(self, parent=None):
-        super(Renamer, self).__init__()
+        super(main, self).__init__()
         try:
             pm.deleteUI('RenamerWindow')
         except:
@@ -191,7 +192,7 @@ class main(QtWidgets.QMainWindow):
         # Set Layout
         self.mainCtner.setLayout(self.mainLayout)
         self.setCentralWidget(self.mainCtner)
-        self.setStyle()
+        self.setStyleSheet(uiStyle.styleSheet)
         self._connectFunction()
 
     def addWidgets(self):
@@ -202,51 +203,6 @@ class main(QtWidgets.QMainWindow):
         self.mainLayout.addWidget(self.optionBox())
         self.mainLayout.addWidget(self.buttonBox())
         self.mainLayout.addWidget(self.bottomFiller)
-
-    def setStyle(self):
-        styleSheet = """
-            QFrame {
-                font: italic 12px; 
-                border: 2px solid rgb(20,20,20);
-                border-radius: 4px;
-                border-width: 0px;
-                padding: 2px;
-                background-color: rgb(70,70,70);
-                }
-
-            QMenu {
-                margin: 2px; /* some spacing around the menu */
-            }
-
-            QMenuBar {
-                font: bold 12px;
-                border-color: lightgray;
-                border-width: 2px;
-                background-color: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 rgb(30,30,30), stop:1 rgb(40,40,40));
-            }
-
-            QPushButton {
-                background-color: rgb(100,100,100);
-                }
-
-            QGroupBox {
-                font: bold 12px;
-                color: rgb(200,200,200);
-                padding-top: 10px;
-                background-color: rgb(80,80,80);
-                border: 1px solid gray;
-                border-radius: 4px;
-                margin-top: 5px;
-            }
-
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                subcontrol-position: top center; /* position at the top center */
-                padding: 0px 5px;
-            }
-            """
-        self.setStyleSheet(styleSheet)
 
     def _connectFunction(self):
         def connect(button,func):
