@@ -61,7 +61,7 @@ class main(QtWidgets.QMainWindow):
         self.normalizeToggle = True
         self.hierachyToggle = False
         self.useLastSelectToggle = True
-        self.blendWeightValue = 0.0
+        self.blendWeightValue = 1.0
         self.weightThreshold = [0.0, 0.1]
         self.weightInteractiveState = False
         self.blendInteractiveState = False
@@ -118,6 +118,7 @@ class main(QtWidgets.QMainWindow):
         bonesName_label.setAlignment(QtCore.Qt.AlignCenter)
         self.bonesName_listBox = QtWidgets.QListWidget()
         self.lockBonesList_checkBox = QtWidgets.QCheckBox('Lock List')
+        self.addBone_button = QtWidgets.QPushButton('Add Select')
         self.getInfluencesBone_button = QtWidgets.QPushButton('Get Influences')
         self.removeBone_button = QtWidgets.QPushButton('Remove Select')
         self.removeTopBoneList_button = QtWidgets.QPushButton('<X')
@@ -128,11 +129,14 @@ class main(QtWidgets.QMainWindow):
         self.moveBoneDownList_button = QtWidgets.QPushButton('<M')
         # set Widget Value
         self.objectName_text.setEnabled(False)
+        self.objectName_text.setAlignment(QtCore.Qt.AlignCenter)
+        self.objectName_text.setStyleSheet("text-align: center; color: white; font: bold 14px; background: gray;")
         self.bonesName_listBox.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
         # connect UI Function
 
         # add Widget
         bottomLayout.addWidget(self.lockBonesList_checkBox)
+        bottomLayout.addWidget(self.addBone_button)
         bottomLayout.addWidget(self.getInfluencesBone_button)
         bottomLayout.addWidget(self.removeBone_button)
 
@@ -169,6 +173,9 @@ class main(QtWidgets.QMainWindow):
         # set Widget Value
         self.currentSkinType_text.setText('None')
         self.currentSkinType_text.setEnabled(False)
+        self.currentSkinType_text.setAlignment(QtCore.Qt.AlignRight)
+        self.currentSkinType_text.setStyleSheet("text-align: center; color: white; font: italic 12px; background: gray;")
+        self.bonesName_listBox.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
         self.skinType_combobox.insertItems(0, self.skinType_list)
         self.skinType_combobox.setCurrentIndex(self.currentSkinType)
         # add Widget
@@ -340,10 +347,13 @@ class main(QtWidgets.QMainWindow):
     def _connectFunction(self):
         #Button CallBack
         ## objectBox
-        self.removeTopBoneList_button.clicked.connect(self.boneList_removeTop)
-        self.removeAllBones_button.clicked.connect(self.boneList_clear)
-        self.removeBottomBoneList_button.clicked.connect(self.boneList_removeBottom)
-        self.removeBone_button.clicked.connect(self.boneList_removeSelect)
+        self.moveBoneUpList_button.clicked.connect(self.onBoneList_moveBoneUp)
+        self.makeBoneMainList_button.clicked.connect(self.onBoneList_makeBoneMain)
+        self.moveBoneDownList_button.clicked.connect(self.onBoneList_moveBoneDown)
+        self.removeTopBoneList_button.clicked.connect(self.onBoneList_removeTop)
+        self.removeAllBones_button.clicked.connect(self.onBoneList_clear)
+        self.removeBottomBoneList_button.clicked.connect(self.onBoneList_removeBottom)
+        self.removeBone_button.clicked.connect(self.onBoneList_removeSelect)
         self.getInfluencesBone_button.clicked.connect(self.getSkinMeshInfluences)
         # weight Filter Box
         self.selectFilterWeight_button.clicked.connect(self.onWeightFilterClick)
@@ -397,8 +407,11 @@ class main(QtWidgets.QMainWindow):
         self.updateBonesList()
 
     def resetUI(self):
-        pass
-
+        self._initMainUI()
+        self.createMenuBar()
+        self.createStatusBar()
+        self._connectFunction()
+        self.show()
     def updateSkinMeshList(self):
         try:
             objectList = [
@@ -452,6 +465,7 @@ class main(QtWidgets.QMainWindow):
                 log.warning('bone {} is no longer exists. Remove from list'.format(self.bones_list[id]))
                 self.bonesName_listBox.takeItem(id)
                 self.selectedBones_list.pop()
+        self.selectedBones_list.sort(key=lambda x:self.bones_list.index(x))
         log.debug('Current Select From List:\n{}'.format(str(self.selectedBones_list)))
 
     def updateBonesList(self):
@@ -464,10 +478,13 @@ class main(QtWidgets.QMainWindow):
                     self.updateBoneItemNames()
             else:
                 if not pm.selected():
+                    # self.updateSelectBone()
                     return
-                if pm.selected()[0] in self.bones_list:
-                    self.bonesName_listBox.setCurrentRow(
-                        self.bones_list.index(pm.selected()[0]))
+                for id, bone in enumerate(self.bones_list):
+                    selectState = True if bone in pm.selected() else False
+                    item = self.bonesName_listBox.item(id)
+                    item.setSelected(selectState)
+
         except (OSError, IOError, RuntimeError) as why:
             print why
             raise
@@ -480,9 +497,10 @@ class main(QtWidgets.QMainWindow):
                     b.name().split('|')[-1], self.weightValue) if id == 0 else
                 'Filler: {:^25.21} Weight set to: {:.2f}'.format(
                     b.name().split('|')[-1],
-                    (1.0-self.weightValue)/(len(self.bones_list)-1) if self.normalizeToggle else (1.0-self.weightValue))
+                    (1.0-self.weightValue)/(len(self.bones_list)-1) if self.normalizeToggle else self.weightValue)
                 for id, b in enumerate(self.bones_list)]
             self.bonesName_listBox.addItems(boneItemNames)
+            # self.bonesName_listBox.item(0).setObjectName('FirstItem')
         else:
             self.bonesName_listBox.clear()
 
@@ -519,6 +537,7 @@ class main(QtWidgets.QMainWindow):
             self.onSetWeightClick()
         self.updateBoneItemNames()
 
+
     def updateBlendWeightValue(self, value):
         if isinstance(value, int):
             value = value/100.0
@@ -547,19 +566,47 @@ class main(QtWidgets.QMainWindow):
             self.bones_list = skinCluster.getInfluence()
         self.updateBoneItemNames()
 
-    def boneList_removeTop(self):
+    def onBoneList_moveBoneUp(self):
+        if self.bones_list:
+            for b in self.selectedBones_list:
+                upboneID= self.bones_list.index(b)-1
+                if upboneID >= 0:
+                    temp = self.bones_list[upboneID]
+                    self.bones_list[upboneID] = b
+                    self.bones_list[upboneID+1] = temp
+            self.updateBoneItemNames()
+
+    def onBoneList_makeBoneMain(self):
+        if self.selectedBones_list and self.bones_list:
+            oldID = self.bones_list.index(self.selectedBones_list[0])
+            temp = self.bones_list[0]
+            self.bones_list[0] = self.selectedBones_list[0]
+            self.bones_list[oldID] = temp
+            self.updateBoneItemNames()
+
+    def onBoneList_moveBoneDown(self):
+        if self.bones_list:
+            for b in self.selectedBones_list[::-1]:
+                downboneID= self.bones_list.index(b)+1
+                if downboneID < len(self.bones_list):
+                    temp = self.bones_list[downboneID]
+                    self.bones_list[downboneID] = b
+                    self.bones_list[downboneID-1] = temp
+            self.updateBoneItemNames()
+
+    def onBoneList_removeTop(self):
         self.bones_list= self.bones_list[1:]
         self.updateBoneItemNames()
 
-    def boneList_clear(self):
+    def onBoneList_clear(self):
         self.bones_list = []
         self.updateBoneItemNames()
 
-    def boneList_removeBottom(self):
+    def onBoneList_removeBottom(self):
         self.bones_list.pop()
         self.updateBoneItemNames()
 
-    def boneList_removeSelect(self):
+    def onBoneList_removeSelect(self):
         selectItems = self.bonesName_listBox.selectedItems()
         for item in selectItems:
             id = self.bonesName_listBox.row(item)
@@ -716,7 +763,7 @@ class main(QtWidgets.QMainWindow):
                     pass
         if parent:
             parent.addLayout(layout)
-            print tuple(createWidgets)
+            # print tuple(createWidgets)
             return tuple(createWidgets)
         else:
             return (tuple(createWidgets), layout)

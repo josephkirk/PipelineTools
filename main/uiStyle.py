@@ -59,6 +59,36 @@ QSlider::handle:horizontal {
     margin: -2px 0; /* handle is placed by default on the contents rect of the groove. Expand outside the groove */
     border-radius: 3px;
 }
+QListWidget {
+    color: lightgray;
+    font: bold;
+    background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                                stop: 0 #222222, stop: 1 #333333);
+    show-decoration-selected: 1; /* make the selection span the entire width of the view */
+}
+
+QListWidget::item {
+    bottom: 5px;
+}
+QListWidget::item:selected {
+    padding-left: 5px;
+}
+
+QListWidget::item:selected:!active {
+    background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                                stop: 0 darkgray, stop: 1 gray);
+}
+
+QListWidget::item:selected:active {
+    background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                                stop: 0 darkgray, stop: 1 gray);
+}
+
+QListWidget::item:hover {
+    background: qlineargradient(x1: 0, y1: 0, x2: 0, y2: 1,
+                                stop: 0 #333333, stop: 1 #444444);
+}
+
 QStatusBar {
     border-color: lightgray;
     border-width: 2px;
