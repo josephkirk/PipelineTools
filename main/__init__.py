@@ -1,5 +1,11 @@
 import ui
+import SkinSetterUI
+import RebuildBSUI
 import RenamerUI
 def _reload():
-    reload(ui)
-    reload(RenamerUI)
+    for mod in [
+        ui,
+        SkinSetterUI,
+        RebuildBSUI,
+        RenamerUI]:
+        reload(mod)

@@ -50,11 +50,11 @@ class main(QtWidgets.QMainWindow):
     def _initUIValue(self):
         self.objectName = 'None'
         self.objectList = []
-        self.componectList = []
+        self.components_list = []
         self.skinType_list = ['Classic', 'Dual Quartenion', 'Blended'] 
         self.currentSkinType = 0
-        self.objectInfluences = []
-        self.lastSelected = []
+        self.bones_list = []
+        self.selectedBones_list = []
         self.weightValue = 1.0
         self.normalizeToggle = True
         self.hierachyToggle = False
@@ -104,7 +104,7 @@ class main(QtWidgets.QMainWindow):
         layout.setAlignment(QtCore.Qt.AlignVCenter)
         subLayout1 = QtWidgets.QHBoxLayout()
         subLayout2 = QtWidgets.QVBoxLayout()
-        subLayout3 = QtWidgets.QHBoxLayout()
+        subLayout3 = QtWidgets.QGridLayout()
         # subLayout1 = QtWidgets.QGridLayout()
         # create Widget
         objectName_label = QtWidgets.QLabel('Skin Mesh')
@@ -133,8 +133,9 @@ class main(QtWidgets.QMainWindow):
         subLayout2.addWidget(self.removeAllBones_button)
         subLayout2.addWidget(self.removeBottomBoneList_button)
 
-        subLayout3.addWidget(self.bonesName_listBox)
-        subLayout3.addLayout(subLayout2)
+        subLayout3.addWidget(self.bonesName_listBox,0,0)
+        subLayout3.addLayout(subLayout2,0,1)
+        subLayout3.setColumnStretch(0,3)
 
         layout.addWidget(objectName_label)
         layout.addWidget(self.objectName_text)
@@ -159,7 +160,6 @@ class main(QtWidgets.QMainWindow):
         self.skinType_combobox.insertItems(0, self.skinType_list)
         self.skinType_combobox.setCurrentIndex(self.currentSkinType)
         # add Widget
-
         # set Layout
         uiGrp.setLayout(layout)
         return uiGrp
@@ -227,8 +227,6 @@ class main(QtWidgets.QMainWindow):
         self.weightValue_floatSpinBox.setSingleStep(0.01)
         self.weightValue_floatSpinBox.setValue(self.weightValue)
         self.setWeightInteractive_checkbox.setChecked(self.weightInteractiveState)
-        # connect Widget
-
         # add Widget
         subLayout1.addWidget(option_label)
         subLayout1.addWidget(self.normalize_checkbox)
@@ -269,8 +267,6 @@ class main(QtWidgets.QMainWindow):
         self.blendWeightValue_floatSpinBox.setSingleStep(0.01)
         self.blendWeightValue_floatSpinBox.setValue(self.blendWeightValue)
         self.setBlendWeightInteractive_checkbox.setChecked(self.blendInteractiveState)
-        # connect Widget
-
         # add Widget
         layout.addWidget(blendWeight_label,0,0)
         layout.addWidget(self.blendWeightValue_slider,0,1)
@@ -334,6 +330,7 @@ class main(QtWidgets.QMainWindow):
 
         #UI Callback
         ## object Box
+        self.bonesName_listBox.itemSelectionChanged.connect(self.updateSelectBone)
         ## weight Filter Box
         self.weightThresholdMin_spinBox.valueChanged.connect(self.updateMinimumWeightThreshold)
         self.weightThresholdMax_spinBox.valueChanged.connect(self.updateMaximumWeightThreshold)
@@ -378,14 +375,14 @@ class main(QtWidgets.QMainWindow):
                 o for o in pm.selected() 
                 if ul.get_skin_cluster(o) and
                 not any([ul.get_type(o) == t for t in ['vertex','edge','face']])]
-            self.componectList = [
+            self.components_list = [
                 c for c in pm.selected()
                 if any([ul.get_type(c) == t for t in ['vertex','edge','face']])]
             self.objectName = pm.selected()[-1].name()
             self.objectName_text.setText(self.objectName)
             if self.objectList:
                 skinClster = ul.get_skin_cluster(self.objectList[-1])
-                self.objectInfluences = skinClster.getInfluence()
+                # self.bones_list = skinClster.getInfluence()
                 skinType = skinClster.getSkinMethod()
                 self.skinType_combobox.setCurrentIndex(skinType)
                 self.currentSkinType_text.setText(self.skinType_combobox.currentText())
@@ -393,14 +390,19 @@ class main(QtWidgets.QMainWindow):
                 self.currentSkinType_text.setText('None')
         except:
             pass
+    def updateSelectBone(self):
+        self.selectedBones_list = [
+            item.text() for item in self.bonesName_listBox.selectedItems()]
+        print self.selectedBones_list
 
     def updateBonesNameList(self):
         if not self.lockBonesList_checkBox.checkState():
-            self.skinBones = [
+            bones_list = [
                 b for b in pm.selected() if isinstance(b, pm.nt.Joint)]
-            if self.skinBones:
+            if bones_list:
                 self.bonesName_listBox.clear()
-                self.bonesName_listBox.insertItems(0, [b.name().split('|')[-1] for b in self.skinBones])
+                self.bones_list = bones_list
+                self.bonesName_listBox.insertItems(0, [b.name().split('|')[-1] for b in bones_list])
 
     def updateMinimumWeightThreshold(self, value):
         if value > self.weightThresholdMax_spinBox.value():
@@ -445,8 +447,9 @@ class main(QtWidgets.QMainWindow):
 
     # Button Action
     def getSkinMeshInfluences(self):
-        if self.objectInfluences:
-            pm.select(self.objectInfluences,r=True)
+        if self.objectList:
+            skinCluster = ul.get_skin_cluster(self.objectList[-1])
+            pm.select(skinCluster.getInfluence(),r=True)
 
     def boneList_removeTop(self):
         listItem = self.bonesName_listBox.takeItem(0)
@@ -471,7 +474,19 @@ class main(QtWidgets.QMainWindow):
         print self.weightThreshold
 
     def onSetWeightClick(self):
-        print self.weightValue
+        print self.components_list
+        print self.bones_list
+        selectItems = self.bonesName_listBox.selectedItems()
+        for item in selectItems:
+            print item.text(), item.data()
+        # ru.skin_weight_setter(
+        #     self.components_list,
+        #     skin_value=self.weight_value,
+        #     normalized=self.normalize,
+        #     hierachy=self.hierachy)
+        # self.last_selection()
+        # self.preview_skin_weight()
+
 
     def onSetBlendWeightClick(self):
         print self.blendWeightValue
