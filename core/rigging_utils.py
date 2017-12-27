@@ -577,9 +577,12 @@ def freeze_skin_joint(bon, hi=False):
     if hi:
         bonChain = ul.iter_hierachy(bon)
         bonChain.next()
-        for bon in iter(bonChain):
-            bon = bonChain.next()
-            freeze_skin_joint(bon)
+        while bonChain:
+            try:
+                bon = bonChain.next()
+                freeze_skin_joint(bon)
+            except StopIteration:
+                break
 
 @ul.do_function_on('oneToOne', type_filter=['joint'])
 def move_skin_weight(bon, targetBon, hi=False, reset_bindPose=False):
@@ -621,12 +624,21 @@ def move_skin_weight(bon, targetBon, hi=False, reset_bindPose=False):
             move_skin_weight(bon,targetBon)
 
 @ul.do_function_on('singleLast', type_filter=['joint', 'mesh'])
-def add_joint_influence(bone, skinmesh):
+def add_joint_influence(bone, skinmesh, remove=False):
+    # if not ul.get_skin_cluster(skinmesh):
+    #     pm.select(bone)
+    #     pm.bindSkin(skinmesh)
+    #     return ul.get_skin_cluster(skinmesh)
     skin_cluster = ul.get_skin_cluster(skinmesh)
-    assert(skin_cluster), '%s have no skin bind'%skinmesh  
+    assert(skin_cluster), '%s have no skin bind'%skinmesh
     inflList = skin_cluster.getInfluence()
+    if remove:
+        if bone in inflList:
+            skin_cluster.removeInfluence(bone)
+            log.info('{} influence remove from {}'.format(bone,skinmesh))
     if bone not in inflList:
         skin_cluster.addInfluence(bone, wt=0)
+        log.info('{} influence add to {}'.format(bone,skinmesh))
 
 @ul.do_function_on('oneToOne', type_filter=['mesh', 'joint'])
 def skin_weight_filter(ob, joint, min=0.0, max=0.1, select=False):
@@ -644,11 +656,11 @@ def skin_weight_filter(ob, joint, min=0.0, max=0.1, select=False):
     return filter_weight
 
 @ul.do_function_on(type_filter=['mesh'])
-def switch_skin_type(ob, type='classis'):
+def switch_skin_type(ob, type='Linear'):
     type_dict = {
-        'Classis': 0,
-        'Dual': 1,
-        'Blend': 2}
+        'Linear': 0,
+        'Dual Quartenion': 1,
+        'Blended': 2}
     if not ul.get_skin_cluster(ob) and type not in type_dict.keys():
         return
     skin_cluster = ul.get_skin_cluster(ob)
@@ -659,8 +671,8 @@ def switch_skin_type(ob, type='classis'):
 @ul.do_function_on('lastType', type_filter=['vertex', 'edge', 'face', 'mesh', 'joint'])
 def skin_weight_setter(component_list, joints_list, skin_value=1.0, normalized=True, hierachy=False):
     '''set skin weight to skin_value for vert in verts_list to first joint,
-       other joint will receive average from normalized weight,
-       can be use to set Dual Quarternion Weight'''
+       other joint will receive average from normalized weight
+       joint is not need to be a influence of Skin Cluster'''
 
     def get_skin_weight():
         skin_weight = []
@@ -678,25 +690,29 @@ def skin_weight_setter(component_list, joints_list, skin_value=1.0, normalized=T
     if hierachy:
         child_joint = joints_list[0].listRelatives(allDescendents=True)
         joints_list.extend(child_joint)
-        print joints_list
-
+        # print joints_list
     if any([type(component) is pm.nt.Transform for component in component_list]):
-        for component in component_list:
-            skin_cluster = ul.get_skin_cluster(component)
-            pm.select(component, r=True)
-            pm.skinPercent(skin_cluster, transformValue=get_skin_weight())
-            print component_list
-        pm.select(component_list, joints_list)
+            for component in component_list:
+                for joint in joints_list:
+                    add_joint_influence(joint,component)
+                try:
+                    skin_cluster = ul.get_skin_cluster(component)
+                    pm.select(component, r=True)
+                    pm.skinPercent(skin_cluster, transformValue=get_skin_weight())
+                    print component_list
+                except RuntimeError as why:
+                    log.warning('Set Skin Error:{}'.format(why))
     else:
         verts_list = ul.convert_component(component_list)
-        skin_cluster = ul.get_skin_cluster(verts_list[0])
-        if all([skin_cluster, verts_list, joints_list]):
-            pm.select(verts_list)
-            pm.skinPercent(skin_cluster, transformValue=get_skin_weight())
-            pm.select(joints_list, add=True)
-            # print verts_list
-            # print skin_weight
-            # skin_cluster.setWeights(joints_list,[skin])
+        for joint in joints_list:
+            add_joint_influence(joint,verts_list[0])
+        try:
+            skin_cluster = ul.get_skin_cluster(verts_list[0])
+            if all([skin_cluster, verts_list, joints_list]):
+                pm.select(verts_list)
+                pm.skinPercent(skin_cluster, transformValue=get_skin_weight())
+        except RuntimeError as why:
+            log.warning('Set Skin Error:{}'.format(why))
 
 @ul.do_function_on(type_filter=['vertex', 'edge', 'face', 'mesh'])
 def dual_weight_setter(component_list, weight_value=0.0, query=False):
@@ -718,6 +734,11 @@ def dual_weight_setter(component_list, weight_value=0.0, query=False):
                 # pm.select(verts_list)
                 # skin_cluster.setBlendWeights(shape, verts_list, [weight_value,])
 
+@ul.do_function_on(type_filter=['vertex', 'edge', 'face', 'mesh'])
+def fix_bad_weight(ob):
+    skin_cluster = ul.get_skin_cluster(ob)
+    if skin_cluster:
+        skin_cluster.smoothWeights(0.5)
 # Bone Utilities
 @ul.do_function_on(type_filter=['nurbsCurve'])
 def curve_to_bone(inputcurve, amount=3):

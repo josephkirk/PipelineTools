@@ -1,3 +1,9 @@
+try:
+    from PySide2 import QtWidgets, QtCore, QtGui
+except ImportError:
+    from PySide import QtCore, QtGui
+    QtWidgets = QtGui
+
 styleSheet = """
 QFrame {
     font: italic 12px; 
@@ -64,3 +70,45 @@ QStatusBar::item {
     border-radius: 3px;
 }
 """
+
+def labelGroup(name, widget, *args, **kws):
+    layout = QtWidgets.QHBoxLayout()
+    label = QtWidgets.QLabel(name)
+    createWidget = widget(*args, **kws)
+    layout.addWidget(label)
+    layout.addWidget(createWidget)
+    return (createWidget, layout)
+
+def optionGroup(groupname, names, updateActions=[]):
+    layout = QtWidgets.QHBoxLayout()
+    label = QtWidgets.QLabel(groupname)
+    layout.addWidget(label)
+    createWidgets = []
+    for name in names:
+        createWidget = QtWidgets.QCheckBox(name)
+        layout.addWidget(createWidget)
+        createWidgets.append(createWidget)
+    if updateAction:
+        for id, cc in enumerate(updateActions):
+            try:
+                createWidgets[id].stateChanged.connect(cc)
+            except IndexError:
+                pass
+    return (createWidgets, layout)
+
+def buttonGroup(groupname, names, actions=[]):
+    layout = QtWidgets.QHBoxLayout()
+    label = QtWidgets.QLabel(groupname)
+    layout.addWidget(label)
+    createWidgets = []
+    for name in names:
+        createWidget = QtWidgets.QPushButton(name)
+        layout.addWidget(createWidget)
+        createWidgets.append(createWidget)
+    if actions:
+        for id, cc in enumerate(actions):
+            try:
+                createWidgets[id].clicked.connect(cc)
+            except IndexError:
+                pass
+    return (createWidgets, layout)

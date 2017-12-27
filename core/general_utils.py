@@ -176,6 +176,10 @@ def error_alert(func):
     """print Error if function fail"""
     @wraps(func)
     def wrapper(*args, **kwargs):
+        quiet_mode = False
+        if 'quiet' in kwargs:
+            quiet_mode = kwargs['quiet']
+            del kwargs['quiet']
         try:
             t=time()
             result = func(*args, **kwargs)
@@ -194,8 +198,9 @@ def error_alert(func):
             for cause in why:
                 msg.append(str(why))
             msg = '\n'.join(msg)
-            log.error(msg)
-            raise
+            if not quiet_mode:
+                log.error(msg)
+                raise
     return wrapper
 
 def do_function_on(mode='single', type_filter=[]):

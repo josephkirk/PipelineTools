@@ -798,8 +798,10 @@ class main(QtWidgets.QMainWindow):
                     return (len(baseName_list)-1)
         ob_list = self.getOblist()
         if not name:
-            pm.informBox('Error', 'Name is empty, input Name String')
-            raise RuntimeError('Name is empty, input Name String')
+            msg = 'Name is empty, input Name String'
+            pm.informBox('Error', msg)
+            log.error(msg)
+            return
         for obid, ob in enumerate(ob_list):
             if hasattr(ob, 'rename'):
                 baseName_list = [prefix, name, suffix]
