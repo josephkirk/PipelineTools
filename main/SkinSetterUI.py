@@ -353,6 +353,7 @@ class main(QtWidgets.QMainWindow):
         self.removeTopBoneList_button.clicked.connect(self.onBoneList_removeTop)
         self.removeAllBones_button.clicked.connect(self.onBoneList_clear)
         self.removeBottomBoneList_button.clicked.connect(self.onBoneList_removeBottom)
+        self.addBone_button.clicked.connect(self.onBoneList_addSelect)
         self.removeBone_button.clicked.connect(self.onBoneList_removeSelect)
         self.getInfluencesBone_button.clicked.connect(self.getSkinMeshInfluences)
         # weight Filter Box
@@ -564,6 +565,13 @@ class main(QtWidgets.QMainWindow):
         if self.objectList:
             skinCluster = ul.get_skin_cluster(self.objectList[-1])
             self.bones_list = skinCluster.getInfluence()
+        self.updateBoneItemNames()
+
+    def onBoneList_addSelect(self):
+        bones = [j for j in pm.selected() if ul.get_type(j)=='joint']
+        for bone in bones:
+            if bone not in self.bones_list:
+                self.bones_list.append(bone)
         self.updateBoneItemNames()
 
     def onBoneList_moveBoneUp(self):
