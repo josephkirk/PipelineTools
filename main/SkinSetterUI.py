@@ -10,6 +10,10 @@ from itertools import product
 from ..core import general_utils as ul
 from ..core import rigging_utils as rul
 try:
+    from skinningTool import SkinningToolsUI
+except:
+    print 'skinningTool not Present'
+try:
     from PySide2 import QtWidgets, QtCore, QtGui
 except ImportError:
     from PySide import QtCore, QtGui
@@ -19,7 +23,7 @@ reload(uiStyle)
 # Logging initialize #
 logging.basicConfig()
 log = logging.getLogger(__name__)
-log.setLevel(logging.DEBUG)
+log.setLevel(logging.ERROR)
 # Get Maya Main Window
 mayaMainWindow = pm.ui.Window('MayaWindow').asQtObject()
 # Wrapper
@@ -94,11 +98,9 @@ class main(QtWidgets.QMainWindow):
         def addWidget(wid):
             self.mainLayout.addWidget(wid)
         addWidget(self.objectBox())
-        # addWidget(self.skinTypeBox())
         addWidget(self.weightFilterBox())
         addWidget(self.setWeightBox())
         addWidget(self.setDualWeightBox())
-        addWidget(self.weightUtilBox())
 
     def objectBox(self):
         # create Frame
@@ -228,6 +230,7 @@ class main(QtWidgets.QMainWindow):
         skinweight_label = QtWidgets.QLabel('Weight: ')
         self.weightValue_slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
         self.weightValue_floatSpinBox = QtWidgets.QDoubleSpinBox()
+        self.smoothWeight_button = QtWidgets.QPushButton('Smooth')
         self.setWeight_button = QtWidgets.QPushButton('Set')
         self.setWeightInteractive_checkbox = QtWidgets.QCheckBox('live')
         # set Widget Value
@@ -258,6 +261,7 @@ class main(QtWidgets.QMainWindow):
         subLayout2.addWidget(self.weightValue_floatSpinBox,0,2)
         subLayout2.addWidget(self.setWeightInteractive_checkbox,1,2)
         subLayout2.addWidget(self.setWeight_button,1,1)
+        subLayout2.addWidget(self.smoothWeight_button,1,0)
         layout.addLayout(subLayout1)
         layout.addLayout(subLayout2)
         # set Layout
@@ -299,36 +303,14 @@ class main(QtWidgets.QMainWindow):
         uiGrp.setLayout(layout)
         return uiGrp
 
-    def weightUtilBox(self):
-        uiGrp = QtWidgets.QGroupBox('Utilities')
-        layout = QtWidgets.QVBoxLayout()
-        layout.setSpacing(1)
-        layout.setAlignment(QtCore.Qt.AlignTop)
-        def button(name, action=None):
-            wid = QtWidgets.QPushButton(name)
-            layout.addWidget(wid)
-            if action:
-                wid.clicked.connect(action)
-            return wid
-        buttonGroup = partial(self.buttonGroup, parent=layout)
-        self.enableSkin_button, self.disableSkin_button = buttonGroup(
-            ['Smooth Skin', 'Fix Bad Weight'],
-            actions=[self.onSmoothSkinWeightClick, self.onHammerSkinWeightClick])
-        self.addInfluence_button, self.removeInfluence_button = buttonGroup(
-            ['add Influence', 'remove Influence'],
-            actions=[self.onAddInfluenceClick, self.onRemoveInfluenceClick])
-        self.freezeskinBone_button, self.freezeskinBoneChain_button = buttonGroup(
-            ['Freeze Skin Bone', 'Freeze Skin BoneChain'],
-            actions=[self.onFreezeSkinBoneClick, self.onFreezeSkinChainClick])
-        self.transferWeight_button, self.transferChainWeight_button = buttonGroup(
-            ['Transfer Weight Bone', 'Transfer Weight Bone Chain'],
-            actions=[self.onTransferWeightClick, self.onTransferChainClick])
-        self.resetBindPose = button('Reset BindPose', self.onResetBindPose)
-        uiGrp.setLayout(layout)
-        return uiGrp
-
     def createMenuBar(self):
         # create Action
+        def menuItem(name, func , parent=None):
+            newAction = QtWidgets.QAction(name, self)
+            newAction.triggered.connect(func)
+            if parent:
+                parent.addAction(newAction)
+            return newAction
         self.reset_action = QtWidgets.QAction('Reset', self)
         self.reset_action.setToolTip('Reset UI To Default Value')
         self.reset_action.setStatusTip('Reset UI To Default Value')
@@ -337,6 +319,24 @@ class main(QtWidgets.QMainWindow):
         self.menubar = self.menuBar()
         self.optionmenu = self.menubar.addMenu('Option')
         self.optionmenu.addAction(self.reset_action)
+        self.openExtraMenu = self.menubar.addMenu("Extra")
+        menuItem('Open Paint Weight Tool', self.previewSkinWeight, self.openExtraMenu)
+        if 'SkinningToolsUI' in globals():
+            menuItem('Open Extra Skin Tool', SkinningToolsUI.startUI, self.openExtraMenu)
+        self.utilsMenu = self.menubar.addMenu("Utils")
+        openSmoothBindOption = lambda *x: mm.eval('SmoothBindSkinOptions;')
+        menuItem('Smooth Bind Skin', openSmoothBindOption, self.utilsMenu)
+        menuItem('Smooth Skin', self.onSmoothSkinWeightClick, self.utilsMenu)
+        menuItem('Fix Bad Weight', self.onHammerSkinWeightClick, self.utilsMenu)
+        menuItem('Add Influence', self.onAddInfluenceClick, self.utilsMenu)
+        menuItem('Remove Influence', self.onRemoveInfluenceClick, self.utilsMenu)
+        menuItem('Freeze Transform SkinBone', self.onFreezeSkinBoneClick, self.utilsMenu)
+        menuItem('Freeze Transform SkinBoneChain', self.onFreezeSkinChainClick, self.utilsMenu)
+        menuItem('Transfer Weight Bone', self.onTransferWeightClick, self.utilsMenu)
+        menuItem('Transfer Weight BoneChain', self.onTransferChainClick, self.utilsMenu)
+        menuItem('Reset BindPose', self.onResetBindPose, self.utilsMenu)
+
+
         # self.me
 
     def createStatusBar(self):
@@ -359,6 +359,7 @@ class main(QtWidgets.QMainWindow):
         # weight Filter Box
         self.selectFilterWeight_button.clicked.connect(self.onWeightFilterClick)
         # weight Setter Box
+        self.smoothWeight_button.clicked.connect(self.onSmoothSkinWeightClick)
         self.setWeight_button.clicked.connect(self.onSetWeightClick)
         # blend weight setter box
         self.setBlendWeight_button.clicked.connect(self.onSetBlendWeightClick)
@@ -413,6 +414,7 @@ class main(QtWidgets.QMainWindow):
         self.createStatusBar()
         self._connectFunction()
         self.show()
+
     def updateSkinMeshList(self):
         try:
             objectList = [
@@ -790,13 +792,13 @@ class main(QtWidgets.QMainWindow):
         return self.last_selected
     
     def previewSkinWeight(self):
-        get_joint = [j for j in self.selection() if isinstance(j, pm.nt.Joint)]
-        if not get_joint:
-            return
-        if currentCtx() != 'artAttrSkinContext':
+        if pm.currentCtx() != 'artAttrSkinContext':
             mm.eval('artAttrSkinToolScript 3;')
         lastJoint = pm.artAttrSkinPaintCtx(pm.currentCtx(), query=True, influence=True)
         # artAttrSkinPaintCtx(currentCtx(), edit=True, influence=get_joint[0])
+        get_joint = [j for j in pm.selected() if isinstance(j, pm.nt.Joint)]
+        if not get_joint:
+            return
         mm.eval('''
         artAttrSkinToolScript 3;
         artSkinInflListChanging "%s" 0;

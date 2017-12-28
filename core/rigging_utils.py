@@ -577,12 +577,12 @@ def freeze_skin_joint(bon, hi=False):
     if hi:
         bonChain = ul.iter_hierachy(bon)
         bonChain.next()
-        while bonChain:
-            try:
+        try:
+            while bonChain:
                 bon = bonChain.next()
                 freeze_skin_joint(bon)
-            except StopIteration:
-                break
+        except StopIteration:
+            return
 
 @ul.do_function_on('oneToOne', type_filter=['joint'])
 def move_skin_weight(bon, targetBon, hi=False, reset_bindPose=False):

@@ -17,10 +17,6 @@ import SkinSetterUI
 import maya.mel as mm
 from pymel.core import *
 # try load External Skinning Tool
-try:
-    from skinningTool import SkinningToolsUI
-except:
-    print 'skinningTool not Present'
 
 # Global Var
 ul = core.ul
@@ -98,7 +94,6 @@ class RigTools(object):
         self.fullbasetrack = []
         self.fullcreatedtrack = []
         self.ControlObClass = rcl.ControlObject()
-        self.SkinSetterClass = SkinWeightSetter()
         self.window
 
     @property
@@ -526,6 +521,11 @@ class RigTools(object):
                             label='Mirror bone',
                             c=Callback(
                                 ru.mirror_joint_multi,
+                                sl=True))
+                        self.template.smallbutton(
+                            label='Mirror bone Transform',
+                            c=Callback(
+                                ru.mirror_joint_tranform,
                                 sl=True))
                         self.template.smallbutton(
                             label='Create Loc',
