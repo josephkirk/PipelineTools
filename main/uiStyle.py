@@ -100,38 +100,81 @@ QStatusBar::item {
     border-radius: 3px;
 }
 """
+def addDivider(widget, layout=None):
+    line = QtWidgets.QFrame(widget)
+    line.setFrameShape(QtWidgets.QFrame.HLine)
+    line.setFrameShadow(QtWidgets.QFrame.Sunken)
+    if layout:
+        layout.addWidget(line)
+    else:
+        return widget
 
-def labelGroup(name, widget, *args, **kws):
+def labelGroup(name, widget, parent=None, *args, **kws):
     layout = QtWidgets.QHBoxLayout()
     label = QtWidgets.QLabel(name)
+    # print args, kws
     createWidget = widget(*args, **kws)
     layout.addWidget(label)
     layout.addWidget(createWidget)
-    return (createWidget, layout)
+    if parent:
+        parent.addLayout(layout)
+        return createWidget
+    else:
+        return (createWidget, layout)
 
-def optionGroup(groupname, names, updateActions=[]):
+def multiLabelLayout(names, widget, groupLabel='', dir='horizontal', parent=None, *args, **kws):
+    dirDict = {
+        'horizontal': QtWidgets.QBoxLayout.LeftToRight,
+        'vertical': QtWidgets.QBoxLayout.TopToBottom
+    }
+    layout = QtWidgets.QBoxLayout(dirDict[dir])
+    if groupLabel:
+        label = QtWidgets.QLabel(groupLabel)
+        layout.addWidget(label)
+    widgets = []
+    for name in names:
+        sublayout = QtWidgets.QHBoxLayout()
+        sublabel = QtWidgets.QLabel(name)
+        createWidget = widget(*args, **kws)
+        sublayout.addWidget(sublabel)
+        sublayout.addWidget(createWidget)
+        layout.addLayout(sublayout)
+        widgets.append(createWidget)
+    if parent:
+        parent.setSpacing(2)
+        # parent.setStretch(0,1)
+        parent.addLayout(layout)
+        return tuple(widgets)
+    else:
+        return (tuple(widgets), layout)
+
+def multiOptionsLayout(names, groupname='', parent=None, updateActions=[]):
     layout = QtWidgets.QHBoxLayout()
-    label = QtWidgets.QLabel(groupname)
-    layout.addWidget(label)
+    if groupname:
+        label = QtWidgets.QLabel(groupname)
+        layout.addWidget(label)
     createWidgets = []
     for name in names:
         createWidget = QtWidgets.QCheckBox(name)
         layout.addWidget(createWidget)
         createWidgets.append(createWidget)
-    if updateAction:
+    if updateActions:
         for id, cc in enumerate(updateActions):
             try:
                 createWidgets[id].stateChanged.connect(cc)
             except IndexError:
                 pass
-    return (createWidgets, layout)
+    if parent:
+        parent.addLayout(layout)
+        return tuple(createWidgets)
+    else:
+        return (tuple(createWidgets), layout)
 
-def buttonGroup(groupname, names, actions=[]):
+def multiButtonsLayout(names, parent=None, actions=[]):
     layout = QtWidgets.QHBoxLayout()
-    label = QtWidgets.QLabel(groupname)
-    layout.addWidget(label)
     createWidgets = []
     for name in names:
+        # print name
         createWidget = QtWidgets.QPushButton(name)
         layout.addWidget(createWidget)
         createWidgets.append(createWidget)
@@ -141,4 +184,43 @@ def buttonGroup(groupname, names, actions=[]):
                 createWidgets[id].clicked.connect(cc)
             except IndexError:
                 pass
-    return (createWidgets, layout)
+    if parent:
+        parent.addLayout(layout)
+        # print tuple(createWidgets)
+        return tuple(createWidgets)
+    else:
+        return (tuple(createWidgets), layout)
+
+def buttonsGroup(names, collum=2, parent=None, actions=[]):
+    pass
+
+def findIcon(icon):
+    """
+    Loop over all icon paths registered in the XBMLANGPATH environment 
+    variable ( appending the tools icon path to that list ). If the 
+    icon exist a full path will be returned.
+
+    :param str icon: icon name including extention
+    :return: icon path
+    :rtype: str or None
+    """
+    paths = []
+
+    # get maya icon paths
+    if os.environ.get("XBMLANGPATH"):     
+        paths = os.environ.get("XBMLANGPATH").split(os.pathsep)                                 
+
+    # append tool icon path
+    paths.insert(
+        0,
+        os.path.join(
+            os.path.split(__file__)[0], 
+            "icons" 
+        ) 
+    )
+
+    # loop all potential paths
+    for path in paths:
+        filepath = os.path.join(path, icon)
+        if os.path.exists(filepath):
+            return filepath

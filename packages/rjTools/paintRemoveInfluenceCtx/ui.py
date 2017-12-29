@@ -147,4 +147,5 @@ class PaintRemoveInfluencesWidget(ui.QWidget):
 def show():
     paintRemoveInfluences = PaintRemoveInfluencesWidget(ui.mayaWindow())
     paintRemoveInfluences.show()
+    return paintRemoveInfluences
     

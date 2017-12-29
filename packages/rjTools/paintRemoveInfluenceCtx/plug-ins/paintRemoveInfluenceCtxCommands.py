@@ -1,5 +1,5 @@
 from maya import cmds, OpenMaya, OpenMayaMPx, OpenMayaAnim
-from .... import utils
+import utils
 
 __author__    = "Robert Joosten"
 __version__   = "0.8.1"

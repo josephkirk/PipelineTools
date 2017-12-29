@@ -729,6 +729,8 @@ class ControlObject(object):
     ####Define Property
     @property
     def name(self):
+        if self._suffix not in self._name:
+            self._name = '{}_{}'.format(self._name.split('_')[0], self._suffix)
         return self._name
 
     @name.setter
