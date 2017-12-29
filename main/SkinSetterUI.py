@@ -11,7 +11,7 @@ from ..core import general_utils as ul
 from ..core import rigging_utils as rul
 from ..packages.rjTools import paintSmoothWeightsCtx as paintSmoothWeight
 from ..packages.rjTools.paintRemoveInfluenceCtx import ui as paintRemoveWeight
-reload(rjTools)
+# reload(rjTools)
 try:
     from skinningTool import SkinningToolsUI
 except:
