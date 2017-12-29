@@ -9,6 +9,9 @@ from string import ascii_uppercase as alphabet
 from itertools import product
 from ..core import general_utils as ul
 from ..core import rigging_utils as rul
+from ..packages.rjTools import paintSmoothWeightsCtx as paintSmoothWeight
+from ..packages.rjTools.paintRemoveInfluenceCtx import ui as paintRemoveWeight
+reload(rjTools)
 try:
     from skinningTool import SkinningToolsUI
 except:
@@ -231,6 +234,7 @@ class main(QtWidgets.QMainWindow):
         self.weightValue_slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
         self.weightValue_floatSpinBox = QtWidgets.QDoubleSpinBox()
         self.smoothWeight_button = QtWidgets.QPushButton('Smooth')
+        self.paintSmoothWeight_button = QtWidgets.QPushButton('Paint Smooth')
         self.setWeight_button = QtWidgets.QPushButton('Set')
         self.setWeightInteractive_checkbox = QtWidgets.QCheckBox('live')
         # set Widget Value
@@ -260,7 +264,10 @@ class main(QtWidgets.QMainWindow):
         subLayout2.addWidget(self.weightValue_slider,0,1)
         subLayout2.addWidget(self.weightValue_floatSpinBox,0,2)
         subLayout2.addWidget(self.setWeightInteractive_checkbox,1,2)
-        subLayout2.addWidget(self.setWeight_button,1,1)
+        setButtonLayout = QtWidgets.QHBoxLayout()
+        setButtonLayout.addWidget(self.paintSmoothWeight_button)
+        setButtonLayout.addWidget(self.setWeight_button)
+        subLayout2.addLayout(setButtonLayout,1,1)
         subLayout2.addWidget(self.smoothWeight_button,1,0)
         layout.addLayout(subLayout1)
         layout.addLayout(subLayout2)
@@ -321,6 +328,7 @@ class main(QtWidgets.QMainWindow):
         self.optionmenu.addAction(self.reset_action)
         self.openExtraMenu = self.menubar.addMenu("Extra")
         menuItem('Open Paint Weight Tool', self.previewSkinWeight, self.openExtraMenu)
+        menuItem('Remove Influece Vertex Tool', paintRemoveWeight.show, self.openExtraMenu)
         if 'SkinningToolsUI' in globals():
             menuItem('Open Extra Skin Tool', SkinningToolsUI.startUI, self.openExtraMenu)
         self.utilsMenu = self.menubar.addMenu("Utils")
@@ -335,9 +343,6 @@ class main(QtWidgets.QMainWindow):
         menuItem('Transfer Weight Bone', self.onTransferWeightClick, self.utilsMenu)
         menuItem('Transfer Weight BoneChain', self.onTransferChainClick, self.utilsMenu)
         menuItem('Reset BindPose', self.onResetBindPose, self.utilsMenu)
-
-
-        # self.me
 
     def createStatusBar(self):
         self.statusbar = self.statusBar()
@@ -360,6 +365,7 @@ class main(QtWidgets.QMainWindow):
         self.selectFilterWeight_button.clicked.connect(self.onWeightFilterClick)
         # weight Setter Box
         self.smoothWeight_button.clicked.connect(self.onSmoothSkinWeightClick)
+        self.paintSmoothWeight_button.clicked.connect(paintSmoothWeight.paint)
         self.setWeight_button.clicked.connect(self.onSetWeightClick)
         # blend weight setter box
         self.setBlendWeight_button.clicked.connect(self.onSetBlendWeightClick)
@@ -384,7 +390,6 @@ class main(QtWidgets.QMainWindow):
         self.blendWeightValue_slider.valueChanged.connect(self.updateBlendWeightValue)
         self.blendWeightValue_floatSpinBox.valueChanged.connect(self.updateBlendWeightValue)
         self.setBlendWeightInteractive_checkbox.stateChanged.connect(self.updateLiveBlendWeightToggle)
-        
 
     # UI Changed Action
     def showEvent(self, event):
