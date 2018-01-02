@@ -1,4 +1,26 @@
 // Place your settings in this file to overwrite default and user settings.
 {
-    "python.linting.pylintEnabled": false
+    "python.linting.pylintEnabled": true,
+    "python.linting.pylintPath": "C:/Python27/Scripts/pylint",
+    "python.pythonPath": "C:/Program Files/Autodesk/Maya2017/bin/mayapy.exe",
+    "python.unitTest.unittestArgs": [
+        "-v",
+        "-s",
+        "./tests",
+        "-p",
+        "test_*.py"
+    ],
+    "python.unitTest.unittestEnabled": true,
+    "python.unitTest.pyTestEnabled": false,
+    "python.unitTest.pyTestPath": "C:/Program Files/Autodesk/Maya2017/Python/Scripts/py.test",
+    "python.workspaceSymbols.exclusionPatterns": [
+        "**/site-packages/**",
+        "**/packages/**"
+    ],
+    "python.linting.ignorePatterns": [
+        ".vscode/*.py",
+        "**/site-packages/**/*.py",
+        "**/packages/**"
+    ]
+    
 }

@@ -140,7 +140,7 @@ def create_facialguide_ctl():
         pm.error('missing _mdl_facialGuide_head')
     guide_mesh = guide_mesh[0]
     for part,count in facialpart_name.items():
-        facial_bones[part] = rigclass.FacialBone.bones(part)['All']
+        facial_bones[part] = rigclass.FacialBone.getBones(part)['All']
         if len(facial_bones[part]) != count:
             for bone in facial_bones[part]:
                 print bone
@@ -199,7 +199,7 @@ def create_facialguide_ctl():
 def connect_mouth_ctl():
     mouth_part = ['jaw','teeth','tongue']
     for part in mouth_part:
-        bones = rigclass.FacialBone.bones(part)['All']
+        bones = rigclass.FacialBone.getBones(part)['All']
         for bone in bones:
             if bone.offset:
                 if bone.control.node:
@@ -258,9 +258,9 @@ def add_jawdeform_skin():
                 if part:
                     print part
                     if part != 'tongue':
-                        get_bones = [bone for bone in rigclass.FacialBone.bones(part)['All'] if bone.bone and 'End' not in bone.name]
+                        get_bones = [bone for bone in rigclass.FacialBone.getBones(part)['All'] if bone.bone and 'End' not in bone.name]
                     else:
-                        get_bones = [bone for bone in rigclass.FacialBone.bones(part)['All'] if bone.bone and 'Root' not in bone.name]
+                        get_bones = [bone for bone in rigclass.FacialBone.getBones(part)['All'] if bone.bone and 'Root' not in bone.name]
                         get_bones.append(ul.get_node('tongueRoot_bon'))
                     if get_bones:
                         bones.append(get_bones)
@@ -444,7 +444,7 @@ def snap_eye_root_ctl():
     #pm.delete('eyeRoot_ctlShape', s=True)
     pm.select(ob,add=True)
     ul.parent_shape()
-    
+
 @ul.error_alert
 def connect_eye_attr():
     '''
@@ -466,7 +466,9 @@ def connect_eye_attr():
         mul1.output >> mul2.input2
         eye_bone.rotate >> mul2.input1
         mul2.output >> eyelid_bone.rotate
-        eye_ctl.scale >> eye_endbone.scale
+        for satr in ['sx','sy','sz']:
+            eye_endbone.attr(satr).set(eye_ctl.scaleX)
+
 @ul.error_alert
 def parent_ctl_to_head():
     '''
@@ -532,6 +534,7 @@ def create_facial_panel(offset=6.5):
     pm.headsUpMessage("Parent Constraint facial_panelGp to head bone", time=0.2)
     pm.refresh()
     sleep(0.1)
+
 def create_eye_rig():
     '''
         step to create eye rig
@@ -580,5 +583,57 @@ def create_facial_bs_ctl():
     msg.append(create_facial_panel())
     return msg
 
+@ul.timeit
+def create_facial_rig():
+    errmsg = []
+    msg = ft.create_ctl()
+    errmsg.append(msg)
+    pm.refresh()
+    if not pm.confirmBox(title='Facial Rig Status',message = "Face Control Created\nError:\n%s"%msg, yes='Continue?', no='Stop?'):
+        return
+    msg = ft.create_eye_rig()
+    errmsg.append(msg)
+    pm.refresh()
+    if not pm.confirmBox(title='Facial Rig Status',message = "Eyeballs Rig Created\nError:\n%s"%msg, yes='Continue?', no='Stop?'):
+        return
+    msg = ft.connect_mouth_ctl()
+    errmsg.append(msg)
+    pm.refresh()
+    if not pm.confirmBox(title='Facial Rig Status',message = "Mouth Control to Bone Connected\nError:\n%s"%msg, yes='Continue?', no='Stop?'):
+        return
+    msg = ft.create_facial_bs_ctl()
+    errmsg.append(msg)
+    pm.refresh()
+    if not pm.confirmBox(title='Facial Rig Status',message = "Create BlendShape control and setup BlendShape \nError:\n%s"%msg, yes='Continue?', no='Stop?'):
+        return
+    # ft.parent_ctl_to_head()
+    # pm.refresh()
+    # if not pm.confirmBox(title='Facial Rig Status',message = "Parent Root Group to Head OK", yes='Continue?', no='Stop?'):
+    #     return
+    msg = ft.copy_facialskin()
+    pm.refresh()
+    if not pm.confirmBox(title='Facial Rig Status',message = "Facial Copy \nError:\n%s"%msg, yes='Continue?', no='Stop?'):
+        return
+    pm.informBox(title='Riggin Status', message = "Face Rig Complete")
 
-
+def facialScriptNode():
+    def connectBS():
+        try:
+            if not pm.ls('RootBS') and not pm.ls('EyeDeformBS'):
+                pm.select('facial',r=True)
+                pm.select("*_face_grp_skinDeform",add=True)
+                pm.blendShape(name='RootBS',w=[(0,1),], automatic=True)
+                pm.select('eyeDeform',r=True)
+                pm.select("*_eye_grp_skinDeform",add=True)
+                pm.blendShape(name='EyeDeformBS',w=[(0,1),], ar=True)
+        except:
+            print 'Cant connect BS'
+    def unConnectBS():
+        try:
+            pm.delete('RootBS')
+            pm.delete('EyeDeformBS')
+        except:
+            'cant delete RootBS and EyeDeformBS'
+    initNode = pm.scriptNode( st=2, bs='connectBS()', n='script', stp='python')
+    pm.scriptNode(initNode, e=True, afterScript='unConnectBS()', stp='python'
+    return initNode 
