@@ -282,9 +282,9 @@ def constraint_multi(ob, target, constraintType='Point', addChildAttr=False):
 
 @ul.do_function_on('singleLast')
 def connect_visibility(ob, target, attrname='Vis'):
-    if not hasattr(ob, attrname):
-        ob.addAttr(attrname, type='bool', k=1)
-    ob.attr(attrname) >> target.visibility
+    if not hasattr(target, attrname):
+        target.addAttr(attrname, type='bool', k=1)
+    target.attr(attrname) >> ob.visibility
 
 @ul.do_function_on('last')
 def connect_visibility_enum(obs, target, enumAttr='EnumVis'):
