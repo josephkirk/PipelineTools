@@ -242,7 +242,7 @@ def createPinCircle(
     return crv
 
 @ul.error_alert
-@ul.do_function_on('oneToOne')
+@ul.do_function_on('singleLast')
 def constraint_multi(ob, target, constraintType='Point', addChildAttr=False):
     constraintDict = {
         'Point': ul.partial(pm.pointConstraint , mo=True),
@@ -1276,11 +1276,13 @@ def create_parent_control(boneRoot, parent='ctlGp',useLoc=False, customShape=Non
                     create_offset_bone(bone)
             else:
                 create_offset_bone(bone)
-            name = ul.get_name(bone).split('_')[0]
+            name = ul.get_name(bone)
             if customShape:
                 ctl = customShape()
             else:
                 ctl = createPinCircle(name)
+            if name.endswith('_bon'):
+                name = name.replace('_bon', '')
             ctl.rename(name + '_ctl')
             ctlGp = create_parent(ctl)
             ctlGp.rename(name + '_ctlGp')
@@ -1426,6 +1428,7 @@ def create_splineIK(bone, midCtls=2,addFK=False, addSway=False, simplifyCurve=Fa
     for i, (tr, rot) in enumerate(pncInfo):
         mboneTop = pm.nt.Joint(
                 name = '{}_topBone_{:02d}'.format(bonename,i+1))
+        mboneTop.rename(mboneTop.replace('__','_'))
         mboneTop.setParent(None)
         mboneTop.radius.set(1.1)
         mboneTop.setTranslation(tr)
