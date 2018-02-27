@@ -303,10 +303,9 @@ def connect_visibility_enum(obs, target, enumAttr='EnumVis'):
 @ul.do_function_on('oneToOne')
 def aim_setup(ctl,loc):
     oldParent = ctl.getParent().getParent()
-    create_parent(ctl)
-    orientOffset=ctl.getParent().duplicate(
-        name=ul.get_name(ctl)+'_orientOffset',po=True,rr=True)[0]
-    pm.orientConstraint(orientOffset,ctl)
+    orientOffset = create_parent(ctl)
+    orientOffset.rename(
+        ul.get_name(ctl)+'_orientOffset')
     aimTransform = orientOffset.duplicate(
         name=orientOffset.name().replace('orientOffset','Aim'))[0]
     aimGp = create_parent(aimTransform)
