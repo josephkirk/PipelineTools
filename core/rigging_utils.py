@@ -803,11 +803,13 @@ def create_joint(ob_list):
         elif type(ob) == pm.general.MeshEdge:
             get_pos = ul.get_pos_center_from_edge(ob)
         new_joint = pm.joint(p=get_pos)
+        new_joint.setParent(None)
         new_joints.append(new_joint)
     for new_joint in new_joints:
         pm.joint(new_joint, edit=True, oj='xyz', sao='yup', ch=True, zso=True)
         if new_joint == new_joints[-1]:
             pm.joint(new_joint, edit=True, oj='none', ch=True, zso=True)
+    pm.select(new_joints)
     return new_joints
 
 @ul.do_function_on(
