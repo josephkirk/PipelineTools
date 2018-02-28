@@ -393,6 +393,13 @@ class RigTools(object):
                         with popupMenu(b=3):
                             menuItem(label='Channel History ON', c=Callback(ru.toggleChannelHistory))
                         self.template.smallbutton(label='Deform Normal Off', c=Callback(ru.deform_normal_off))
+                        self.template.smallbutton(
+                            label='Remove Unknown Plugins',
+                            c=Callback(ul.deleteUnknowPlugin))
+                        self.template.smallbutton(
+                            label='Reload Textures',
+                            c=Callback(ul.reload_texture))
+
 
     def create_util_ui(self):
         with columnLayout():

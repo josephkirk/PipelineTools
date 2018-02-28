@@ -36,6 +36,17 @@ def reload_texture(udim=True):
     if udim:
         mm.eval('generateAllUvTilePreviews;')
 
+def deleteUnknowPlugin():
+    oldplugins = pm.unknownPlugin(q=True, list=True)
+    if oldplugins:
+        log.info('Found {} unknown plugins'.format(len(oldplugins)))
+        for plugin in oldplugins:
+            try:
+                pm.unknownPlugin(plugin, remove=True)
+                log.info('%s removed succesfully'%plugin)
+            except:
+                log.info('Cannot remove %s'%plugin)
+
 def get_maya_window():
     '''Return QMainWindow for the main maya window'''
     winptr = OpenMayaUI.MQtUtil.mainWindow()

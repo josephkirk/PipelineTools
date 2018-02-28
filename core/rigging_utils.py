@@ -307,10 +307,13 @@ def aim_setup(ctl,loc):
     orientOffset.rename(
         ul.get_name(ctl)+'_orientOffset')
     aimTransform = orientOffset.duplicate(
-        name=orientOffset.name().replace('orientOffset','Aim'))[0]
+        name=orientOffset.name().replace('orientOffset','Aim'),po=True,rr=True)[0]
     aimGp = create_parent(aimTransform)
     aimGp.setParent(None)
-    pm.group(aimGp, name='aimGp')
+    if pm.objExists('aimGp'):
+        aimGp.setParent(pm.ls('aimGp')[0])
+    else:
+        pm.group(aimGp, name='aimGp')
     connect_transform(aimTransform, orientOffset, rotate=True)
     pm.aimConstraint(
         loc, aimTransform,
