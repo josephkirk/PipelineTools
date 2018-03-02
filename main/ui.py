@@ -397,6 +397,9 @@ class RigTools(object):
                             label='Remove Unknown Plugins',
                             c=Callback(ul.deleteUnknowPlugin))
                         self.template.smallbutton(
+                            label='Clean Outliner',
+                            c=Callback(ul.clean_outliner))
+                        self.template.smallbutton(
                             label='Reload Textures',
                             c=Callback(ul.reload_texture))
 

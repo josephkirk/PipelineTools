@@ -299,7 +299,6 @@ def connect_visibility_enum(obs, target, enumAttr='EnumVis'):
         flogic.secondTerm.set(id)
         yield flogic
 
-
 @ul.do_function_on('oneToOne')
 def aim_setup(ctl,loc):
     oldParent = ctl.getParent().getParent()
@@ -1355,6 +1354,7 @@ def create_long_hair(boneRoot, hairSystem='', circle=True, simplifyCurve=False, 
     controlGp = create_parent(controls[0].getParent())
     controlGp = controlGp.rename(controlGp.name().split('_')[0]+'_root_ctlGp')
     controlRoot = pm.circle(radius=3)
+    controlRoot[0].rename(controls[0].replace('ctl','axis'))
     controlRoot[0].setRotation([0,90,0])
     pm.makeIdentity(controlRoot[0], apply=True)
     controlRoot[0].addAttr('radius', type='float', defaultValue=3, k=1)

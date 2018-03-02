@@ -30,6 +30,10 @@ log.setLevel(logging.ERROR)
 prefpath = 'C:/Users/nphung/Documents/maya/2017/prefs/userPrefs.mel'
 
 # Global misc function #
+def clean_outliner():
+    outliners = pm.getPanel(type='outlinerPanel')
+    for outliner in outliners:
+        pm.outlinerEditor(outliner, e=True, setFilter="defaultSetFilter")
 
 def reload_texture(udim=True):
     mm.eval('AEReloadAllTextures;')
