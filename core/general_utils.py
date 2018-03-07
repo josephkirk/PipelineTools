@@ -764,17 +764,17 @@ def get_skin_cluster(ob):
     '''return skin cluster from ob, if cannot find raise error'''
     ob_shape = get_shape(ob)
     try:
-        shape_connections = ob_shape.listConnections(type=['skinCluster', 'objectSet'])
+        shape_connections = ob_shape.inputs(type=['skinCluster', 'objectSet'])
         for connection in shape_connections:
-            if 'skinCluster' in connection.name():
-                if isinstance(connection, pm.nt.SkinCluster):
-                    return connection
-                try_get_skinCluster = connection.listConnections(type='skinCluster')
-                if try_get_skinCluster:
-                    return try_get_skinCluster[0]
-                else:
-                    msg = '{} have no skin bind'.format(ob)
-                    return pm.error(msg)
+            # if 'skinCluster' in connection.name():
+            if isinstance(connection, pm.nt.SkinCluster):
+                return connection
+            try_get_skinCluster = connection.listConnections(type='skinCluster')
+            if try_get_skinCluster:
+                return try_get_skinCluster[0]
+            else:
+                msg = '{} have no skin bind'.format(ob)
+                return pm.error(msg)
     except:
         msg = 'Cannot get skinCluster from {}'.format(ob)
         return pm.error(msg)
@@ -1065,6 +1065,14 @@ def detach_shape(ob, preserve=False):
     return result
 
 # --- Scenes Mangement --- #
+@do_function_on()
+def lock_node(node, lock=True, query=False):
+    if query:
+        result = pm.lockNode(node, q=query)
+        log.info(result)
+        return result
+    pm.lockNode(node, lock=lock)
+    return lock
 
 def transfer_material(obs, obSrc):
     try:

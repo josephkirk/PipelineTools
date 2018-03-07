@@ -299,7 +299,7 @@ def connect_visibility_enum(obs, target, enumAttr='EnumVis'):
         flogic.secondTerm.set(id)
         yield flogic
 
-@ul.do_function_on('oneToOne')
+@ul.do_function_on('singleLast')
 def aim_setup(ctl,loc):
     oldParent = ctl.getParent().getParent()
     orientOffset = create_parent(ctl)
@@ -587,6 +587,7 @@ def freeze_skin_joint(bon, hi=False):
 
 @ul.do_function_on('oneToOne', type_filter=['joint'])
 def move_skin_weight(bon, targetBon, hi=False, reset_bindPose=False):
+    '''Move all weights from all skinCluster of one bone to another'''
     skinClusters = bon.outputs(type='skinCluster')
     for skinCluster in skinClusters:
         inflList = skinCluster.getInfluence()
@@ -623,6 +624,108 @@ def move_skin_weight(bon, targetBon, hi=False, reset_bindPose=False):
         targetBonChain = ul.iter_hierachy(targetBon)
         for bon,targetBon in zip(iter(bonChain), iter(targetBonChain)):
             move_skin_weight(bon,targetBon)
+
+@ul.do_function_on(type_filter=['mesh'])
+def clean_skin_weight(mesh, offset_bone_name=['offset'] ):
+    '''Remove offset Bone Weight'''
+    skinCluster = ul.get_skin_cluster(mesh)
+    inflList = skinCluster.getInfluence()
+    fix_inflPairs = []
+    for infl in inflList:
+        infl.attr('lockInfluenceWeights').set(True)
+        if any(offset_name in infl.split('|')[-1] for offset_name in offset_bone_name):
+            childs = [
+                child for child in infl.getChildren(type='joint')
+                if not any(offset_name in child.split('|')[-1] for offset_name in offset_bone_name)]
+            if childs:
+                next_infl = childs[0]
+                fix_inflPairs.append((infl, next_infl))
+            else:
+                log.info(pm.skinPercent(skinCluster, mesh.verts,infl, v=True, q=True))
+    for infl, next_infl in fix_inflPairs:
+        infl.attr('lockInfluenceWeights').set(False)
+        next_infl.attr('lockInfluenceWeights').set(False)
+        pm.skinPercent(skinCluster,mesh.verts,nrm=True,tv=[infl,0])
+        try:
+            skinCluster.removeInfluence(infl)
+        except (OSError,IOError,RuntimeError) as why:
+            pm.warnings(why)
+            log.error(why)
+        infl.attr('lockInfluenceWeights').set(True)
+        next_infl.attr('lockInfluenceWeights').set(True)
+    for infl in skinCluster.getInfluence():
+        infl.attr('lockInfluenceWeights').set(False)
+    pm.skinPercent(skinCluster,mesh,nrm=True)
+
+@ul.do_function_on('singleLast', type_filter=['joint', 'mesh'])
+def query_joint_weight(bone, skinmesh):
+    skin_cluster = ul.get_skin_cluster(skinmesh)
+    assert(skin_cluster), '%s have no skin bind'%skinmesh
+    inflList = skin_cluster.getInfluence()
+    if bone in inflList:
+        weights = [pm.skinPercent(skin_cluster, vert, transform=bone, q=True) for vert in skinmesh.verts]
+        return weights
+
+@ul.do_function_on('singleLast', type_filter=['mesh'])
+def copy_weight_exact(mesh, targetMesh, useLabel=False):
+    skinCluster = ul.get_skin_cluster(mesh)
+    if not skinCluster and len(mesh.verts) == len(targetMesh.verts):
+        return
+    inflList = skinCluster.getInfluence()
+    if not ul.get_skin_cluster(targetMesh):
+        pm.select(inflList, r=True)
+        pm.select(targetMesh, add=True)
+        pm.skinCluster()
+    if useLabel:
+        target_skinCluster = ul.get_skin_cluster(targetMesh)
+        target_infList = target_skinCluster.getInfluence()
+        for infl in target_infList:
+            label_joint(infl)
+            infl.attr('lockInfluenceWeights').set(False)
+        target_skinCluster.setNormalizeWeights(2)
+        for infl in inflList:
+            label_joint(infl)
+            jointlabel = infl.otherType.get()
+            for target_infl in target_infList:
+                if target_infl.otherType.get() == jointlabel:
+                    target_joint = target_infl
+            if not target_joint:
+                continue
+            weights = query_joint_weight(infl, mesh)
+            for id, weight in enumerate(weights):
+                 pm.skinPercent(target_skinCluster, targetMesh.verts[id], tv=[target_joint, weight])
+        target_skinCluster.setNormalizeWeights(1)
+        target_skinCluster.forceNormalizeWeights(True)
+    else:
+        for infl in inflList:
+            add_joint_influence(infl, targetMesh)
+            copy_joint_weight([mesh, targetMesh], infl)
+
+@ul.do_function_on('last', type_filter=['joint','mesh'])
+def copy_joint_weight(meshes, bone):
+    # print meshes,bone
+    if len(meshes) < 2:
+        return
+    skinClusters = [ul.get_skin_cluster(mesh) for mesh in meshes]
+    # print skinClusters
+    inflLists = [skinCluster.getInfluence() for skinCluster in skinClusters]
+    source_mesh = meshes[0]
+    source_skinCluster = skinClusters[0]
+    source_infList = inflLists[0]
+    target_meshes = meshes[1:]
+    target_skinClusters = skinClusters[1:]
+    target_infLists = inflLists[1:]
+    if not all([
+            source_skinCluster, all([sc for sc in target_skinClusters]),
+            all([len(mesh.verts) == len(target_mesh.verts) for target_mesh in target_meshes]), bone in source_infList]):
+        return
+    weights = query_joint_weight(bone, source_mesh)
+    for id, weight in enumerate(weights):
+        for target_mesh, target_skinCluster, target_infList in zip(target_meshes, target_skinClusters, target_infLists):
+            add_joint_influence(bone, target_mesh)
+            for infl in target_infList:
+                infl.attr('lockInfluenceWeights').set(False)
+            pm.skinPercent(target_skinCluster, target_mesh.verts[id], nrm=True, tv=[bone, weight])
 
 @ul.do_function_on('singleLast', type_filter=['joint', 'mesh'])
 def add_joint_influence(bone, skinmesh, remove=False):
@@ -1046,7 +1149,7 @@ def label_joint(
         sideid = 0
         for dir, (side_id, name_wc) in direction_label.items():
             for wc in name_wc:
-                print wc, ob.name()
+                # print wc, ob.name()
                 if wc in ob.name():
                     wildcard = wc
                     sideid = side_id
@@ -1054,9 +1157,9 @@ def label_joint(
             if wildcard:
                 break
         #print wildcard
-        label_name = ob.name().replace(wildcard, '')
-        if '|' in label_name:
-            label_name = label_name.split('|')[-1]
+        label_name = ob.name().split('|')[-1].replace(wildcard, '')
+        # if '|' in label_name:
+        #     label_name = label_name.split('|')[-1]
         if remove_prefixes:
             for prefix in remove_prefixes:
                 label_name = label_name.replace(prefix, '')

@@ -394,6 +394,16 @@ class RigTools(object):
                             menuItem(label='Channel History ON', c=Callback(ru.toggleChannelHistory))
                         self.template.smallbutton(label='Deform Normal Off', c=Callback(ru.deform_normal_off))
                         self.template.smallbutton(
+                            label='Lock Node',
+                            c=Callback(ul.lock_node, sl=True))
+                        with popupMenu(b=3):
+                            menuItem(
+                                label='Unlock Node',
+                                c=Callback(ul.lock_node, sl=True, lock=False))
+                            menuItem(
+                                label='Query Lock Status',
+                                c=Callback(ul.lock_node, sl=True, query=True))
+                        self.template.smallbutton(
                             label='Remove Unknown Plugins',
                             c=Callback(ul.deleteUnknowPlugin))
                         self.template.smallbutton(

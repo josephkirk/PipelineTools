@@ -358,6 +358,10 @@ class main(QtWidgets.QMainWindow):
         menuItem('Freeze Transform SkinBoneChain', self.onFreezeSkinChainClick, self.utilsMenu)
         menuItem('Transfer Weight Bone', self.onTransferWeightClick, self.utilsMenu)
         menuItem('Transfer Weight BoneChain', self.onTransferChainClick, self.utilsMenu)
+        menuItem('Copy Similar Mesh Weight', self.onCopyExactWeight, self.utilsMenu)
+        menuItem('Copy Similar Mesh Weight Using Label', self.onCopyExactWeightUseLabel, self.utilsMenu)
+        menuItem('Copy Similar Mesh Weight Single Bone', self.onCopyExactWeightBone, self.utilsMenu)
+        menuItem('Remove Offset Bone Weight', self.onRemoveOffsetBoneWeight, self.utilsMenu)
         menuItem('Reset BindPose', self.onResetBindPose, self.utilsMenu)
 
     def createStatusBar(self):
@@ -774,7 +778,19 @@ class main(QtWidgets.QMainWindow):
 
     def onTransferChainClick(self):
         rul.move_skin_weight(hi=True, sl=True)
-    
+
+    def onCopyExactWeight(self):
+        rul.copy_weight_exact(sl=True)
+
+    def onCopyExactWeightUseLabel(self):
+        rul.copy_weight_exact(sl=True, useLabel=True)
+
+    def onCopyExactWeightBone(self):
+        rul.copy_joint_weight(sl=True)
+
+    def onRemoveOffsetBoneWeight(self):
+        rul.clean_skin_weight(sl=True)
+
     def onResetBindPose(self):
         if self.selectedBones_list:
             selectBones = self.selectedBones_list
