@@ -241,6 +241,17 @@ def createPinCircle(
     log.debug(crv)
     return crv
 
+@ul.do_function_on('singleLast')
+def polyConstraint(target, mesh, direct=True):
+    closest_uv = ul.get_closest_component(target, mesh)
+    if not direct:
+        target = create_parent(target)
+    constraint = pm.pointOnPolyConstraint(
+        mesh, target, mo=True)
+    stripname = mesh.split('|')[-1]
+    constraint.attr(stripname + 'U0').set(closest_uv[0])
+    constraint.attr(stripname + 'V0').set(closest_uv[1])
+
 @ul.error_alert
 @ul.do_function_on('singleLast')
 def constraint_multi(ob, target, constraintType='Point', addChildAttr=False):
@@ -1233,13 +1244,6 @@ def mirror_joint_multi(ob):
     pm.mirrorJoint(ob, myz=True, sr=('Left', 'Right'))
 
 # --- Hair System Functions ---
-
-@ul.do_function_on()
-def assign_curve_to_hair(abc_curve,hair_system="",preserve=False):
-    '''assign Alembic curve Shape or tranform contain multi curve Shape to hairSystem'''
-    curve_list = detach_shape(abc_curve, preserve=preserve)
-    for curve in curve_list:
-        hair_from_curve(curve,hair_system=hair_system)
 
 def create_hair_system(name=''):
     hairSys = pm.nt.HairSystem()

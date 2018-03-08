@@ -164,7 +164,23 @@ def basic_intergration():
         if pm.objExists('XgenBS'):
             chref.XgenBS >> pm.PyNode('XgenBS').envelope
 
-
+def fix_losshairSim(inputcurve, ikhandle, hairSysName):
+    follicle = inputcurve.getParent()
+    hairSys = pm.PyNode(hairSysName)
+    hair_id = len(hairSys.inputHair.listConnections())
+    outputcurve = pm.duplicate(inputcurve,name=inputcurve.name()+'_dynamic',rr=1)[0]
+    outputcurveGp = pm.nt.Transform(name=inputcurve.name()+'_outputCurveGp')
+    outputcurve.setParent(outputcurveGp)
+    pm.makeIdentity(outputcurve,apply=True)
+    outputcurve_shape = outputcurve.getShape()
+    inputcurve_shape = inputcurve.getShape()
+    inputcurve_shape.local >> follicle.startPosition
+    inputcurve.worldMatrix >> follicle.startPositionMatrix
+    follicle.outHair >> hairSys.inputHair[hair_id]
+    hairSys.outputHair[hair_id] >> follicle.currentPosition
+    follicle.outCurve >> outputcurve_shape.create
+    outputcurve_shape.worldSpace[0] >> ikhandle.inCurve
+    pm.refresh()
 # def create_sway_short_hair(bone,rootTop):
 #     bones = get_current_chain(bone)
 #     bonename = bone.name().split('|')[-1]

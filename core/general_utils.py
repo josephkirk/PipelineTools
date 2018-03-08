@@ -924,15 +924,16 @@ def convert_component(
 
 
 @do_function_on(
-    'set',
-    type_filter=['transform','joint', 'mesh', 'vertex', 'edge', 'face'])
+    'set')
 def convert_to_curve(sellist, name='converted_curve', smoothness=1):
     '''
     Connect object in list with a Nurbs Curve
     '''
+    # print sellist
     if any([
             get_type(ob) == typ for ob in sellist
-            for typ in ['transform', 'joint', 'mesh']]):
+            for typ in ['transform', 'joint', 'mesh','nurbsCurve']]):
+        # print sellist
         cvpMatrix = [ob.getTranslation('world') for ob in sellist if hasattr(ob, 'getTranslation')]
     if any([get_type(cpn) == 'vertex' for cpn in sellist]):
         cvpMatrix = [get_closest_info(cpn.getPosition('world'), cpn.node())['Closest Point'] for cpn in sellist]
