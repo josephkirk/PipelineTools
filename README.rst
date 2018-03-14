@@ -5,6 +5,7 @@ Pipeline Tools is a collection of maya script and tool to help with production o
 
 ========================
 Installation:
+Unzip PipelineTools_master.zip.
 Rename PipelineTools_master folder to PipelineTools
 Copy PipelineTools folder to C:\Users\<USERNAME>\Documents\maya\scripts.
 In Maya:
