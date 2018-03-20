@@ -14,6 +14,7 @@ from ..project_specific import ns57
 import RenamerUI
 import RebuildBSUI
 import SkinSetterUI
+import ControlsMakerUI
 import maya.mel as mm
 from pymel.core import *
 # try load External Skinning Tool
@@ -210,7 +211,7 @@ class RigTools(object):
                     button(
                         label='Create Control Shape UI',
                         ann='Utilities to create NurbsCurve Shape for Control',
-                        c=Callback(self.ControlObClass._showUI))
+                        c=Callback(ControlsMakerUI.show))
                     with columnLayout():
                         with self.template.subframe(label='Control Types', li=80):
                             with columnLayout(cat =('both',15)):
