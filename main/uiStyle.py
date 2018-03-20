@@ -109,7 +109,7 @@ def addDivider(widget, layout=None):
     else:
         return widget
 
-def labelGroup(name, widget, parent=None, *args, **kws):
+def labelGroup(name, widget, parent=None, returnLabel=False, *args, **kws):
     layout = QtWidgets.QHBoxLayout()
     label = QtWidgets.QLabel(name)
     # print args, kws
@@ -118,9 +118,11 @@ def labelGroup(name, widget, parent=None, *args, **kws):
     layout.addWidget(createWidget)
     if parent:
         parent.addLayout(layout)
-        return createWidget
+        result = (label, createWidget) if returnLabel else createWidget
+        return result
     else:
-        return (createWidget, layout)
+        result = (label, createWidget, layout) if returnLabel else (createWidget, layout)
+        return result
 
 def multiLabelLayout(names, widget, groupLabel='', dir='horizontal', parent=None, *args, **kws):
     dirDict = {
@@ -191,8 +193,30 @@ def multiButtonsLayout(names, parent=None, actions=[]):
     else:
         return (tuple(createWidgets), layout)
 
-def buttonsGroup(names, collum=2, parent=None, actions=[]):
-    pass
+def buttonsGroup(groupnames, names, collums=2, parent=None, iconsPath=[], actions=[]):
+    group = QtWidgets.QGroupBox(groupnames)
+    layout = QtWidgets.QGridLayout()
+    buttons = [QtWidgets.QPushButton(name) for name in names]
+    for id, iconPath in enumerate(iconsPath):
+        icon = QtGui.QIcon(iconPath)
+        buttons[id].setIcon(icon)
+        buttons[id].setText('')
+        buttons[id].setIconSize(QtCore.QSize(28,28))
+        buttons[id].setFixedSize(QtCore.QSize(28,28))
+        buttons[id].setStyleSheet('QPushButton {border-style: none; border-width: 0px; background-color: rgba(0,0,0,0) } ')
+    stack = buttons[:]
+    row=0
+    while stack:
+        for collum in range(collums):
+            if stack:
+                button = stack.pop()
+                layout.addWidget(button, row, collum)
+        row += 1
+    for id, action in enumerate(actions):
+        buttons[id].clicked.connect(action)
+
+    group.setLayout(layout)
+    return group
 
 def findIcon(icon):
     """
