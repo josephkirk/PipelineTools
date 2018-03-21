@@ -352,6 +352,7 @@ class main(QtWidgets.QMainWindow):
         self.utilsMenu = self.menubar.addMenu("Utils")
         openSmoothBindOption = lambda *x: mm.eval('SmoothBindSkinOptions;')
         menuItem('Smooth Bind Skin', openSmoothBindOption, self.utilsMenu)
+        menuItem('Select Influence', self.onSelectInfluence, self.utilsMenu)
         menuItem('Add Influence', self.onAddInfluenceClick, self.utilsMenu)
         menuItem('Remove Influence', self.onRemoveInfluenceClick, self.utilsMenu)
         menuItem('Freeze Transform SkinBone', self.onFreezeSkinBoneClick, self.utilsMenu)
@@ -781,6 +782,9 @@ class main(QtWidgets.QMainWindow):
 
     def onCopyExactWeight(self):
         rul.copy_weight_exact(sl=True)
+
+    def onSelectInfluence(self):
+        rul.select_influence(sl=True)
 
     def onCopyExactWeightUseLabel(self):
         rul.copy_weight_exact(sl=True, useLabel=True)

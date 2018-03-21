@@ -679,38 +679,50 @@ def query_joint_weight(bone, skinmesh):
 
 @ul.do_function_on('singleLast', type_filter=['mesh'])
 def copy_weight_exact(mesh, targetMesh, useLabel=False):
-    skinCluster = ul.get_skin_cluster(mesh)
-    if not skinCluster and len(mesh.verts) == len(targetMesh.verts):
+    try:
+        skinCluster = ul.get_skin_cluster(mesh)
+        assert (len(mesh.verts) == len(targetMesh.verts))
+    except:
+        log.error("SourceMesh does not have skinCluster or selected meshes are not identical")
         return
     inflList = skinCluster.getInfluence()
-    if not ul.get_skin_cluster(targetMesh):
-        pm.select(inflList, r=True)
-        pm.select(targetMesh, add=True)
-        pm.skinCluster()
+    try: 
+        ul.get_skin_cluster(targetMesh)
+    except:
+        pm.skinCluster(targetMesh, inflList)
+    # if useLabel:
+    target_skinCluster = ul.get_skin_cluster(targetMesh)
+    target_infList = target_skinCluster.getInfluence()
     if useLabel:
-        target_skinCluster = ul.get_skin_cluster(targetMesh)
-        target_infList = target_skinCluster.getInfluence()
         for infl in target_infList:
             label_joint(infl)
             infl.attr('lockInfluenceWeights').set(False)
         target_skinCluster.setNormalizeWeights(2)
         for infl in inflList:
-            label_joint(infl)
-            jointlabel = infl.otherType.get()
-            for target_infl in target_infList:
-                if target_infl.otherType.get() == jointlabel:
-                    target_joint = target_infl
-            if not target_joint:
-                continue
-            weights = query_joint_weight(infl, mesh)
-            for id, weight in enumerate(weights):
-                 pm.skinPercent(target_skinCluster, targetMesh.verts[id], tv=[target_joint, weight])
-        target_skinCluster.setNormalizeWeights(1)
-        target_skinCluster.forceNormalizeWeights(True)
-    else:
-        for infl in inflList:
             add_joint_influence(infl, targetMesh)
-            copy_joint_weight([mesh, targetMesh], infl)
+    else:
+        for inf in inflList:
+            if inf not in target_infList:
+                add_joint_influence(inf, target_infList)
+    for vid in range(len(targetMesh.verts)):
+        for source_joint in inflList:
+            target_joint = source_joint
+            if useLabel:
+                target_joint = [j for j in target_infList if j.otherType.get() == source_joint.otherType.get()]
+                if not target_joint:
+                    log.warning('There is no joint in target Mesh match {}'.format(source_joint))
+                    continue
+                target_joint = target_joint[0]
+            weight = pm.skinPercent(skinCluster, mesh.verts[vid], transform=source_joint, q=True)
+            pm.skinPercent(target_skinCluster, targetMesh.verts[vid], tv=[target_joint, weight])
+    target_skinCluster.setNormalizeWeights(1)
+    target_skinCluster.forceNormalizeWeights(True)
+    # else:
+        # for infl in inflList:
+            # target_skinCluster = skinCluster.duplicate(rr=True, ic=True)[0]
+            # target_skinCluster.outputGeometry[0] >> targetMesh.getShape().inMesh
+            # add_joint_influence(infl, targetMesh)
+            # copy_joint_weight([mesh, targetMesh], infl)
 
 @ul.do_function_on('last', type_filter=['joint','mesh'])
 def copy_joint_weight(meshes, bone):
@@ -736,7 +748,7 @@ def copy_joint_weight(meshes, bone):
             add_joint_influence(bone, target_mesh)
             for infl in target_infList:
                 infl.attr('lockInfluenceWeights').set(False)
-            pm.skinPercent(target_skinCluster, target_mesh.verts[id], nrm=True, tv=[bone, weight])
+            pm.skinPercent(target_skinCluster, target_mesh.verts[id], tv=[bone, weight])
 
 @ul.do_function_on('singleLast', type_filter=['joint', 'mesh'])
 def add_joint_influence(bone, skinmesh, remove=False):
@@ -783,6 +795,7 @@ def switch_skin_type(ob, type='Linear'):
     deform_normal_state = 0 if type_dict[type] is 2 else 1
     skin_cluster.attr('deformUserNormals').set(deform_normal_state)
 
+
 @ul.do_function_on('lastType', type_filter=['vertex', 'edge', 'face', 'mesh', 'joint'])
 def skin_weight_setter(component_list, joints_list, skin_value=1.0, normalized=True, hierachy=False):
     '''set skin weight to skin_value for vert in verts_list to first joint,
@@ -808,26 +821,39 @@ def skin_weight_setter(component_list, joints_list, skin_value=1.0, normalized=T
         # print joints_list
     if any([type(component) is pm.nt.Transform for component in component_list]):
             for component in component_list:
-                for joint in joints_list:
-                    add_joint_influence(joint,component)
                 try:
                     skin_cluster = ul.get_skin_cluster(component)
+                except:
+                    skin_cluster = pm.skinCluster(component.node(), joints_list)
+                for joint in joints_list:
+                    if joint not in skin_cluster.getInfluence():
+                        add_joint_influence(joint,component)
+                        reset_bindPose_all()
+                try:
+                    
                     pm.select(component, r=True)
                     pm.skinPercent(skin_cluster, transformValue=get_skin_weight())
-                    print component_list
+                    # print component_list
                 except RuntimeError as why:
                     log.warning('Set Skin Error:{}'.format(why))
     else:
-        verts_list = ul.convert_component(component_list)
-        for joint in joints_list:
-            add_joint_influence(joint,verts_list[0])
-        try:
-            skin_cluster = ul.get_skin_cluster(verts_list[0])
-            if all([skin_cluster, verts_list, joints_list]):
-                pm.select(verts_list)
-                pm.skinPercent(skin_cluster, transformValue=get_skin_weight())
-        except RuntimeError as why:
-            log.warning('Set Skin Error:{}'.format(why))
+        for component in component_list:
+            verts_list = ul.convert_component(component)
+            try:
+                skin_cluster = ul.get_skin_cluster(verts_list[0])
+            except:
+                skin_cluster = pm.skinCluster(verts_list[0].node(), joints_list)
+            # print skin_cluster
+            for joint in joints_list:
+                if joint not in skin_cluster.getInfluence():
+                    add_joint_influence(joint,component)
+                    reset_bindPose_all()
+            try:
+                if all([skin_cluster, verts_list, joints_list]):
+                    pm.select(verts_list, r=True)
+                    pm.skinPercent(skin_cluster, transformValue=get_skin_weight())
+            except RuntimeError as why:
+                log.warning('Set Skin Error:{}'.format(why))
 
 @ul.do_function_on(type_filter=['vertex', 'edge', 'face', 'mesh'])
 def dual_weight_setter(component_list, weight_value=0.0, query=False):
@@ -1077,6 +1103,18 @@ def deform_normal_off(state=False):
         log.info('{} Deform User Normals Set To {}'.format(skin_cluster,state))
 
 # --- Joint ---
+@ul.do_function_on('set',['mesh'])
+def select_influence(objects):
+    infs = []
+    for ob in objects:
+        try:
+            skin_cluster = ul.get_skin_cluster(ob)
+        except RuntimeError as why:
+            log.error(why)
+            return
+        infs.append(skin_cluster.getInfluence())
+    pm.select(infs, r=True)
+    return infs
 
 def get_current_chain(ob):
     boneChains = []
@@ -1169,6 +1207,8 @@ def label_joint(
                 break
         #print wildcard
         label_name = ob.name().split('|')[-1].replace(wildcard, '')
+        while label_name.startswith('_'):
+            label_name = label_name[1:]
         # if '|' in label_name:
         #     label_name = label_name.split('|')[-1]
         if remove_prefixes:
