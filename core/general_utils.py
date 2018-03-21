@@ -764,17 +764,24 @@ def get_skin_cluster(ob):
     '''return skin cluster from ob, if cannot find raise error'''
     ob_shape = get_shape(ob)
     try:
-        shape_connections = ob_shape.inputs(type=['skinCluster', 'objectSet'])
-        for connection in shape_connections:
+        getSkin = [c for c in ob_shape.listHistory(type='skinCluster')]
+        if getSkin:
+            return getSkin[0]
+        else:
+            msg = '{} have no skin bind'.format(ob)
+            return pm.error(msg)
             # if 'skinCluster' in connection.name():
-            if isinstance(connection, pm.nt.SkinCluster):
-                return connection
-            try_get_skinCluster = connection.listConnections(type='skinCluster')
-            if try_get_skinCluster:
-                return try_get_skinCluster[0]
-            else:
-                msg = '{} have no skin bind'.format(ob)
-                return pm.error(msg)
+        # shape_connections = ob_shape.inputs(type=['skinCluster', 'objectSet'])
+        # for connection in shape_connections:
+        #     # if 'skinCluster' in connection.name():
+        #     if isinstance(connection, pm.nt.SkinCluster):
+        #         return connection
+        #     try_get_skinCluster = connection.listConnections(type='skinCluster')
+        #     if try_get_skinCluster:
+        #         return try_get_skinCluster[0]
+        #     else:
+        #         msg = '{} have no skin bind'.format(ob)
+        #         return pm.error(msg)
     except:
         msg = 'Cannot get skinCluster from {}'.format(ob)
         return pm.error(msg)
@@ -1013,10 +1020,13 @@ def lock_transform(
 
 @do_function_on()
 def reset_transform(ob):
-    for at in ['tx','ty','tz','rx','ry','rz']:
-        ob.attr(at).set(0)
-    for at in ['sx','sy','sz']:
-        ob.attr(at).set(1)
+    for at in ['tx','ty','tz','rx','ry','rz','sx','sy','sz']:
+        try:
+            ob.attr(at).set(0)
+            if at.startswith('s'):
+                ob.attr(at).set(1)
+        except RuntimeError as why:
+            log.warning(why)
 
 @do_function_on('oneToOne')
 def parent_shape(src, target, delete_src=True, delete_oldShape=True):
