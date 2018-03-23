@@ -981,7 +981,7 @@ def snap_nearest(ob, mesh_node):
     closest_component_pos = get_closest_component(ob, mesh_node, uv=False, pos=True)
     ob.setTranslation(closest_component_pos,'world')
 
-@do_function_on()
+@do_function_on(type_filter=['transform', 'mesh', 'nurbsCurve'])
 def mirror_transform(ob, axis="x",xform=[0,4]):
     axisDict = {
         "x":('tx', 'ry', 'rz', 'sx'),

@@ -16,6 +16,24 @@ ru = core.rul
 rcl = core.rcl
 
 #--- Utilities Function ---
+def lock_rig():
+    pm.hide(pm.ls(type='locator'))
+    pm.select(pm.ls(type='locator'),add=True)
+    pm.select(pm.ls(type='orientConstraint'),add=True)
+    pm.select(pm.ls(type='parentConstraint'),add=True)
+    pm.select(pm.ls(type='pointConstraint'),add=True)
+    pm.select(pm.ls(type='skinCluster'),add=True)
+    pm.select(pm.ls(type='blendShape'),add=True)
+    pm.select(pm.ls(type='follicle'),add=True)
+    pm.select(pm.ls(type='ikHandle'),add=True)
+    pm.select(pm.ls('*miscGp'),hi=True,add=True)
+    pm.select(pm.ls('*bonGp'),hi=True,add=True)
+    pm.select(pm.ls('*genGp'),hi=True,add=True)
+    pm.select(pm.ls('*facialGp'),hi=True,add=True)
+    for i in pm.selected():
+        pm.lockNode(i)
+        for atr in i.listAttr():
+            atr.lock()
 
 def set_Vray_material(mat,mat_type='dielectric',**kwargs):
     '''set Material Attribute'''

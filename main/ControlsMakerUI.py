@@ -38,6 +38,59 @@ def mayaWindow():
     return window
 
 # ------------------------------------------------------------------------------
+def connect_transform(ob, target, **kws):
+    attrdict = {
+        'translate': ['tx', 'ty', 'tz'],
+        'rotate': ['rx', 'ry', 'rz'],
+        'scale': ['sx', 'sy', 'sz']
+    }
+    for atr in attrdict:
+        if atr not in kws:
+            kws[atr] = False
+            if 'all' in kws:
+                if kws['all']:
+                    kws[atr] = True
+    for atr, value in attrdict.items():
+        if atr in kws:
+            if kws[atr] is False:
+                continue
+            if 'disconnect' in kws:
+                if kws['disconnect']:
+                    ob.attr(atr) // target.attr(atr)
+                    for attr in value:
+                        ob.attr(attr) // target.attr(attr)
+                        log.info('{} disconnect to {}'.format(
+                            ob.attr(attr), target.attr(attr)))
+                    continue
+            ob.attr(atr) >> target.attr(atr)
+            for attr in value:
+                ob.attr(attr) >> target.attr(attr)
+                log.info('{} connect to {}'.format(
+                    ob.attr(attr), target.attr(attr)))
+
+def xformTo(ob, target):
+    const = pm.parentConstraint(target, ob)
+    pm.delete(const)
+    log.info('{} match to {}'.format(ob,target))
+
+def create_group(ob):
+    obname = ob.name().split('|')[-1]
+    if ob.nodeType() == 'joint':
+        parent = pm.nt.Joint(name=obname + '_offset')
+    else:
+        parent = pm.nt.Transform(name=obname + 'Gp')
+    oldParent = ob.getParent()
+    # parent.setTranslation(ob.getTranslation('world'), 'world')
+    # parent.setRotation(ob.getRotation('world'), 'world')
+    xformTo(parent, ob)
+    parent.setParent(oldParent)
+    ob.setParent(parent)
+    log.info('create Parent Transform %s'%parent)
+    return parent
+
+def null():
+    pass
+# ------------------------------------------------------------------------------
 
 class main(QtWidgets.QMainWindow):
     '''
@@ -178,7 +231,7 @@ class main(QtWidgets.QMainWindow):
 
     def createMenuBar(self):
         # create Action
-        def menuItem(name, func , parent=None):
+        def menuItem(name, func , parent, **kws):
             newAction = QtWidgets.QAction(name, self)
             newAction.triggered.connect(func)
             if parent:
@@ -192,6 +245,38 @@ class main(QtWidgets.QMainWindow):
         self.menubar = self.menuBar()
         self.optionmenu = self.menubar.addMenu('Option')
         self.optionmenu.addAction(self.reset_action)
+        self.optionmenu.addSeparator().setText('Connect Action')
+        self.connectTypeGroup = QtWidgets.QActionGroup(self)
+        self.toggleConnectTranslateAction = menuItem('Connect Translate', null, self.connectTypeGroup)
+        self.toggleConnectTranslateAction.setCheckable(True)
+        self.toggleConnectRotateAction = menuItem('Connect Rotate', null, self.connectTypeGroup)
+        self.toggleConnectRotateAction.setCheckable(True)
+        self.toggleConnectAllAction = menuItem('Connect All', null, self.connectTypeGroup)
+        self.toggleConnectAllAction.setCheckable(True)
+        self.togglePoConstraintAction = menuItem('Point Constraint', null, self.connectTypeGroup)
+        self.togglePoConstraintAction.setCheckable(True)
+        self.toggleOConstraintAction = menuItem('Orient Constraint', null, self.connectTypeGroup)
+        self.toggleOConstraintAction.setCheckable(True)
+        self.togglePConstraintAction = menuItem('Parent Constraint', null, self.connectTypeGroup)
+        self.togglePConstraintAction.setCheckable(True)
+        self.toggleConnectAction = menuItem('None', null, self.connectTypeGroup)
+        self.toggleConnectAction.setCheckable(True)
+        self.toggleConnectAction.setChecked(True)
+        self.optionmenu.addAction(self.toggleConnectTranslateAction)
+        self.optionmenu.addAction(self.toggleConnectRotateAction)
+        self.optionmenu.addAction(self.toggleConnectAllAction)
+        self.optionmenu.addAction(self.togglePoConstraintAction)
+        self.optionmenu.addAction(self.toggleOConstraintAction)
+        self.optionmenu.addAction(self.togglePConstraintAction)
+        self.optionmenu.addAction(self.toggleConnectAction)
+
+        self.optionmenu.addSeparator().setText('Other Action')
+        self.toggleCreateOffset = menuItem('Create Offset Group', null , self.optionmenu)
+        self.toggleCreateOffset.setCheckable(True)
+        self.toggleParent = menuItem('Create Parent Chain', null , self.optionmenu)
+        self.toggleParent.setCheckable(True)
+        self.toggleTakeObjectName = menuItem('Use Object Name', null , self.optionmenu)
+        self.toggleTakeObjectName.setCheckable(True)
 
     def createStatusBar(self):
         self.statusbar = self.statusBar()
@@ -239,6 +324,14 @@ class main(QtWidgets.QMainWindow):
         self.changeControlShape_button.clicked.connect(self.onChangeShape)
         self.createControl_button.clicked.connect(self.onCreateShape)
         self.setColor_button.clicked.connect(self.onSetColor)
+
+    # def onToggleConnectType(self):
+    #     if self.toggleConnectAction.isChecked():
+    #         self.toggleConstraintAction.setChecked(False)
+    #         return
+    #     if self.toggleConstraintAction.isChecked():
+    #         self.toggleConnectAction.setChecked(False)
+    #         return
 
     def onChangeName(self, value):
         self.controlObject.name = value
@@ -295,12 +388,12 @@ class main(QtWidgets.QMainWindow):
             else:
                 self.controlAxis_combobox.addItems(
                     self.controlObject._axisList)
-        elif any([value == typ for typ in ['Cylinder','Circle','Hemisphere']]):
+        elif any([value == typ for typ in ['Arrow','Cylinder', 'CircleArrow','HalfCylinder','Circle','Hemisphere']]):
             self.controlObject.forceSetAxis = True
             self.controlAxis_combobox.clear()
             self.controlAxis_combobox.addItems(
                 self.controlObject._axisList[:6])
-        elif any([value == typ for typ in ['Rectangle', 'Cross', 'Triangle', 'ThinCross', 'RoundSquare']]):
+        elif any([value == typ for typ in ['DoubleArrow','Rectangle', 'Cross', 'Triangle', 'ThinCross', 'RoundSquare']]):
             self.controlSmoothness_combobox.setEnabled(False)
             self.controlObject.forceSetAxis = True
             self.controlAxis_combobox.clear()
@@ -321,12 +414,13 @@ class main(QtWidgets.QMainWindow):
             self.controlHeight_label.hide()
             self.controlHeight_floatspinbox.hide()
             self.controlSmoothness_combobox.setEnabled(False)
-        else:
-            if any([value == typ for typ in ['Cube']]):
-                self.controlRadius_label.setText('Width')
-                self.controlHeight_label.show()
-                self.controlHeight_floatspinbox.show()
-            self.controlLength_floatspinbox.setEnabled(True)
+        if any([value == typ for typ in ['Cube','Arrow','DoubleArrow']]):
+            self.controlRadius_label.show()
+            self.controlRadius_floatspinbox.show()
+            self.controlRadius_label.setText('Width')
+            self.controlHeight_label.show()
+            self.controlHeight_floatspinbox.show()
+        self.controlLength_floatspinbox.setEnabled(True)
         log.debug("CurrentType: %s"%self.controlObject.currentType.__name__)
 
     def onChangeResolution(self, value):
@@ -362,6 +456,27 @@ class main(QtWidgets.QMainWindow):
             for ob in pm.selected():
                 control = self.controlObject.currentType()
                 control.setMatrix(ob.getMatrix(ws=True), ws=True)
+                if self.toggleTakeObjectName.isChecked():
+                    control.rename(ob+'_ctl')
+                if self.toggleCreateOffset.isChecked():
+                    create_group(control)
+                if self.toggleConnectTranslateAction.isChecked():
+                    connect_transform(control, ob ,tranlate=True)
+                if self.toggleConnectRotateAction.isChecked():
+                    connect_transform(control, ob ,rotate=True)
+                if self.toggleConnectAllAction.isChecked():
+                    connect_transform(control, ob ,all=True)
+                if self.togglePConstraintAction.isChecked():
+                    pm.parentConstraint(control, ob ,mo=True)
+                if self.togglePoConstraintAction.isChecked():
+                    pm.pointConstraint(control, ob ,mo=True)
+                if self.toggleOConstraintAction.isChecked():
+                    pm.orientConstraint(control, ob ,mo=True)
+                if controls and self.toggleParent.isChecked():
+                    if control.getParent():
+                        control.getParent().setParent(controls[-1])
+                    else:
+                        control.setParent(controls[-1])
                 controls.append(control)
             return controls
         else:

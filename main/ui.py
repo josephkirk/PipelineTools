@@ -404,6 +404,9 @@ class RigTools(object):
                             menuItem(
                                 label='Query Lock Status',
                                 c=Callback(ul.lock_node, sl=True, query=True))
+                            menuItem(
+                                label='Lock Rig',
+                                c=Callback(ns57.lock_rig))
                         self.template.smallbutton(
                             label='Remove Unknown Plugins',
                             c=Callback(ul.deleteUnknowPlugin))

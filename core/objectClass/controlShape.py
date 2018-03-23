@@ -62,6 +62,10 @@ class main(object):
             'Circle': self.Circle,
             'Octa': self.Octa,
             'Cylinder': self.Cylinder,
+            'HalfCylinder': self.HalfCylinder,
+            'Arrow': self.Arrow,
+            'DoubleArrow': self.DoubleArrow,
+            'CircleArrow':self.CircleArrow,
             'Sphere': self.Sphere,
             'Hemisphere': self.HalfSphere,
             'NSphere': self.NSphere,
@@ -205,7 +209,7 @@ class main(object):
         crv = createPinCircle(
             self.name,
             step=4,
-            sphere=True,
+            shapeType='sphere',
             radius=self.radius,
             length=0)
         print self
@@ -216,7 +220,6 @@ class main(object):
         crv = createPinCircle(
             self.name,
             axis=self.axis,
-            sphere=False,
             radius=self.radius,
             step=self.step,
             length=self.length)
@@ -228,7 +231,6 @@ class main(object):
         crv = createPinCircle(
             self.name,
             axis=axis,
-            sphere=False,
             radius=self.radius,
             step=self.step,
             length=self.length)
@@ -239,7 +241,7 @@ class main(object):
         crv = createPinCircle(
             self.name,
             axis=self.axis,
-            sphere=True,
+            shapeType='sphere',
             radius=self.radius,
             step=self.step,
             length=self.length)
@@ -267,7 +269,33 @@ class main(object):
             axis=self._axis,
             radius=self.radius,
             step=self.step,
-            cylinder=True,
+            shapeType='cylinder',
+            height=self.length,
+            length=0,
+        )
+        return crv
+
+    @__setProperty__
+    def HalfCylinder(self):
+        crv = createPinCircle(
+            self.name,
+            axis=self._axis,
+            radius=self.radius,
+            step=self.step,
+            shapeType='halfCylinder',
+            height=self.length,
+            length=0,
+        )
+        return crv
+
+    @__setProperty__
+    def CircleArrow(self):
+        crv = createPinCircle(
+            self.name,
+            axis=self._axis,
+            radius=self.radius,
+            step=self.step,
+            shapeType='circleArrow',
             height=self.length,
             length=0,
         )
@@ -311,7 +339,7 @@ class main(object):
             axis=self._axis,
             radius=self.radius,
             step=self.step,
-            sphere=True,
+            shapeType='shere',
             length=0,
             height=self.height)
         return crv
@@ -324,7 +352,7 @@ class main(object):
             axis=self._axis,
             radius=self.radius,
             step=self.step,
-            sphere=True,
+            shapeType='shere',
             length=0,
             height=self.height)
         pm.delete(crv.cv[38:48], crv.cv[70:80])
@@ -338,6 +366,28 @@ class main(object):
             self.name,
             length=self.length,
             width=self.radius,
+            offset=self.offset)
+        return crv
+
+    @__setProperty__
+    def DoubleArrow(self):
+        crv = create_shape(
+            self.name,
+            'doubleArrow',
+            length=self.length,
+            width=self.radius,
+            height=self.height,
+            offset=self.offset)
+        return crv
+
+    @__setProperty__
+    def Arrow(self):
+        crv = create_shape(
+            self.name,
+            'arrow',
+            length=self.length,
+            width=self.radius,
+            height=self.height,
             offset=self.offset)
         return crv
 
@@ -463,6 +513,8 @@ def create_shape(
         height=1.0,
         offset=[0, 0, 0]):
     data = {
+    'arrow': ([(-1.0, 0.0, 0.0), (1.0, 0.0, 0.0), (1.0, 0.0, 1.0), (1.0+length, 0.0, 1.0), (0.0, 0.0, 1.0+length), (-(1.0+length), 0.0, 1.0), (-1.0, 0.0, 1.0), (-1.0, 0.0, 0.0)], 1, 1),
+    'doubleArrow': ([(1.0, 0.0, -1.0), (1.0, 0.0, 1.0), (1.5, 0.0, 1.0), (0.0, 0.0, 2.0), (-1.5, 0.0, 1.0), (-1.0, 0.0, 1.0), (-1.0, 0.0, -1.0), (-1.5, 0.0, -1.0), (0.0, 0.0, -2.0), (1.5, 0.0, -1.0), (1.0, 0.0, -1.0)], 1, 1),
     'circle': ([(0.0, 0.7, -0.7), (0.0, 0.0, -1.0), (0.0, -0.7, -0.7), (0.0, -1.0, 0.0), (0.0, -0.7, 0.7), (0.0, 0.0, 1.0), (0.0, 0.7, 0.7), (0.0, 1.0, 0.0)], 3, 1),
     'cross': ([(0.0, 0.5, -0.5), (0.0, 1.0, -0.5), (0.0, 1.0, 0.5), (0.0, 0.5, 0.5), (0.0, 0.5, 1.0), (0.0, -0.5, 1.0), (0.0, -0.5, 0.5), (0.0, -1.0, 0.5), (0.0, -1.0, -0.5), (0.0, -0.5, -0.5), (0.0, -0.5, -1.0), (0.0, 0.5, -1.0), (0.0, 0.5, -0.5)], 1, 1),
     'cube': ([(-1.0, -1.0, 1.0), (-1.0, 1.0, 1.0), (-1.0, 1.0, -1.0), (-1.0, -1.0, -1.0), (-1.0, -1.0, 1.0), (1.0, -1.0, 1.0), (1.0, -1.0, -1.0), (1.0, 1.0, -1.0), (1.0, 1.0, 1.0), (1.0, -1.0, 1.0), (1.0, 1.0, 1.0), (-1.0, 1.0, 1.0), (-1.0, 1.0, -1.0), (1.0, 1.0, -1.0), (1.0, -1.0, -1.0), (-1.0, -1.0, -1.0)], 1, 1),
@@ -481,8 +533,7 @@ def createPinCircle(
         name,
         createCurve=True,
         axis='XY',
-        sphere=False,
-        cylinder=False,
+        shapeType = 'pinCircle',
         offset=[0, 0, 0],
         radius=1.0,
         length=3.0,
@@ -494,12 +545,12 @@ def createPinCircle(
         name: {}\n
         create Curve: {}\n
         axis: {}\n
-        sphere: {}\n
+        shapeType: {}\n
         offset: {}\n
         radius: {}\n
         length: {}\n
         step: {}\n
-        max Angle: {}'''.format(name, createCurve, axis, sphere, offset, radius, length, step, maxAngle))
+        max Angle: {}'''.format(name, createCurve, axis, shapeType, offset, radius, length, step, maxAngle))
     maxAngle = maxAngle / 180.0 * math.pi
     inc = maxAngle / step
     pointMatrix = []
@@ -551,37 +602,73 @@ def createPinCircle(
     except AssertionError as why:
         finalPointMatrix = axisData['XY']
         log.error(str(why) + '\nDefault to XY')
-    if sphere and not cylinder and not length > 0:
-        quarCircle = len(pointMatrix) / 4 + 1
-        finalPointMatrix = axisData['XY'] + axisData['XZ'] + \
-                           axisData['XY'][:quarCircle] + axisData['YZ']
-    elif sphere and not cylinder and length > 0:
-        if axis[-1] == 'X':
-            finalPointMatrix = axisData['YX'] + axisData['ZX']
-        elif axis[-1] == 'Y':
-            finalPointMatrix = axisData['XY'] + axisData['ZY']
-        elif axis[-1] == 'Z':
-            finalPointMatrix = axisData['XZ'] + axisData['YZ']
-    elif cylinder and not sphere and not length > 0:
+    quarCircle = len(pointMatrix) / 4 + 1
+    halfCircle = len(pointMatrix) / 2 + 1
+    fullCircle = len(pointMatrix)
+
+    def cylinder():
+        # newpMatrix = halfCylinder()
+        # newpMatrix.extend([(-x,y,-z) for x,y,z in map(tuple,newpMatrix[::-1])])
         newpMatrix = []
-        pMatrix = pointMatrix
         newpMatrix.extend(
-            [[x, 0, y] for x, y in pMatrix[:len(pMatrix) / 4 + 1]])
+            [[x, 0, y] for x, y in pointMatrix[:quarCircle]])
         newpMatrix.extend(
-            [[x, height, y] for x, y in pMatrix[:len(pMatrix) / 4 + 1][::-1]])
+            [[x, height, y] for x, y in pointMatrix[:quarCircle][::-1]])
         newpMatrix.extend(
-            [[x, 0, y] for x, y in pMatrix[::-1][:len(pMatrix) / 2 + 1]])
+            [[x, 0, y] for x, y in pointMatrix[::-1][:halfCircle]])
         newpMatrix.extend(
-            [[x, height, y] for x, y in pMatrix[::-1][len(pMatrix) / 2:-len(pMatrix) / 4 + 1]])
+            [[x, height, y] for x, y in pointMatrix[::-1][halfCircle-1:-(quarCircle-1)]])
         newpMatrix.extend(
-            [[x, 0, y] for x, y in pMatrix[len(pMatrix) / 4:len(pMatrix) / 2 + 1]])
+            [[x, 0, y] for x, y in pointMatrix[quarCircle-1:halfCircle]])
         newpMatrix.extend(
-            [[x, height, y] for x, y in pMatrix[len(pMatrix) / 2:-len(pMatrix) / 4 + 1]])
+            [[x, height, y] for x, y in pointMatrix[halfCircle-1:-(quarCircle-1)]])
         newpMatrix.append(
             [newpMatrix[-1][0], 0, newpMatrix[-1][2]])
         newpMatrix.extend(
-            [[x, height, y] for x, y in pMatrix[-len(pMatrix) / 4:]])
-        finalPointMatrix = newpMatrix
+            [[x, height, y] for x, y in pointMatrix[-(quarCircle):]])
+        return newpMatrix
+
+    def halfCylinder():
+        newpMatrix = (
+            [[x, 0, y] for x, y in pointMatrix[:halfCircle]] + \
+            [[x, float(height), y] for x, y in pointMatrix[:halfCircle][::-1]])
+        newpMatrix.append([pointMatrix[0][0], 0, pointMatrix[0][1]])
+        return newpMatrix
+
+    def circleArrow():
+        newpMatrix = [[x, 0, y] for x, y in pointMatrix[:halfCircle]]
+        lastPoint = newpMatrix[-1]
+        newpMatrix.append([lastPoint[0], -(radius/4.0), lastPoint[2]])
+        newpMatrix.append([lastPoint[0], (height/2.0), -(lastPoint[2]+((height+radius)/4.0))])
+        newpMatrix.append([lastPoint[0], height+(radius/4.0), lastPoint[2]])
+        newpMatrix.extend([[x, float(height), y] for x, y in pointMatrix[:halfCircle][::-1]])
+        lastPoint = newpMatrix[-1]
+        newpMatrix.append([lastPoint[0], height+(radius/4.0), lastPoint[2]])
+        newpMatrix.append([lastPoint[0], (height/2.0), -(lastPoint[2]+((height+radius)/4.0))])
+        newpMatrix.append([lastPoint[0], -(radius/4.0), lastPoint[2]])
+        newpMatrix.append([pointMatrix[0][0], 0, pointMatrix[0][1]])
+        return newpMatrix
+
+    shape_dict ={
+        'pinCircle': finalPointMatrix,
+        'sphere':(axisData['XY'] + axisData['XZ'] + \
+                  axisData['XY'][:quarCircle] + axisData['YZ']),
+        'Xsphere': (axisData['YX'] + axisData['ZX']),
+        'Ysphere': (axisData['XY'] + axisData['ZY']),
+        'Zsphere': (axisData['XZ'] + axisData['YZ']),
+        'cylinder': cylinder(),
+        'halfCylinder': halfCylinder(),
+        'circleArrow': circleArrow()
+    }
+
+    if shapeType == 'sphere':
+        if axis[-1] == 'X':
+            shapeType = 'Xsphere'
+        elif axis[-1] == 'Y':
+            shapeType = 'Ysphere'
+        elif axis[-1] == 'Z':
+            shapeType = 'Zsphere'
+    finalPointMatrix = shape_dict[shapeType]
     key = range(len(finalPointMatrix))
     crv = pm.curve(name=newname, d=1, p=finalPointMatrix, k=key)
     log.debug(crv)
