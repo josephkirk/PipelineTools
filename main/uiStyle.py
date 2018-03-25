@@ -242,9 +242,3 @@ def findIcon(icon):
             "icons" 
         ) 
     )
-
-    # loop all potential paths
-    for path in paths:
-        filepath = os.path.join(path, icon)
-        if os.path.exists(filepath):
-            return filepath

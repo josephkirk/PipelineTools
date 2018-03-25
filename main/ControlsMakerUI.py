@@ -88,6 +88,37 @@ def create_group(ob):
     log.info('create Parent Transform %s'%parent)
     return parent
 
+# def create_offset_bone(bone, child=False, suffix='offset_bon'):
+#     if not ul.get_type(bone) == 'joint':
+#         log.warning('{} is not joint'.format(bone))
+#         return
+#     newname = bone.name().split('|')[-1].split('_')[0] + '_' + suffix
+#     offsetbone = pm.duplicate(bone, name=newname, po=True)[0]
+#     offsetbone.drawStyle.set(2)
+#     oldParent = bone.getParent()
+#     bone.setParent(offsetbone)
+#     return offsetbone
+
+def getUIValue(valueName, defaultValue=""):
+    if valueName in pm.optionVar:
+        # try:
+        #     re = int(pm.optionVar[valueName])
+        #     return re
+        # except:
+        #     pass
+        return pm.optionVar[valueName]
+    else:
+        pm.optionVar[valueName] = defaultValue
+        return defaultValue
+
+def setUIValue(valueName, value):
+    pm.optionVar[valueName] = value
+    # loop all potential paths
+    # for path in paths:
+    #     filepath = os.path.join(path, icon)
+    #     if os.path.exists(filepath):
+    #         return filepath
+
 def null():
     pass
 # ------------------------------------------------------------------------------
@@ -121,6 +152,21 @@ class main(QtWidgets.QMainWindow):
         self.name = "controlObject"
         self.controlObject = cs.main(self.name, color=(255,255,0,255))
         self.controlColor = tuple(self.controlObject.color)
+        self.toggleConnectThroughLoc = getUIValue('controlmaker_connectUseLoc',False)
+        self.connectType_dict = {
+            'translate': partial(connect_transform, translate=True),
+            'rotate': partial(connect_transform, rotate=True),
+            'scale': partial(connect_transform, scale=True),
+            'all': partial(connect_transform, all=True),
+            'parent': partial(pm.parentConstraint, mo=True),
+            'point': partial(pm.pointConstraint, mo=True),
+            'orient': partial(pm.orientConstraint, mo=True),
+        }
+        getUIValue('controlmaker_connectType',None)
+        getUIValue('controlmaker_createSelOffset',True)
+        getUIValue('controlmaker_createCtlOffset',True)
+        getUIValue('controlmaker_createChain',False)
+        getUIValue('controlmaker_useObjectName',False)
 
     def _initMainUI(self):
         self._initUIValue()
@@ -233,9 +279,20 @@ class main(QtWidgets.QMainWindow):
         # create Action
         def menuItem(name, func , parent, **kws):
             newAction = QtWidgets.QAction(name, self)
-            newAction.triggered.connect(func)
+            if 'value' in kws:
+                def emitValue():
+                    if kws['value'] == 'isCheck':
+                        print newAction.isChecked() 
+                        func(newAction.isChecked())
+                        return
+                    func(kws['value'])
+                newAction.triggered.connect(emitValue)
+            else:
+                newAction.triggered.connect(func)
             if parent:
                 parent.addAction(newAction)
+            if 'checkable' in kws:
+                newAction.setCheckable(kws['checkable'])
             return newAction
         self.reset_action = QtWidgets.QAction('Reset', self)
         self.reset_action.setToolTip('Reset UI To Default Value')
@@ -246,21 +303,15 @@ class main(QtWidgets.QMainWindow):
         self.optionmenu = self.menubar.addMenu('Option')
         self.optionmenu.addAction(self.reset_action)
         self.optionmenu.addSeparator().setText('Connect Action')
+        self.toggleConnectThroughLocAction = menuItem('ConnectThroughLoc', partial(setUIValue, 'controlmaker_connectUseLoc'), self.optionmenu, value ='isCheck', checkable=True)
         self.connectTypeGroup = QtWidgets.QActionGroup(self)
-        self.toggleConnectTranslateAction = menuItem('Connect Translate', null, self.connectTypeGroup)
-        self.toggleConnectTranslateAction.setCheckable(True)
-        self.toggleConnectRotateAction = menuItem('Connect Rotate', null, self.connectTypeGroup)
-        self.toggleConnectRotateAction.setCheckable(True)
-        self.toggleConnectAllAction = menuItem('Connect All', null, self.connectTypeGroup)
-        self.toggleConnectAllAction.setCheckable(True)
-        self.togglePoConstraintAction = menuItem('Point Constraint', null, self.connectTypeGroup)
-        self.togglePoConstraintAction.setCheckable(True)
-        self.toggleOConstraintAction = menuItem('Orient Constraint', null, self.connectTypeGroup)
-        self.toggleOConstraintAction.setCheckable(True)
-        self.togglePConstraintAction = menuItem('Parent Constraint', null, self.connectTypeGroup)
-        self.togglePConstraintAction.setCheckable(True)
-        self.toggleConnectAction = menuItem('None', null, self.connectTypeGroup)
-        self.toggleConnectAction.setCheckable(True)
+        self.toggleConnectTranslateAction = menuItem('Connect Translate', self.onChangeConnectType, self.connectTypeGroup, value='translate', checkable=True)
+        self.toggleConnectRotateAction = menuItem('Connect Rotate', self.onChangeConnectType, self.connectTypeGroup, value='rotate', checkable=True)
+        self.toggleConnectAllAction = menuItem('Connect All', self.onChangeConnectType, self.connectTypeGroup, value='scale', checkable=True)
+        self.togglePoConstraintAction = menuItem('Point Constraint', self.onChangeConnectType, self.connectTypeGroup, value='point', checkable=True)
+        self.toggleOConstraintAction = menuItem('Orient Constraint', self.onChangeConnectType, self.connectTypeGroup, value='orient', checkable=True)
+        self.togglePConstraintAction = menuItem('Parent Constraint', self.onChangeConnectType, self.connectTypeGroup, value='parent', checkable=True)
+        self.toggleConnectAction = menuItem('None', self.onChangeConnectType, self.connectTypeGroup, value=None, checkable=True)
         self.toggleConnectAction.setChecked(True)
         self.optionmenu.addAction(self.toggleConnectTranslateAction)
         self.optionmenu.addAction(self.toggleConnectRotateAction)
@@ -269,14 +320,17 @@ class main(QtWidgets.QMainWindow):
         self.optionmenu.addAction(self.toggleOConstraintAction)
         self.optionmenu.addAction(self.togglePConstraintAction)
         self.optionmenu.addAction(self.toggleConnectAction)
-
+        self.toggleCreateSelectOffset = menuItem('Create Select Offset', partial(setUIValue, 'controlmaker_createSelOffset') , self.optionmenu, value ='isCheck', checkable=True)
+        self.toggleTakeObjectName = menuItem('Use Object Name', partial(setUIValue, 'controlmaker_useObjectName') , self.optionmenu, value ='isCheck', checkable=True)
         self.optionmenu.addSeparator().setText('Other Action')
-        self.toggleCreateOffset = menuItem('Create Offset Group', null , self.optionmenu)
-        self.toggleCreateOffset.setCheckable(True)
-        self.toggleParent = menuItem('Create Parent Chain', null , self.optionmenu)
-        self.toggleParent.setCheckable(True)
-        self.toggleTakeObjectName = menuItem('Use Object Name', null , self.optionmenu)
-        self.toggleTakeObjectName.setCheckable(True)
+        self.toggleCreateOffset = menuItem('Create Control Offset', partial(setUIValue, 'controlmaker_createCtlOffset') , self.optionmenu, value ='isCheck', checkable=True)
+        self.toggleParent = menuItem('Create Parent Chain', partial(setUIValue, 'controlmaker_createChain') , self.optionmenu, value ='isCheck', checkable=True)
+        # print getUIValue('controlmaker_toggleCreateSelOffset')
+        self.toggleConnectThroughLocAction.setChecked(getUIValue('controlmaker_connectUseLoc'))
+        self.toggleCreateSelectOffset.setChecked(getUIValue('controlmaker_createSelOffset'))
+        self.toggleTakeObjectName.setChecked(getUIValue('controlmaker_useObjectName'))
+        self.toggleCreateOffset.setChecked(getUIValue('controlmaker_createCtlOffset'))
+        self.toggleParent.setChecked(getUIValue('controlmaker_createChain'))
 
     def createStatusBar(self):
         self.statusbar = self.statusBar()
@@ -332,6 +386,9 @@ class main(QtWidgets.QMainWindow):
     #     if self.toggleConstraintAction.isChecked():
     #         self.toggleConnectAction.setChecked(False)
     #         return
+
+    def onChangeConnectType(self, *args, **kws):
+        print args,kws
 
     def onChangeName(self, value):
         self.controlObject.name = value
@@ -460,8 +517,11 @@ class main(QtWidgets.QMainWindow):
                     control.rename(ob+'_ctl')
                 if self.toggleCreateOffset.isChecked():
                     create_group(control)
+                if self.toggleCreateSelectOffset.isChecked():
+                    if ob.nodeType() == "joint":
+                        create_group(ob)
                 if self.toggleConnectTranslateAction.isChecked():
-                    connect_transform(control, ob ,tranlate=True)
+                    connect_transform(control, ob ,translate=True)
                 if self.toggleConnectRotateAction.isChecked():
                     connect_transform(control, ob ,rotate=True)
                 if self.toggleConnectAllAction.isChecked():

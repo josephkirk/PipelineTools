@@ -1019,8 +1019,15 @@ def lock_transform(
             ob.attr(at).lock()
 
 @do_function_on()
-def reset_transform(ob):
-    for at in ['tx','ty','tz','rx','ry','rz','sx','sy','sz']:
+def reset_transform(ob, translate=True, rotate=True, scale=True):
+    resetAtr = []
+    if translate:
+        resetAtr.extend(['tx','ty','tz'])
+    if rotate:
+        resetAtr.extend(['rx','ry','rz'])
+    if scale:
+        resetAtr.extend(['sx','sy','sz'])
+    for at in resetAtr:
         try:
             ob.attr(at).set(0)
             if at.startswith('s'):

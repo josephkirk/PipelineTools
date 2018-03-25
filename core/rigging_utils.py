@@ -580,12 +580,13 @@ def freeze_skin_joint(bon, hi=False):
         pm.parent(child, bon)
     move_skin_weight(tempBon, bon)
     pm.delete(tempBon)
-    pm.select(bon, r=True)
-    newbp = pm.dagPose(bp=True, save=True)
-    bindPoses = pm.ls(type=pm.nt.DagPose)
-    for bp in bindPoses:
-        if bp != newbp:
-            pm.delete(bp)
+    # pm.select(bon, r=True)
+    # newbp = pm.dagPose(bp=True, save=True)
+    # bindPoses = pm.ls(type=pm.nt.DagPose)
+    # for bp in bindPoses:
+    #     if bp != newbp:
+    #         pm.delete(bp)
+    reset_bindPose_root(bon)
     if hi:
         bonChain = ul.iter_hierachy(bon)
         bonChain.next()
@@ -1151,6 +1152,29 @@ def get_opposite_joint(bone, select=False, opBoneOnly=True, customPrefix=None):
                 print opBoneName
                 return opBone
 
+def check_default_value(node, atrs, defaultValue):
+    return any([node.attr(atr).get() != defaultValue for atr in atrs])
+
+def check_bone_transform(bone, returnValueOnly=False):
+    rot_atr = ['rx', 'ry', 'rz']
+    scl_atr = ['sx', 'sy', 'sz']
+    rotate_value = check_default_value(bone, rot_atr, 0.0)
+    scale_value = check_default_value(bone, scl_atr, 1.0)
+    if returnValueOnly:
+        return (rotate_value, scale_value)
+    if rotate_value or scale_value:
+        freeze_transform = pm.confirmBox(
+            'Freeze Transform',
+            '{} have rotate or scale value. Do you want to freeze transform the joint?'.format(bone))
+        if bone.outputs(type='skinCluster'):
+            freeze_transform = pm.confirmBox(
+                'Freeze Transform',
+                '{} is bound to a skinCluster. Value will be reset to default'.format(bone))
+            if freeze_transform:
+                ul.reset_transform(bone, translate=False)
+        else:
+            pm.makeIdentity(bone, apply=True)
+
 @ul.do_function_on(type_filter='joint')
 def dup_bone(bone,name='joint1'):
     pm.select(cl=True)
@@ -1350,8 +1374,9 @@ def make_curve_dynamic(inputcurve, hairSystem=''):
 #--- Rigging Body Controls Methods ---
 @ul.do_function_on()
 def create_prop_control(bone, parent='ctlGp', useLoc=False, customShape=None):
+    check_bone_transform(bone)
     if 'gp' not in bone.name().lower():
-        bonGp = create_parent(bone)
+        bonGp = create_offset_bone(bone)
     ctlname = ul.get_name(bone).replace('bon', 'ctl')
     if customShape:
         ctl = customShape()
@@ -1379,8 +1404,9 @@ def create_prop_control(bone, parent='ctlGp', useLoc=False, customShape=None):
 
 @ul.do_function_on()
 def create_free_control(bone, parent='ctlGp',useLoc=False, customShape=None):
+    check_bone_transform(bone)
     if 'gp' not in bone.name().lower():
-        bonGp = create_parent(bone)
+        bonGp = create_offset_bone(bone)
     for suf in ['bone', 'bon']:
         bonname = ul.get_name(bone).replace(suf,'')
     ctlname = bonname+'ctl'
@@ -1413,6 +1439,7 @@ def create_parent_control(boneRoot, parent='ctlGp',useLoc=False, customShape=Non
     ctls = []
     boneChain = ul.iter_hierachy(boneRoot)
     for bone in iter(boneChain):
+        check_bone_transform(bone)
         if hasattr(bone, 'getChildren'):
             if not bone.getChildren(type='joint'):
                 continue

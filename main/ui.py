@@ -278,12 +278,6 @@ class RigTools(object):
                                             sl=True))
 
                                 with self.template.subframe(label='IK Chain Control'):
-                                    button(
-                                        label='Create Simple IK',
-                                        c=Callback(
-                                            self.do_func,
-                                            ru.create_simpleIK,
-                                            sl=True))
                                     with gridLayout(cr=True,cw=150, ch=30):
                                         with columnLayout():
                                             with rowColumnLayout(
@@ -332,11 +326,13 @@ class RigTools(object):
                                                     label='Controls :', value1=3)
                                         with columnLayout():
                                             button(
-                                                label='Create Stretch Bone',
+                                                label='Create Curve Stretch Bone',
                                                 c=lambda x:ru.create_stretchIK(
                                                     ctlAmount=self._uiElement['Sctlcount'].getValue1(),
                                                     boneAmount=self._uiElement['Sbonecount'].getValue1(),
                                                     sl=True))
+                                            button(
+                                                label='Create Ribbon Stretch Bone')
                                     separator()
                         button(
                             label='Delete Created Nodes',
