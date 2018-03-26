@@ -16,24 +16,39 @@ ru = core.rul
 rcl = core.rcl
 
 #--- Utilities Function ---
-def lock_rig():
+def lock_rig(lock=True):
     pm.hide(pm.ls(type='locator'))
     pm.select(pm.ls(type='locator'),add=True)
     pm.select(pm.ls(type='orientConstraint'),add=True)
     pm.select(pm.ls(type='parentConstraint'),add=True)
     pm.select(pm.ls(type='pointConstraint'),add=True)
     pm.select(pm.ls(type='skinCluster'),add=True)
-    pm.select(pm.ls(type='blendShape'),add=True)
+    # pm.select(pm.ls(type='blendShape'),add=True)
     pm.select(pm.ls(type='follicle'),add=True)
     pm.select(pm.ls(type='ikHandle'),add=True)
     pm.select(pm.ls('*miscGp'),hi=True,add=True)
     pm.select(pm.ls('*bonGp'),hi=True,add=True)
     pm.select(pm.ls('*genGp'),hi=True,add=True)
     pm.select(pm.ls('*facialGp'),hi=True,add=True)
-    for i in pm.selected():
-        pm.lockNode(i)
-        for atr in i.listAttr():
-            atr.lock()
+    sel = pm.selected()
+    for i in sel:
+        log.info("{}:lock:{}".format(i, lock))
+        pm.lockNode(i,lock=lock)
+        if i.nodeType() == 'skinCluster':
+            for b in i.getInfluence():
+                b.attr('lockInfluenceWeights').set(lock)
+        try:
+            for atr in i.listAttr():
+                if 'vis' not in atr:
+                    try:
+                        if lock:
+                            atr.lock()
+                        else:
+                            atr.unlock()
+                    except:
+                        pass
+        except:
+            pass
 
 def set_Vray_material(mat,mat_type='dielectric',**kwargs):
     '''set Material Attribute'''

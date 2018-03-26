@@ -896,7 +896,7 @@ def convert_component(
         o for o in components_list if type(o) is pm.nt.Transform]
     if filter_transform:
         converts = []
-        for tr in check_for_transform:
+        for tr in filter_transform:
             if getShape(tr):
                 convert = getShape(tr).vtx
                 for vert in getShape(tr).vtx:
@@ -980,6 +980,25 @@ def convert_to_curve(sellist, name='converted_curve', smoothness=1):
 def snap_nearest(ob, mesh_node):
     closest_component_pos = get_closest_component(ob, mesh_node, uv=False, pos=True)
     ob.setTranslation(closest_component_pos,'world')
+
+@do_function_on('singleLast', type_filter=['locator','transform', 'mesh', 'nurbsCurve'])
+def snap_to_curve(ob, curve_node, pin=True, query=False):
+    npc = pm.createNode('nearestPointOnCurve')
+    poc = pm.createNode('pointOnCurveInfo')
+    npc.result.parameter >> poc.parameter
+    curve_node.worldSpace[0] >> npc.inputCurve
+    curve_node.worldSpace[0] >> poc.inputCurve
+    npc.inPosition.set(ob.getTranslation('world'))
+    pm.delete(npc)
+    if query:
+        result = poc.result.position.get()
+        pm.delete(poc)
+        return result
+    if pin:
+        poc.result.position >> ob.translate
+    else:
+        ob.setTranslation(poc.result.position.get(),'world')
+        pm.delete(poc)
 
 @do_function_on(type_filter=['transform', 'mesh', 'nurbsCurve'])
 def mirror_transform(ob, axis="x",xform=[0,4]):
@@ -1083,6 +1102,11 @@ def detach_shape(ob, preserve=False):
     return result
 
 # --- Scenes Mangement --- #
+def removeAllReferenceEdits():
+    for ref in pm.listReferences():
+        for editType in ['addAttr', 'deleteAttr', 'setAttr', 'disconnectAttr']:
+            ref.removeReferenceEdits(editCommand=editType, force=True)
+
 @do_function_on()
 def lock_node(node, lock=True, query=False):
     if query:

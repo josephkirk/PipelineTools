@@ -205,135 +205,140 @@ class RigTools(object):
 
     def create_rig_util_ui(self):
             with columnLayout():
-
                 with frameLayout(label='Create Control:',cl=False, font='boldLabelFont'):
                     center_text = ul.partial(text, align='center')
                     button(
                         label='Create Control Shape UI',
                         ann='Utilities to create NurbsCurve Shape for Control',
                         c=Callback(ControlsMakerUI.show))
-                    with columnLayout():
-                        with self.template.subframe(label='Control Types', li=80):
-                            with columnLayout(cat =('both',15)):
-                                with gridLayout():
-                                    self._uiElement['useLoc'] = checkBox(label='Connect using Locator')
-                                    self._uiElement['useUIShape'] = checkBox(label='Use UI Shape')
-                            with columnLayout():
-                                with self.template.subframe(label='Single Bone Control'):
+                    button(
+                        label='Aim Setup',
+                        c=Callback(
+                            ru.aim_setup,
+                            sl=True))
+                    with frameLayout(label='Control Preset',collapsable=True, cl=True, font='boldLabelFont'):
+                        with columnLayout():
+                            with self.template.subframe(label='Control Types', li=80):
+                                with columnLayout(cat =('both',15)):
                                     with gridLayout():
-                                        self.template.smallbutton(
-                                            label='Prop Control',
-                                            c=Callback(
-                                                self.do_func,
-                                                ru.create_prop_control,
-                                                useLoc=self._uiElement['useLoc'].getValue,
-                                                sl=True))
-                                        self.template.smallbutton(
-                                            label='Free Control',
-                                            c=Callback(
-                                                self.do_func,
-                                                ru.create_free_control,
-                                                useLoc=self._uiElement['useLoc'].getValue,
-                                                sl=True))
-
-                                with self.template.subframe(label='Bone Chain Control'):
-                                    with gridLayout():
-                                        self.template.smallbutton(
-                                            label='Parent Control',
-                                            c=Callback(
-                                                self.do_func,
-                                                ru.create_parent_control,
-                                                useLoc=self._uiElement['useLoc'].getValue,
-                                                sl=True))
-                                        self.template.smallbutton(
-                                            label='Aim Setup',
-                                            c=Callback(
-                                                ru.aim_setup,
-                                                sl=True))
-
-                                with self.template.subframe(label='Dynamic Chain Control'):
-                                    with rowColumnLayout(
-                                            rs=[(1,0),],
-                                            numberOfColumns=2,
-                                            columnWidth=[(1, 180), (2, 50)]):
-                                        hairSysName = '{}_hairSystem'.format(
-                                            ns57.get_character_infos()[-1]) \
-                                            if ns57.get_character_infos() else 'hairSytem1'
-                                        self._uiElement['Hair System'] = textFieldGrp(
-                                            cl2=('right', 'right'),
-                                            co2=(5, 10),
-                                            ct2=('right','left'),
-                                            cw2=(70, 100),
-                                            label='Hair System :', text=hairSysName)
-                                        self.template.smallbutton(
-                                            label='Get',
-                                            h=20,
-                                            c=Callback(self.get_hair_system))
-                                    button(
-                                        label='Create',
-                                        c=Callback(
-                                            self.do_func,
-                                            ru.create_long_hair,
-                                            hairSystem=self._uiElement['Hair System'].getText,
-                                            sl=True))
-
-                                with self.template.subframe(label='IK Chain Control'):
-                                    with gridLayout(cr=True,cw=150, ch=30):
-                                        with columnLayout():
-                                            with rowColumnLayout(
-                                                    rs=[(1,0.1),],
-                                                    numberOfColumns=2,
-                                                    columnWidth=[(1, 180), (2, 50)]):
-                                                self._uiElement['SHctlcount'] = intFieldGrp(
-                                                    numberOfFields=1,
-                                                    cl2=('right', 'right'),
-                                                    co2=(5, 10),
-                                                    ct2=('right','left'),
-                                                    cw2=(70, 100),
-                                                    label='Controls :', value1=2)
-                                        with columnLayout():
-                                            button(
-                                                label='Create Spline IK',
+                                        self._uiElement['useLoc'] = checkBox(label='Connect using Locator')
+                                        self._uiElement['useUIShape'] = checkBox(label='Use UI Shape')
+                                with columnLayout():
+                                    with self.template.subframe(label='Single Bone Control'):
+                                        with gridLayout():
+                                            self.template.smallbutton(
+                                                label='Prop Control',
                                                 c=Callback(
                                                     self.do_func,
-                                                    ru.create_splineIK,
-                                                    midCtls=self._uiElement['SHctlcount'].getValue1,
+                                                    ru.create_prop_control,
+                                                    useLoc=self._uiElement['useLoc'].getValue,
                                                     sl=True))
-                                    separator()
-                                    with gridLayout(cr=True,cw=150, ch=60):
-                                        with columnLayout():
-                                            with rowColumnLayout(
-                                                    rs=[(1,0.1),],
-                                                    numberOfColumns=2,
-                                                    columnWidth=[(1, 180), (2, 50)]):
-                                                self._uiElement['Sbonecount'] = intFieldGrp(
-                                                    numberOfFields=1,
-                                                    cl2=('right', 'right'),
-                                                    co2=(5, 10),
-                                                    ct2=('right','left'),
-                                                    cw2=(70, 100),
-                                                    label='Bones :', value1=6)
-                                            with rowColumnLayout(
-                                                    rs=[(1,0.1),],
-                                                    numberOfColumns=2,
-                                                    columnWidth=[(1, 180), (2, 50)]):
-                                                self._uiElement['Sctlcount'] = intFieldGrp(
-                                                    numberOfFields=1,
-                                                    cl2=('right', 'right'),
-                                                    co2=(5, 10),
-                                                    ct2=('right','left'),
-                                                    cw2=(70, 100),
-                                                    label='Controls :', value1=3)
-                                        with columnLayout():
-                                            button(
-                                                label='Create Curve Stretch Bone',
-                                                c=lambda x:ru.create_stretchIK(
-                                                    ctlAmount=self._uiElement['Sctlcount'].getValue1(),
-                                                    boneAmount=self._uiElement['Sbonecount'].getValue1(),
+                                            self.template.smallbutton(
+                                                label='Free Control',
+                                                c=Callback(
+                                                    self.do_func,
+                                                    ru.create_free_control,
+                                                    useLoc=self._uiElement['useLoc'].getValue,
                                                     sl=True))
-                                            button(
-                                                label='Create Ribbon Stretch Bone')
-                                    separator()
+
+                                    with self.template.subframe(label='Bone Chain Control'):
+                                        with gridLayout():
+                                            self.template.smallbutton(
+                                                label='Parent Control',
+                                                c=Callback(
+                                                    self.do_func,
+                                                    ru.create_parent_control,
+                                                    useLoc=self._uiElement['useLoc'].getValue,
+                                                    sl=True))
+                                            # self.template.smallbutton(
+                                            #     label='Aim Setup',
+                                            #     c=Callback(
+                                            #         ru.aim_setup,
+                                            #         sl=True))
+
+                    with self.template.subframe(label='Dynamic Chain Control'):
+                        with rowColumnLayout(
+                                rs=[(1,0),],
+                                numberOfColumns=2,
+                                columnWidth=[(1, 180), (2, 50)]):
+                            hairSysName = '{}_hairSystem'.format(
+                                ns57.get_character_infos()[-1]) \
+                                if ns57.get_character_infos() else 'hairSytem1'
+                            self._uiElement['Hair System'] = textFieldGrp(
+                                cl2=('right', 'right'),
+                                co2=(5, 10),
+                                ct2=('right','left'),
+                                cw2=(70, 100),
+                                label='Hair System :', text=hairSysName)
+                            self.template.smallbutton(
+                                label='Get',
+                                h=20,
+                                c=Callback(self.get_hair_system))
+                        button(
+                            label='Create',
+                            c=Callback(
+                                self.do_func,
+                                ru.create_long_hair,
+                                hairSystem=self._uiElement['Hair System'].getText,
+                                sl=True))
+
+                    with self.template.subframe(label='IK Chain Control'):
+                        with gridLayout(cr=True,cw=150, ch=30):
+                            with columnLayout():
+                                with rowColumnLayout(
+                                        rs=[(1,0.1),],
+                                        numberOfColumns=2,
+                                        columnWidth=[(1, 180), (2, 50)]):
+                                    self._uiElement['SHctlcount'] = intFieldGrp(
+                                        numberOfFields=1,
+                                        cl2=('right', 'right'),
+                                        co2=(5, 10),
+                                        ct2=('right','left'),
+                                        cw2=(70, 100),
+                                        label='Controls :', value1=2)
+                            with columnLayout():
+                                button(
+                                    label='Create Spline IK',
+                                    c=Callback(
+                                        self.do_func,
+                                        ru.create_splineIK,
+                                        midCtls=self._uiElement['SHctlcount'].getValue1,
+                                        sl=True))
+                        separator()
+                        with gridLayout(cr=True,cw=150, ch=60):
+                            with columnLayout():
+                                with rowColumnLayout(
+                                        rs=[(1,0.1),],
+                                        numberOfColumns=2,
+                                        columnWidth=[(1, 180), (2, 50)]):
+                                    self._uiElement['Sbonecount'] = intFieldGrp(
+                                        numberOfFields=1,
+                                        cl2=('right', 'right'),
+                                        co2=(5, 10),
+                                        ct2=('right','left'),
+                                        cw2=(70, 100),
+                                        label='Bones :', value1=6)
+                                with rowColumnLayout(
+                                        rs=[(1,0.1),],
+                                        numberOfColumns=2,
+                                        columnWidth=[(1, 180), (2, 50)]):
+                                    self._uiElement['Sctlcount'] = intFieldGrp(
+                                        numberOfFields=1,
+                                        cl2=('right', 'right'),
+                                        co2=(5, 10),
+                                        ct2=('right','left'),
+                                        cw2=(70, 100),
+                                        label='Controls :', value1=3)
+                            with columnLayout():
+                                button(
+                                    label='Create Curve Stretch Bone',
+                                    c=lambda x:ru.create_stretchIK(
+                                        ctlAmount=self._uiElement['Sctlcount'].getValue1(),
+                                        boneAmount=self._uiElement['Sbonecount'].getValue1(),
+                                        sl=True))
+                                button(
+                                    label='Create Ribbon Stretch Bone')
+                        separator()
                         button(
                             label='Delete Created Nodes',
                             c=Callback(
@@ -412,7 +417,10 @@ class RigTools(object):
                         self.template.smallbutton(
                             label='Reload Textures',
                             c=Callback(ul.reload_texture))
-
+                        self.template.smallbutton(
+                            label='Remove All Ref Edits',
+                            c=Callback(
+                                ul.removeAllReferenceEdits))
 
     def create_util_ui(self):
         with columnLayout():

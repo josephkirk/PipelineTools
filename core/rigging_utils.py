@@ -1439,7 +1439,7 @@ def create_parent_control(boneRoot, parent='ctlGp',useLoc=False, customShape=Non
     ctls = []
     boneChain = ul.iter_hierachy(boneRoot)
     for bone in iter(boneChain):
-        check_bone_transform(bone)
+        # check_bone_transform(bone)
         if hasattr(bone, 'getChildren'):
             if not bone.getChildren(type='joint'):
                 continue
