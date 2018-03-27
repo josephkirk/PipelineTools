@@ -1374,7 +1374,7 @@ def make_curve_dynamic(inputcurve, hairSystem=''):
 #--- Rigging Body Controls Methods ---
 @ul.do_function_on()
 def create_prop_control(bone, parent='ctlGp', useLoc=False, customShape=None):
-    check_bone_transform(bone)
+    # check_bone_transform(bone)
     if 'gp' not in bone.name().lower():
         bonGp = create_offset_bone(bone)
     ctlname = ul.get_name(bone).replace('bon', 'ctl')
@@ -1404,7 +1404,7 @@ def create_prop_control(bone, parent='ctlGp', useLoc=False, customShape=None):
 
 @ul.do_function_on()
 def create_free_control(bone, parent='ctlGp',useLoc=False, customShape=None):
-    check_bone_transform(bone)
+    # check_bone_transform(bone)
     if 'gp' not in bone.name().lower():
         bonGp = create_offset_bone(bone)
     for suf in ['bone', 'bon']:
@@ -1484,6 +1484,72 @@ def create_parent_control(boneRoot, parent='ctlGp',useLoc=False, customShape=Non
     return result
 
 #--- Rigging Hair Control Methods ---
+@ul.do_function_on()
+def create_dynamic_chain(boneRoot, hairSystem=''):
+    def create_ctl(b, name='circle', radius=1, color=[1,1,0,0]):
+        ctl = pm.circle(name=name, radius=radius)[0]
+        ctl.rotateY.set(90)
+        ul.setColor(ctl.getShape(),color=color)
+        pm.makeIdentity(ctl, apply=True)
+        xformTo(ctl, b)
+        return ctl
+    bones = list(ul.iter_hierachy(boneRoot))
+    bname = boneRoot.split('|')[-1]
+    crv = ul.convert_to_curve(bones)
+    crv.rename(bname+'_animCurve')
+    dynamicSys = make_curve_dynamic(crv)
+    dynaCrv = dynamicSys[0]
+    dynaCrv.rename(bname+'_dynamicCurve')
+    foc = dynamicSys[1]
+    foc.getParent().rename(bname+'_focllicle')
+    ctls = []
+    pinLocs = []
+    boneLocs = []
+    ctlGrp = pm.nt.Transform(name=bname+'_rootCtlGp')
+    pinGrp = pm.nt.Transform(name=bname+'_dynamicLocGp')
+    rootCtl = create_ctl(bones[0], name=bname+'_dynamicAxis', radius=2.0)
+    rootCtlGp = create_parent(rootCtl)
+    rootCtlGp.setParent(ctlGrp)
+    oldParent = foc.getParent().getParent()
+    foc.getParent().setParent(rootCtl)
+    pm.delete(oldParent)
+    for bone, pos in zip(bones, [b.getTranslation('world') for b in bones]):
+        boneName = bone.split('|')[-1]
+        loc = create_loc_control(bone, connect=False)
+        loc.rename(loc.replace('loc','pin'))
+        if pinLocs:
+            pm.aimConstraint(loc, pinLocs[-1])
+        pinLocs.append(loc)
+        remove_parent(loc)
+        loc.setParent(pinGrp)
+        ul.snap_to_curve(loc, dynaCrv)
+        ctl = create_ctl(bone, name=boneName+'_ctl', color=[1,0,0,0])
+        ctlGp = create_parent(ctl)
+        ctlOffset = create_parent(ctl)
+        ctlOffset.rename(boneName+'_offset_ctl')
+        if ctls:
+            ctlGp.setParent(ctls[-1])
+        else:
+            ctlGp.setParent(ctlGrp)
+        ctls.append(ctl)
+        offsetBoneGp = create_offset_bone(bone)
+        offsetBoneGp.rename(boneName+'_rootOffset')
+        offsetBone = create_offset_bone(bone)
+        offsetBoneGp.rename(boneName+'_offset')
+        connect_transform(ctl, bone, all=True)
+        boneLoc = connect_with_loc(loc, ctlOffset, translate=True, rotate=True)[0]
+        boneLoc.translate >> offsetBone.translate
+        boneLoc.rotate >> offsetBone.rotate
+        if boneLocs:
+            boneLoc.getParent().setParent(boneLocs[-1])
+        else:
+            boneLoc.getParent().setParent(ctlGrp)
+        boneLocs.append(boneLoc)
+        #boneLoc.getParent().setTranslation(pos, 'world')
+        ctlGp.setTranslation(pos, 'world')
+        offsetBoneGp.setTranslation(pos, 'world')
+    pm.aimConstraint(pinLocs[-2], pinLocs[-1])
+
 @ul.do_function_on()
 def create_long_hair(boneRoot, hairSystem='', circle=True, simplifyCurve=False, customShape=None):
     dynamicBones = dup_bone_chain(boneRoot, suffix='dynamic')
@@ -1622,7 +1688,11 @@ def create_splineIK(bone, midCtls=2,addFK=False, addSway=False, simplifyCurve=Fa
     endCtl.roll >> ikhandle.roll
     endCtl.addAttr('twist', type='float',k=1)
     endCtl.twist >> ikhandle.twist
-    curveSkin = pm.skinCluster(*ul.recurse_collect(boneTops, ikcurve))
+    print boneTops
+    # pm.select(boneTops,r=True)
+    # pm.select(ikcurve,add=True)
+    # curveSkin = pm.skinCluster(wd=1,dr=4,tsb=1)
+    curveSkin = pm.skinCluster(*ul.recurse_collect(boneTops, ikcurve),wd=1,dr=4,tsb=1)
     if addFK:
         circleShape = ul.partial(
             createPinCircle,
@@ -1712,5 +1782,5 @@ def create_stretchIK(inputcurve, ctlAmount=3, boneAmount=3):
         ctl = create_free_control(mboneTop)
         topCtls.append(ctl)
         boneTops.append(mboneTop)
-    curveSkin = pm.skinCluster(*ul.recurse_collect(boneTops, inputcurve))
+    curveSkin = pm.skinCluster(*ul.recurse_collect(boneTops, inputcurve),wd=1,dr=4,tsb=1)
     # topCtls[0].rotate >> ctls[0].getParent.rotate

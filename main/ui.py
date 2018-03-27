@@ -216,7 +216,7 @@ class RigTools(object):
                         c=Callback(
                             ru.aim_setup,
                             sl=True))
-                    with frameLayout(label='Control Preset',collapsable=True, cl=True, font='boldLabelFont'):
+                    with frameLayout(label='Legacy Control Preset',collapsable=True, cl=True, font='boldLabelFont'):
                         with columnLayout():
                             with self.template.subframe(label='Control Types', li=80):
                                 with columnLayout(cat =('both',15)):
@@ -274,13 +274,20 @@ class RigTools(object):
                                 label='Get',
                                 h=20,
                                 c=Callback(self.get_hair_system))
-                        button(
-                            label='Create',
-                            c=Callback(
-                                self.do_func,
-                                ru.create_long_hair,
-                                hairSystem=self._uiElement['Hair System'].getText,
-                                sl=True))
+                            button(
+                                label='Legacy',
+                                c=Callback(
+                                    self.do_func,
+                                    ru.create_long_hair,
+                                    hairSystem=self._uiElement['Hair System'].getText,
+                                    sl=True))
+                            button(
+                                label='New',
+                                c=Callback(
+                                    self.do_func,
+                                    ru.create_dynamic_chain,
+                                    hairSystem=self._uiElement['Hair System'].getText,
+                                    sl=True))
 
                     with self.template.subframe(label='IK Chain Control'):
                         with gridLayout(cr=True,cw=150, ch=30):
@@ -336,23 +343,23 @@ class RigTools(object):
                                         ctlAmount=self._uiElement['Sctlcount'].getValue1(),
                                         boneAmount=self._uiElement['Sbonecount'].getValue1(),
                                         sl=True))
-                                button(
-                                    label='Create Ribbon Stretch Bone')
-                        separator()
-                        button(
-                            label='Delete Created Nodes',
-                            c=Callback(
-                                self.delete_created_nodes))
-                        with popupMenu(b=3):
-                            menuItem(
-                                label='Delete All Created Nodes',
-                                c=Callback(
-                                    self.delete_created_nodes,
-                                    all=True))
-                        button(
-                            label='Controller Tagging',
-                            c=Callback(
-                                ControlMetaUI.show))
+                                # button(
+                                #     label='Create Ribbon Stretch Bone')
+                        # separator()
+                        # button(
+                        #     label='Delete Created Nodes',
+                        #     c=Callback(
+                        #         self.delete_created_nodes))
+                        # with popupMenu(b=3):
+                        #     menuItem(
+                        #         label='Delete All Created Nodes',
+                        #         c=Callback(
+                        #             self.delete_created_nodes,
+                        #             all=True))
+                        # button(
+                        #     label='Controller Tagging',
+                        #     c=Callback(
+                        #         ControlMetaUI.show))
               #scriptedPanel(type="nodeEditorPanel", label="Node Editor")
 
     def create_intergration_ui(self):
@@ -408,6 +415,9 @@ class RigTools(object):
                             menuItem(
                                 label='Lock Rig',
                                 c=Callback(ns57.lock_rig))
+                            menuItem(
+                                label='Unlock Rig',
+                                c=Callback(ns57.lock_rig, lock=False))
                         self.template.smallbutton(
                             label='Remove Unknown Plugins',
                             c=Callback(ul.deleteUnknowPlugin))
@@ -430,10 +440,10 @@ class RigTools(object):
 
             with frameLayout(label='Modeling', cl=False):
                 with gridLayout(cw=150):
-                    self.template.smallbutton(label='Selected to Curve',
-                        c=Callback(
-                            ul.convert_to_curve,
-                            sl=True))
+                    # self.template.smallbutton(label='Selected to Curve',
+                    #     c=Callback(
+                    #         ul.convert_to_curve,
+                    #         sl=True))
                     self.template.smallbutton(
                         label='Parent Shape',
                         c=Callback(
@@ -685,6 +695,47 @@ class RigTools(object):
                                     self.setUIValue,
                                     'PCAddAttr',
                                     not self._uiElement['PCAddAttr']))
+                        self.template.smallbutton(
+                            label='Convert to Curve',
+                            c=Callback(
+                                ul.convert_to_curve,
+                                sl=True))
+                        self.template.smallbutton(
+                            label='Snap to Curve',
+                            c=Callback(
+                                ul.snap_to_curve,
+                                sl=True))
+                        with popupMenu(b=3):
+                            menuItem(
+                                label='Snap to Curve Only',
+                                c=Callback(
+                                    ul.snap_to_curve,
+                                    pin=False,
+                                    sl=True))
+                        self._uiElement['CLoccount'] = intFieldGrp(
+                            numberOfFields=1,
+                            cl2=('right', 'right'),
+                            co2=(5, 10),
+                            ct2=('right','left'),
+                            cw2=(70, 100),
+                            label='Locators :', value1=6)
+                        self.template.smallbutton(
+                            label='Curve To Loc',
+                            c=lambda x:ru.create_locs_on_curve(
+                                amount=self._uiElement['CLoccount'].getValue1(),
+                                sl=True))
+                        self._uiElement['Cbonecount'] = intFieldGrp(
+                            numberOfFields=1,
+                            cl2=('right', 'right'),
+                            co2=(5, 10),
+                            ct2=('right','left'),
+                            cw2=(70, 100),
+                            label='Bones :', value1=6)
+                        self.template.smallbutton(
+                            label='Curve To Bone',
+                            c=lambda x:ru.curve_to_bone(
+                                amount=self._uiElement['Cbonecount'].getValue1(),
+                                sl=True))
 
     def _init_ui(self):
         with self.window:

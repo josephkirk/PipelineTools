@@ -976,7 +976,7 @@ def convert_to_curve(sellist, name='converted_curve', smoothness=1):
     crv.rename(name)
     return crv
 
-@do_function_on('singleLast', type_filter=['transform', 'mesh'])
+@do_function_on('singleLast', type_filter=['locator','transform', 'mesh'])
 def snap_nearest(ob, mesh_node):
     closest_component_pos = get_closest_component(ob, mesh_node, uv=False, pos=True)
     ob.setTranslation(closest_component_pos,'world')
