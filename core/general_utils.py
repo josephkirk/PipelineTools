@@ -218,7 +218,7 @@ def error_alert(func):
                 raise
     return wrapper
 
-def do_function_on(mode='single', type_filter=[]):
+def do_function_on(mode='single', type_filter=['locator','transform', 'mesh', 'nurbsCurve', 'joint']):
     """Decorator that feed function with selected object
         :Parameter mode: String indicate how to feed selecled object
             to function. Valid String value is:
@@ -634,7 +634,7 @@ def recurse_collect(*args, **kwargs):
     return collectors
 
 @error_alert
-def iter_hierachy(root, filter = ['transform']):
+def iter_hierachy(root):
     '''yield hierachy generator object with stack method'''
     stack = [root]
     level = 0
@@ -687,7 +687,7 @@ def get_closest_info(ob_pos, mesh_node):
     temp_loc = pm.spaceLocator(p=ob_pos)
     mesh_node.worldMesh[0] >> temp_node.inMesh
     temp_loc.worldPosition[0] >> temp_node.inPosition
-    temp_loc.worldMatrix[0] >> temp_node.inputMatrix
+    mesh_node.worldMatrix[0] >> temp_node.inputMatrix
     #temp_node.inPosition.set(ob_pos)
     results = {}
     results['Closest Vertex'] = mesh_node.vtx[temp_node.closestVertexIndex.get()]
@@ -976,12 +976,20 @@ def convert_to_curve(sellist, name='converted_curve', smoothness=1):
     crv.rename(name)
     return crv
 
-@do_function_on('singleLast', type_filter=['locator','transform', 'mesh'])
-def snap_nearest(ob, mesh_node):
+@do_function_on('singleLast', type_filter=['locator','transform', 'mesh', 'joint'])
+def snap_nearest(ob, mesh_node,constraint=False):
+    if constraint:
+        closest_uv = get_closest_component(ob, mesh_node)
+        constraint = pm.pointOnPolyConstraint(
+            mesh_node, ob, mo=False)
+        stripname = mesh_node.split('|')[-1]
+        constraint.attr(stripname + 'U0').set(closest_uv[0])
+        constraint.attr(stripname + 'V0').set(closest_uv[1])
+        return constraint
     closest_component_pos = get_closest_component(ob, mesh_node, uv=False, pos=True)
     ob.setTranslation(closest_component_pos,'world')
 
-@do_function_on('singleLast', type_filter=['locator','transform', 'mesh', 'nurbsCurve'])
+@do_function_on('singleLast', type_filter=['locator','transform', 'mesh', 'nurbsCurve', 'joint'])
 def snap_to_curve(ob, curve_node, pin=True, query=False):
     npc = pm.createNode('nearestPointOnCurve')
     poc = pm.createNode('pointOnCurveInfo')

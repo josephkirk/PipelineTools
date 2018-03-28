@@ -932,19 +932,23 @@ def create_bone_on_curve(inputcurve, amount=3, parent=True):
 
 @ul.do_function_on(
     'set',
-    type_filter=['transform', 'mesh', 'vertex', 'edge', 'face'])
-def create_joint(ob_list):
+    type_filter=['locator','transform', 'mesh', 'vertex', 'edge', 'face'])
+def create_joint(ob_list, parent=None):
     new_joints = []
     for ob in ob_list:
-        if type(ob) == pm.nt.Transform:
-            get_pos = ob.getTranslation('world')
-        elif type(ob) == pm.general.MeshVertex:
-            get_pos = ob.getPosition(space='world')
-        elif type(ob) == pm.general.MeshEdge:
-            get_pos = ul.get_pos_center_from_edge(ob)
-        new_joint = pm.joint(p=get_pos)
-        new_joint.setParent(None)
-        new_joints.append(new_joint)
+        if type(ob) == pm.general.MeshFace:
+            new_joints.append(create_middle_joint(ob))
+        else:
+            if type(ob) == pm.nt.Transform:
+                get_pos = ob.getTranslation('world')
+            elif type(ob) == pm.general.MeshVertex:
+                get_pos = ob.getPosition(space='world')
+            elif type(ob) == pm.general.MeshEdge:
+                get_pos = ul.get_pos_center_from_edge(ob)
+            pm.select(ob,r=True)
+            new_joint = pm.joint(p=get_pos)
+            new_joint.setParent(parent)
+            new_joints.append(new_joint)
     for new_joint in new_joints:
         pm.joint(new_joint, edit=True, oj='xyz', sao='yup', ch=True, zso=True)
         if new_joint == new_joints[-1]:
@@ -954,8 +958,8 @@ def create_joint(ob_list):
 
 @ul.do_function_on(
     'set',
-    type_filter=['transform', 'mesh', 'vertex', 'edge', 'face'])
-def create_middle_joint(ob_list):
+    type_filter=['locator','transform', 'mesh', 'vertex', 'edge', 'face'])
+def create_middle_joint(ob_list, parent=None):
     pos_list = ul.get_points(ob_list)
     print type(pos_list)
     if len(pos_list) > 1 and len(pos_list) != 0:
@@ -965,9 +969,10 @@ def create_middle_joint(ob_list):
     else:
         pos_center = [0,0,0]
     new_joint = pm.joint(p=pos_center)
+    new_joint.setParent(parent)
     return new_joint
 
-@ul.do_function_on('set', type_filter=['joint'])
+@ul.do_function_on('set', type_filter=['transform','locator','mesh','joint'])
 def parent_bone(boneList):
     boneLists = boneList
     while boneLists:

@@ -696,22 +696,34 @@ class RigTools(object):
                                     'PCAddAttr',
                                     not self._uiElement['PCAddAttr']))
                         self.template.smallbutton(
-                            label='Convert to Curve',
+                            label='Snap to Mesh Component',
                             c=Callback(
-                                ul.convert_to_curve,
-                                sl=True))
-                        self.template.smallbutton(
-                            label='Snap to Curve',
-                            c=Callback(
-                                ul.snap_to_curve,
+                                ul.snap_nearest,
                                 sl=True))
                         with popupMenu(b=3):
                             menuItem(
-                                label='Snap to Curve Only',
+                                label='Snap to Mesh & Constraint',
+                                c=Callback(
+                                    ul.snap_nearest,
+                                    constraint=True,
+                                    sl=True))
+                            menuItem(
+                                label='Snap to Curve',
                                 c=Callback(
                                     ul.snap_to_curve,
                                     pin=False,
                                     sl=True))
+                            menuItem(
+                                label='Snap to Curve & Constraint',
+                                c=Callback(
+                                    ul.snap_to_curve,
+                                    pin=True,
+                                    sl=True))
+                        self.template.smallbutton(
+                            label='Convert to Curve',
+                            c=Callback(
+                                ul.convert_to_curve,
+                                sl=True))
                         self._uiElement['CLoccount'] = intFieldGrp(
                             numberOfFields=1,
                             cl2=('right', 'right'),
