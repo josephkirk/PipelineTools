@@ -634,7 +634,7 @@ def recurse_collect(*args, **kwargs):
     return collectors
 
 @error_alert
-def iter_hierachy(root):
+def iter_hierachy(root, filter='transform'):
     '''yield hierachy generator object with stack method'''
     stack = [root]
     level = 0

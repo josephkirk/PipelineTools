@@ -1440,7 +1440,7 @@ def create_free_control(bone, parent='ctlGp',useLoc=False, customShape=None):
     return ctl
 
 @ul.do_function_on()
-def create_parent_control(boneRoot, parent='ctlGp',useLoc=False, customShape=None):
+def create_parent_control(boneRoot, parent='ctlGp', useLoc=False, customShape=None):
     ctls = []
     boneChain = ul.iter_hierachy(boneRoot)
     for bone in iter(boneChain):
