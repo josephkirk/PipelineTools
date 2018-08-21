@@ -838,6 +838,30 @@ def get_points(sellist):
     ]
     return (transformtype + vertextype + edgetype + facetype)
 # --- Transformation and Shape --- #
+def getIntersectPoint(p1, p2, mesh):
+    """Return intersection on mesh between 2 points
+        :param p1: Position 1
+        :type p1: pm.dt.Point3
+        :param p2: Position 2
+        :type p2: pm.dt.Point3
+        :param mesh: Intesected Mesh
+        :type mesh: pm.nt.Mesh
+        :rtype: False or pm.dt.Point3
+    """
+    src = p1
+    dirVector = t2-t1
+    lenVector = dirVector.length()
+    dirVector.normalize()
+    isintesect, points, _ = mesh.intersect(src, dir, 1e-1000000)
+    if not isintersect:
+        return False
+    for p in points:
+        if src.distanceTo(p) <= lenVector:
+            return p
+    return False
+
+
+
 @do_function_on()
 def setColor(control, color=[1,0,0,0]):
     try:

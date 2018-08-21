@@ -2,7 +2,7 @@
 {
     "python.linting.pylintEnabled": true,
     "python.linting.pylintPath": "C:/Python27/Scripts/pylint",
-    "python.pythonPath": "C:/Program Files/Autodesk/Maya2017/bin/mayapy.exe",
+    "python.pythonPath": "C:\\Users\\josep\\Anaconda3\\python.exe",
     "python.unitTest.unittestArgs": [
         "-v",
         "-s",
