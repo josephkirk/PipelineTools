@@ -614,7 +614,7 @@ class main(QtWidgets.QMainWindow):
                     continue
             temp = pm.curve(p=self._storeshape)
             try:
-                temp.setRotation(axisData[axis])
+                temp.setRotation(axisData[self.controlobject.axis])
                 pm.makeIdentity(temp, apply=True)
                 pm.delete(control.getShape(), shape=True)
                 pm.parent(temp.getShape(), control, r=True, s=True)
