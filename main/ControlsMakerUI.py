@@ -157,6 +157,7 @@ class main(QtWidgets.QMainWindow):
         getUIValue('controlmaker_createCtlOffset', 1)
         getUIValue('controlmaker_createChain', 0)
         getUIValue('controlmaker_useObjectName', 0)
+        self._storeshape = None
 
     def _initMainUI(self):
         self._initUIValue()
@@ -238,11 +239,15 @@ class main(QtWidgets.QMainWindow):
         self.addControlShape_button = QtWidgets.QPushButton('Add Shape')
         self.deleteControlShape_button = QtWidgets.QPushButton('Delete Shape')
         self.changeControlShape_button = QtWidgets.QPushButton('Change Shape')
+        self.copyControlShape_button = QtWidgets.QPushButton('Copy Shape')
+        self.pasteControlShape_button = QtWidgets.QPushButton('Paste Shape')
         self.createControl_button = QtWidgets.QPushButton('Create Control')
         self.setColor_button = QtWidgets.QPushButton('Set Color')
         createButtonLayout.addWidget(self.addControlShape_button)
         createButtonLayout.addWidget(self.deleteControlShape_button)
         createButtonLayout.addWidget(self.changeControlShape_button)
+        createButtonLayout.addWidget(self.copyControlShape_button)
+        createButtonLayout.addWidget(self.pasteControlShape_button)
         createButtonLayout.addWidget(self.setColor_button)
         createButtonLayout.addWidget(self.createControl_button)
         layout.addWidget(controlOptionGroup)
@@ -395,6 +400,8 @@ class main(QtWidgets.QMainWindow):
         self.addControlShape_button.clicked.connect(self.onAddShape)
         self.deleteControlShape_button.clicked.connect(self.onDeleteShape)
         self.changeControlShape_button.clicked.connect(self.onChangeShape)
+        self.copyControlShape_button.clicked.connect(self.onCopyShape)
+        self.pasteControlShape_button.clicked.connect(self.onPasteShape)
         self.createControl_button.clicked.connect(self.onCreateShape)
         self.setColor_button.clicked.connect(self.onSetColor)
 
@@ -581,6 +588,39 @@ class main(QtWidgets.QMainWindow):
             pm.parent(temp.getShape(), control, r=True, s=True)
             pm.delete(temp)
             # return control
+
+    def onCopyShape(self):
+        if not pm.selected():
+            return
+        sel = pm.selected()[0]
+        sel_shape = sel.getShape()
+        if not isinstance(sel_shape, pm.nt.NurbsCurve):
+            return
+        self._storeshape = sel_shape.getCVs()
+
+    def onPasteShape(self):
+        if not self._storeshape:
+            return
+        axisData = {}
+        axisData['XY'] = (0, 0, 0)
+        axisData['XZ'] = (90, 0, 0)
+        axisData['YZ'] = (0, 0, 90)
+        axisData['YX'] = (180, 0, 0)
+        axisData['ZX'] = (-90, 0, 0)
+        axisData['ZY'] = (0, 0, -90)
+        for control in pm.selected():
+            if not hasattr(control, "getShape"):
+                if not control.getShape():
+                    continue
+            temp = pm.curve(p=self._storeshape)
+            try:
+                temp.setRotation(axisData[axis])
+                pm.makeIdentity(temp, apply=True)
+                pm.delete(control.getShape(), shape=True)
+                pm.parent(temp.getShape(), control, r=True, s=True)
+            finally:
+                pm.delete(temp)
+
 
     def onAddShape(self):
         for control in pm.selected():
