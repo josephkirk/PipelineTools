@@ -13,8 +13,9 @@ try:
         pm.select('eyeDeform',r=True)
         pm.select("*_eye_grp_skinDeform",add=True)
         pm.blendShape(name='EyeDeformBS',w=[(0,1),], ar=True)
-except:
-    print 'Cant connect BS'
+except Exception as why:
+    print(why)
+
 '''
 unConnectBSCommand='''
 try:
