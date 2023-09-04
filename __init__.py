@@ -12,7 +12,10 @@ basePath = os.path.dirname(__file__)
 #     if os.path.isdir(installpath):
 #         site.addsitedir(installpath)
 #     else:
-
+try:
+    from importlib import reload
+except:
+    pass
 
 def _reload():
     for mod in [core,etc,main,project_specific]:

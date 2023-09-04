@@ -11,6 +11,10 @@ mt = rcl.meta
 mtc = rcl.meta.MetaClass
 mtr = rcl.meta.MetaRig
 mthc = rcl.meta.MetaHIKCharacterNode
+try:
+    from importlib import reload
+except:
+    pass
 ##### reload
 def _reload():
     for mod in [acl,rcl,ul,rul]:

@@ -6,6 +6,10 @@ import PipelineTools.baseclass.rig as rigclass
 import riggingMisc as rm
 import maya.mel as mm
 import string
+try:
+    from importlib import reload
+except:
+    pass
 for mod in [ul, rigclass, rig, rm]:
     reload(mod)
 @ul.error_alert

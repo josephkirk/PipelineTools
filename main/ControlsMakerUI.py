@@ -10,7 +10,10 @@ try:
 except ImportError:
     from PySide import QtCore, QtGui
     QtWidgets = QtGui
-
+try:
+    from importlib import reload
+except:
+    pass
 reload(cs)
 reload(uiStyle)
 # ------------------------------------------------------------------------------

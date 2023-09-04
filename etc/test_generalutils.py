@@ -3,6 +3,10 @@
 import unittest
 import PipelineTools.core.general_utils as ul
 import pymel.core as pm
+try:
+    from importlib import reload
+except:
+    pass
 reload(ul)
 class DoFunctionOnTest(unittest.TestCase):
     """Basic test cases."""

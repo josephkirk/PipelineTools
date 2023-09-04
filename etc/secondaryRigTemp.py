@@ -1,6 +1,10 @@
 import PipelineTools.core as ptc
 import controlShape as cs
 import pymel.core as pm
+try:
+    from importlib import reload
+except:
+    pass
 reload(cs)
 ptc._reload()
 
