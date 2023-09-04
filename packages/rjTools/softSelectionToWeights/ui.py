@@ -456,7 +456,7 @@ class SoftSelectionToWeightsWidget(ui.QWidget):
         for mesh, meshData in data.iteritems():
             filler = self.filler.influence
             if not utils.isSkinned(mesh) and not filler:
-                print "No Filler Influence found for mesh: {0}".format(mesh)
+
                 continue
                 
             setSkinWeights(

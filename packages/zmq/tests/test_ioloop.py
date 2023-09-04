@@ -20,7 +20,7 @@ except ImportError:
 def printer():
     os.system("say hello")
     raise Exception
-    print (time.time())
+
 
 
 class Delay(threading.Thread):

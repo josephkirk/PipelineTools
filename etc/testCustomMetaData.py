@@ -1,7 +1,7 @@
 from PipelineTools.packages import metadata
 import maya.cmds as cmds
 import os
-#print os.getpid()
+
 import pymel.core as pm
 class FacialRig(metadata.MetaRig):
     '''
@@ -49,5 +49,5 @@ if __name__ == 'main':
     myRigmeta.CharacterName='KG'
     #myRigmeta.addRigCtrl(pm.selected()[0],'new')
     #pm.select(myRigmeta)
-    print myRigmeta
+
     #pm.delete(myRigmeta)

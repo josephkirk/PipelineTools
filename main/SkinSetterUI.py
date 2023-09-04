@@ -14,8 +14,9 @@ from ..packages.rjTools import paintRemoveInfluenceCtx as paintRemoveWeight
 # reload(paintRemoveWeight.ui)
 try:
     from skinningTool import SkinningToolsUI
-except:
-    print 'skinningTool not Present'
+except Exception as why:
+    print('SkinningToolsUI failed to import.{}'.format(why))
+
 try:
     from PySide2 import QtWidgets, QtCore, QtGui
 except ImportError:
@@ -55,7 +56,7 @@ class main(QtWidgets.QMainWindow):
         self.setWindowFlags(QtCore.Qt.Window)
         self.setWindowTitle('SkinWeightTool')
         self.setObjectName(self._name)
-        # print self.objectName()
+
     # init UI
     def _initUIValue(self):
         self.lastSelection = []
@@ -517,7 +518,7 @@ class main(QtWidgets.QMainWindow):
                     item.setSelected(selectState)
 
         except (OSError, IOError, RuntimeError) as why:
-            print why
+
             raise
 
     def updateBoneItemNames(self):
@@ -822,7 +823,7 @@ class main(QtWidgets.QMainWindow):
         layout = QtWidgets.QHBoxLayout()
         createWidgets = []
         for name in names:
-            # print name
+
             createWidget = QtWidgets.QPushButton(name)
             layout.addWidget(createWidget)
             createWidgets.append(createWidget)
@@ -834,7 +835,7 @@ class main(QtWidgets.QMainWindow):
                     pass
         if parent:
             parent.addLayout(layout)
-            # print tuple(createWidgets)
+
             return tuple(createWidgets)
         else:
             return (tuple(createWidgets), layout)

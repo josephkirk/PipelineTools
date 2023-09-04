@@ -184,7 +184,7 @@ class DataMap(object):
         import imp
         log.debug('getNodesFromFolderConfig - useFilter=True : custom poseHandler running')
         posedir=os.path.dirname(self.filepath)
-        print 'imp : ', self.poseHandler.split('.py')[0], '  :  ', os.path.join(posedir, self.poseHandler)
+
         tempPoseFuncs = imp.load_source(self.poseHandler.split('.py')[0], os.path.join(posedir, self.poseHandler))
         
         if mode=='load':
@@ -936,7 +936,7 @@ class PoseData(DataMap):
                         else:
                             current = self.poseCurrentCache[key][attr]
                             blendVal = ((val - current) / 100) * percent
-                            # print 'loading at percent : %s (current=%s , stored=%s' % (percent,current,current+blendVal)
+
                             cmds.setAttr('%s.%s' % (dest, attr), current + blendVal)
                     except StandardError, err:
                         log.debug(err)
@@ -1265,7 +1265,7 @@ class PosePointCloud(object):
         self.ppcMeta.mClassGrp='PPCROOT'
         
         self.posePointRoot=cmds.ls(cmds.spaceLocator(name='posePointCloud'),sl=True,l=True)[0]
-        print self.posePointRoot
+
         cmds.setAttr('%s.visibility' % self.posePointRoot, self.isVisible)
 
         ppcShape=cmds.listRelatives(self.posePointRoot,type='shape',f=True)[0]
@@ -1465,7 +1465,7 @@ class PoseCompare(object):
         for processing later if required
         '''
         self.fails = {}
-        logprint = 'PoseCompare returns : %s ========================================\n' % self.compareDict
+
         currentDic = getattr(self.currentPose, self.compareDict)
         referenceDic = getattr(self.referencePose, self.compareDict)
         
@@ -1484,7 +1484,7 @@ class PoseCompare(object):
                 referenceAttrBlock = referenceDic[key]
             else:
                 if not 'missingKeys' in self.ignoreBlocks:
-                    logprint += 'ERROR: Key Mismatch : %s\n' % key
+
                     if not 'missingKeys' in self.fails:
                         self.fails['missingKeys'] = []
                     self.fails['missingKeys'].append(key)
@@ -1508,11 +1508,11 @@ class PoseCompare(object):
                         self.fails['failedAttrs'][key]['missingAttrs'] = []
                     self.fails['failedAttrs'][key]['missingAttrs'].append(attr)
                     # log.info('missing attribute in data : "%s.%s"' % (key,attr))
-                    logprint += 'ERROR: Missing attribute in data : "%s.%s"\n' % (key, attr)
+
                     continue
                 
                 # test the attrs value matches
-                #print 'key : ', key, 'Value :  ', value
+
                 value = r9Core.decodeString(value)  # decode as this may be a configObj
                 refValue = r9Core.decodeString(referenceAttrBlock['attrs'][attr])  # decode as this may be a configObj
                 
@@ -1525,17 +1525,17 @@ class PoseCompare(object):
                     if not matched:
                         self.__addFailedAttr(key, attr)
                         # log.info('AttrValue float mismatch : "%s.%s" currentValue=%s >> expectedValue=%s' % (key,attr,value,refValue))
-                        logprint += 'ERROR: AttrValue float mismatch : "%s.%s" currentValue=%s >> expectedValue=%s\n' % (key, attr, value, refValue)
+
                         continue
                 elif not value == refValue:
                     self.__addFailedAttr(key, attr)
                     # log.info('AttrValue mismatch : "%s.%s" currentValue=%s >> expectedValue=%s' % (key,attr,value,refValue))
-                    logprint += 'ERROR: AttrValue mismatch : "%s.%s" currentValue=%s >> expectedValue=%s\n' % (key, attr, value, refValue)
+
                     continue
                 
         if 'missingKeys' in self.fails or 'failedAttrs' in self.fails:
-            logprint += 'PoseCompare returns : ========================================'
-            print logprint
+
+
             return False
         self.status = True
         return True
@@ -1566,7 +1566,7 @@ def batchPatchPoses(posedir, config, poseroot, load=True, save=True, patchfunc=N
     for f in files:
         if f.lower().endswith('.pose'):
             if load:
-                print 'Loading Pose : %s' % os.path.join(posedir,f)
+
                 mPose.poseLoad(nodes=poseroot, 
                                filepath=os.path.join(posedir,f),
                                useFilter=True,
@@ -1574,10 +1574,10 @@ def batchPatchPoses(posedir, config, poseroot, load=True, save=True, patchfunc=N
                                relativeRots=relativeRots,
                                relativeTrans=relativeTrans)
             if patchfunc:
-                print 'Applying patch'
+
                 patchfunc(f)
             if save:
-                print 'Saving Pose : %s' % os.path.join(posedir,f)
+
                 mPose.poseSave(nodes=poseroot,
                                filepath=os.path.join(posedir,f),
                                useFilter=True,

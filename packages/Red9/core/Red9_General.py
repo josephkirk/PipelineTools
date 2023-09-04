@@ -410,7 +410,7 @@ class ProgressBarContext(object):
     >>> with progressBar:
     >>>     for i in range(1,1000,1):
     >>>        if progressBar.isCancelled():
-    >>>             print 'process cancelled'
+
     >>>             break
     >>>         progressBar.updateProgress()
     

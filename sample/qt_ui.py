@@ -30,7 +30,7 @@ class JetTool(QtWidgets.QMainWindow):
     # def onclick(self):
     #     text_combo = [self.textbox.text(),self.textbox2.text()]
     #     self.convertClicked.emit(text_combo)
-    #     print text_combo
+
 
     def _makeUI(self):
         #Generate Widget

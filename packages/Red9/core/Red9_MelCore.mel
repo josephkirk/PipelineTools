@@ -32,7 +32,7 @@ global proc red9_InspectCode()
 //	if( $gLastFocusedCommandControl == $gLastFocusedCommandExecuter)
 //	{
 //		$text=`cmdScrollFieldExecuter -q -selectedText $gLastFocusedCommandControl`;
-//		print ("command Caught: " + $text +"\n");
+
 //		if (`getCurrentExecuterTabLabel`=="MEL"){
 //			python("r9General.inspectFunctionSource('"+$text+"')");}
 //		else{
@@ -46,7 +46,7 @@ global proc red9_InspectCode()
 //		//command fails to copy the text to the clipboard?
 //		//cmdScrollFieldReporter -e -copySelection $gLastFocusedCommandControl;	
 //		$text=python("r9General.Clipboard.getScriptHistory()");
-//		print ("command Caught: " + $text +"\n");
+
 //
 //
 //		if(!`python("r9General.inspectFunctionSource('"+$text+"')")`)

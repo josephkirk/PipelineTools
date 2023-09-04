@@ -54,7 +54,7 @@ class TestDecorator(unittest.TestCase):
                 'lastType',
                 'multiType']:
             self.test_func[m] = partial(ul.do_function_on,mode=m)
-        # print '\n','='*50
+
 
     def tearDown(self):
         '''Clean up scene'''
@@ -304,7 +304,7 @@ class TestDecorator(unittest.TestCase):
 
         @ul.do_function_on('multiType', type_filter=['joint', 'locator', 'vertex'])
         def test_func(joint, loc, vert):
-            print joint, loc ,vert
+
             paconstraint = pm.parentConstraint(loc, joint)
             uv = vert.getUV()
             mesh = vert.node()

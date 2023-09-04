@@ -148,7 +148,7 @@ class main(object):
         if any([isinstance(newcolor, typ) for typ in [list, set, tuple]]):
             assert (len(newcolor) >= 3), 'color must be a float4 or float3 of type list,set or tuple'
             self._color = pm.dt.Color(newcolor)
-        print self._color
+
 
     @property
     def currentType(self):
@@ -212,7 +212,7 @@ class main(object):
             sphere=True,
             radius=self.radius,
             length=0)
-        print self
+
         return crv
 
     @__setProperty__
@@ -466,8 +466,8 @@ class main(object):
         axisData['ZY'] = (0, 0, -90)
         assert (axis in axisData), "set axis data don't have '%s' axis.\nAvailable axis:%s" % (axis, ','.join(axisData))
         control.setRotation(axisData[axis])
-        print axisData[axis]
-        # print control.getRotation()
+
+
         pm.makeIdentity(control, apply=True)
 
     def setColor(self, control):
@@ -484,7 +484,7 @@ class main(object):
                 shdr.outTransparency.set([self.color.a for i in range(3)])
         except AttributeError as why:
             log.error(why)
-        print self.color
+
 
 def create_square(
         name,
@@ -559,7 +559,7 @@ def createPinCircle(
         pointMatrix.append([0, 0])
         pointMatrix.append([0, length])
         offset = [offset[0], -radius - length - offset[1], offset[2]]
-    # print offset
+
     while theta <= maxAngle:
         if length > 0:
             x = (-offset[0] + radius * math.sin(theta))
@@ -568,7 +568,7 @@ def createPinCircle(
             x = (offset[0] + radius * math.cos(theta))
             y = (offset[1] + radius * math.sin(theta))
         pointMatrix.append([x, y])
-        # print "theta angle {} produce [{},{}]".format(round(theta,2),round(x,4),round(y,4))
+
         theta += inc
     if not createCurve:
         return pointMatrix
@@ -704,7 +704,7 @@ def createLegacyPinCircle(
         pointMatrix.append([0, 0])
         pointMatrix.append([0, length])
         offset = [offset[0], -radius - length - offset[1], offset[2]]
-    # print offset
+
     while theta <= maxAngle:
         if length > 0:
             x = (-offset[0] + radius * math.sin(theta))
@@ -713,7 +713,7 @@ def createLegacyPinCircle(
             x = (offset[0] + radius * math.cos(theta))
             y = (offset[1] + radius * math.sin(theta))
         pointMatrix.append([x, y])
-        # print "theta angle {} produce [{},{}]".format(round(theta,2),round(x,4),round(y,4))
+
         theta += inc
     if not createCurve:
         return pointMatrix

@@ -82,7 +82,7 @@ def set_Vray_material(mat,mat_type='dielectric',**kwargs):
         try:
             mat.attr(key).set(value)
         except (IOError, OSError, AttributeError) as why:
-            print why
+
 
 def get_character_infos():
     scene_name = pm.sceneName()
@@ -227,7 +227,7 @@ def fix_losshairSim(inputcurve, ikhandle, hairSysName):
 #     ikcurve.rename(bonename+'_ikCurve')
 #     sbonetop, mbonetop, ebonetop = [
 #         dup_bone(b,name = b.name()+'_top') for b in [startBone,midBone,endBone]]
-#     print (len(bones)-1)%2.0
+
 #     if (len(bones)-1)%2.0 == 1:
 #         boneUp = bones[int(math.ceil((len(bones)-1)/2.0))]
 #         boneDown = bones[int(math.floor((len(bones)-1)/2.0))]

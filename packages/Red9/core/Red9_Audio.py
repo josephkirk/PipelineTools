@@ -421,7 +421,8 @@ class AudioHandler(object):
                     fails.append(audio.audioNode)
         if fails:
             for f in fails:
-                print 'Error : Audio node is not in Bwav format : %s' % f
+                print('Error : Audio node is not in Bwav format : %s' % f)
+
             log.warning('Some Audio Node were not in Bwav format, see script editor for debug')
             #self.offsetBy(diff)
               
@@ -577,7 +578,7 @@ class AudioNode(object):
     def path(self,path):
         self.__path=path
         if self.pro_bwav:
-            #print 'setting new path', self.pro_bwav.path
+
             self.pro_bwav.path=path
             log.debug('Setting BWAV internal path : %s' % self.pro_bwav)
     
@@ -802,7 +803,7 @@ class AudioNode(object):
         if self.isLoaded and self.pro_bwav and self.pro_bwav.isBwav():
             if timecodebase:
                 offset = offset - self.pro_audio.timecode_to_frame(timecodebase)
-                #print 'new timecode base given : %s : new offset = %s' % (timecodebase,offset)
+
             self.startFrame = self.pro_audio.milliseconds_to_frame(self.pro_bwav.bwav_timecodeMS()) + offset
         else:
             raise r9Setup.ProPack_Error()

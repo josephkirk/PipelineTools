@@ -286,7 +286,7 @@ class main(QtWidgets.QMainWindow):
             if 'value' in kws:
                 def emitValue():
                     if kws['value'] == 'isCheck':
-                        # print newAction.isChecked() 
+
                         func(newAction.isChecked())
                         return
                     func(kws['value'])

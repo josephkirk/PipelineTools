@@ -47,7 +47,7 @@ class Asset(object):
                 if not isdir(self.typeTexPath):
                     self.typeTexPath = self.kindTexPath
         else:
-            print "These directories are not exist, please create them:\n\t%s\n\t%s" % (self.kind, self.type)
+
             return
         AssetList = []
         if XgenPath:
@@ -67,10 +67,10 @@ class Asset(object):
             else:
                 if isdir(join(self.typePath, d)):
                     AssetList.append(d)
-        print 'Can\'t find Asset %s' % self.name
-        print 'Current Avalaible Asset:'
+
+
         for asset in AssetList:
-            print asset
+
         raise Exception
 
 
@@ -136,7 +136,7 @@ class subCharacter(Character):
                                     if isdir(join(fullPath, 'rend')):
                                         dirDict['hairRender'] = join(fullPath, 'rend')
             except (IOError, OSError) as why:
-                print why
+
 
         if version in self.version:
             self.version = version

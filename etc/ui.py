@@ -38,7 +38,7 @@ def create_window():
 if __name__ =='__main__': # if run directly, do these code
     # def onconvert(textList):
         # for text in textList:
-            # print 'createSphere ', text
+
             # pm.polySphere(name=text)
     app = QtWidgets.QApplication([])
     win = create_window()

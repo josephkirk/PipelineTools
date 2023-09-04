@@ -322,10 +322,10 @@ def animCurveDrawStyle(style='simple', forceBuffer=True, showBufferCurves=False,
     simplify the display and the curve whilst processing. This allows you to also pass in
     the state directly, used by the UI close event to return the editor to the last cached state
     '''
-    print 'toggleCalled', style, showBufferCurves, displayTangents, displayActiveKeyTangents
+
 
     if style == 'simple':
-        print 'toggle On'
+
         if forceBuffer:
             if r9Setup.mayaVersion()<2017:
                 mel.eval('doBuffer snapshot;')
@@ -333,7 +333,7 @@ def animCurveDrawStyle(style='simple', forceBuffer=True, showBufferCurves=False,
                 mel.eval('doBuffer snapshot graphEditor1GraphEd;')
         mel.eval('animCurveEditor -edit -showBufferCurves 1 -displayTangents false -displayActiveKeyTangents false graphEditor1GraphEd;')
     elif style == 'full':
-        print 'toggleOff'
+
         cmd='animCurveEditor -edit'
         if showBufferCurves:
             cmd+=' -showBufferCurves 1'
@@ -566,10 +566,10 @@ class AnimationUI(object):
             animUI.dock = eval(animUI.ANIM_UI_OPTVARS['AnimationUI']['ui_docked'])
         if r9General.getModifier() == 'Ctrl':
             if not animUI.dock:
-                print 'Switching dockState : True'
+
                 animUI.dock = True
             else:
-                print 'Switching dockState : False'
+
                 animUI.dock = False
    
         RED_ANIMATION_UI=animUI
@@ -599,7 +599,7 @@ class AnimationUI(object):
                                       retain=False,
                                       loadImmediately=False)  
             else:
-                print 'Workspace Red9 already exists, calling open'
+
             cmds.workspaceControl(animUI.workspaceCnt, e=True,vis=True)
             cmds.workspaceControl(animUI.workspaceCnt, e=True,r=True)  # raise it
             if not animUI.dock:
@@ -612,7 +612,7 @@ class AnimationUI(object):
         animUI.uiBoot=False
     
     def __uicloseEvent(self,*args):
-        #print 'AnimUI close event called'
+
         self.__uiCache_storeUIElements()
         RED_ANIMATION_UI=None
         del(self)
@@ -1393,7 +1393,7 @@ class AnimationUI(object):
                 #if not cmds.dockControl(self.dockCnt, query=True, floating=True):
                 width=cmds.dockControl(self.dockCnt, q=True, w=True)
                 height=cmds.dockControl(self.dockCnt, q=True, h=True)
-                print 'width self.dockCnt:', cmds.dockControl(self.dockCnt, q=True, w=True)
+
             else:
                 newSize=cmds.window(self.win, q=True, wh=True)
                 width=newSize[0]
@@ -1412,9 +1412,9 @@ class AnimationUI(object):
         if height>440:  # 440 
             cmds.scrollLayout(self.uiglPoseScroll, e=True, h=max(height-430, 200))
         
-            print 'width self.MainLayout:', cmds.scrollLayout(self.MainLayout, q=True, w=True)
-            print 'width self.form:', cmds.formLayout(self.form, q=True, w=True)
-            print 'width poseScroll:', cmds.scrollLayout(self.uiglPoseScroll, q=True, w=True)
+
+
+
                                 
     def __uiCB_setCopyKeyPasteMethod(self, *args):
         self.ANIM_UI_OPTVARS['AnimationUI']['keyPasteMethod'] = cmds.optionMenu('om_PasteMethod', q=True, v=True)
@@ -1731,7 +1731,7 @@ class AnimationUI(object):
                                                 q=True,
                                                 text=True))[0]
                 else:
-                    print 'Sorry Maya2009 and Maya2010 support is being dropped'
+
                     def setPosePath(fileName, fileType):
                         self.posePath=fileName
                     cmds.fileBrowserDialog(m=4, fc=setPosePath, ft='image', an='setPoseFolder', om='Import')
@@ -1893,7 +1893,7 @@ class AnimationUI(object):
             try:
                 [cmds.deleteUI(button) for button in cmds.gridLayout(self.uiglPoses, q=True, ca=True)]
             except StandardError, error:
-                print error
+
             for pose in r9Core.filterListByString(self.poses, searchFilter, matchcase=False):  # self.buildFilteredPoseList(searchFilter):
                 try:
                     #:NOTE we prefix the buttons to get over the issue of non-numeric
@@ -2003,7 +2003,7 @@ class AnimationUI(object):
         if poseHandler:
             import imp
             import inspect
-            print 'Adding to menus From PoseHandler File!!!!'
+
             tempPoseFuncs = imp.load_source(poseHandler.split('.py')[0], os.path.join(self.getPoseDir(), poseHandler))
             if [func for name, func in inspect.getmembers(tempPoseFuncs, inspect.isfunction) if name == 'posePopupAdditions']:
                 # NOTE we pass in self so the new additions have the same access as everything else!
@@ -2363,7 +2363,7 @@ class AnimationUI(object):
                         try:
                             cmds.checkBox(cb, e=True, v=r9Core.decodeString(status))
                         except:
-                            print 'given checkbox no longer exists : %s' % cb
+
                 
             AnimationUI = self.ANIM_UI_OPTVARS['AnimationUI']
 
@@ -2398,7 +2398,7 @@ class AnimationUI(object):
             
             #callbacks
             if self.posePathMode:
-                print 'setting : ', self.posePathMode
+
                 cmds.radioCollection(self.uircbPosePathMethod, edit=True, select=self.posePathMode)
             self.__uiCB_enableRelativeSwitches()  # relativePose switch enables
             self.__uiCB_managePoseRootMethod()  # metaRig or SetRootNode for Pose Root
@@ -2463,7 +2463,7 @@ class AnimationUI(object):
             else:
                 AnimFunctions(filterSettings=self.filterSettings, matchMethod=self.matchMethod).copyAttributes(nodes=None, **self.kws)
         else:
-            print self.kws
+
             AnimFunctions(matchMethod=self.matchMethod).copyAttributes(nodes=None, **self.kws)
             
     def __CopyKeys(self):
@@ -2594,7 +2594,7 @@ class AnimationUI(object):
 #         #Work to hook the poseSave directly to the metaRig.poseCacheStore func directly
 #         if self.filterSettings.metaRig and r9Meta.isMetaNodeInherited(self.__uiCB_getPoseInputNodes(),
 #                                                                       mInstances=r9Meta.MetaRig):
-#             print 'active MetaNode, calling poseCacheSave from metaRig subclass'
+
 #             r9Meta.MetaClass(self.__uiCB_getPoseInputNodes()).poseCacheStore(filepath=path,
 #                                                                              storeThumbnail=storeThumbnail)
 #         else:
@@ -2755,7 +2755,7 @@ class AnimationUI(object):
                 animCheckNodes=mirror.getMirrorSets()
             else:
                 animCheckNodes=cmds.ls(sl=True, l=True)
-            print animCheckNodes
+
             if not animLayersConfirmCheck(animCheckNodes):
                 log.warning('Process Aborted by User')
                 return
@@ -4008,7 +4008,7 @@ class FilterCurves(object):
             self.toggledState=False
         
     def __uicb_setToFrame(self, *args):
-        #print args
+
         if args[0]:
             cmds.floatSliderGrp('fsg_resampleStep',
                                 e=True,
@@ -4036,7 +4036,7 @@ class FilterCurves(object):
                                timeTolerance=cmds.floatSliderGrp('fsg_filtertimeValue', q=True, v=True),
                                valueTolerance=cmds.floatSliderGrp('fsg_filterfloatValue', q=True, v=True))
             else:
-                print 'testing filter call'
+
                 objs=cmds.ls(sl=True)
                 cmds.filterCurve(objs, f='simplify',
                                  timeTolerance=cmds.floatSliderGrp('fsg_filterfloatValue', q=True, v=True))
@@ -4049,7 +4049,7 @@ class FilterCurves(object):
         step = args[0]
         if self.snapToFrame:
             step = int(args[0])
-        #print step
+
         curves = cmds.keyframe(q=True, sl=True, n=True)
         if not curves:
             curves = cmds.ls(sl=True, l=True)
@@ -4118,7 +4118,7 @@ class MirrorHierarchy(object):
         self.mergeLayers = True
         self.indexednodes = []  # all nodes to process - passed to the Animlayer context
         self.kws = kws  # allows us to pass kws into the copyKey and copyAttr call if needed, ie, pasteMethod!
-        #print 'kws in Mirror call : ', self.kws
+
         
         #cache the function pointers for speed
         self.transferCallKeys = AnimFunctions().copyKeys
@@ -4349,35 +4349,35 @@ class MirrorHierarchy(object):
     
     def printMirrorDict(self, short=True):
         '''
-        Pretty print the Mirror Dict
+
         '''
         self.getMirrorSets()
         if not short:
-            print '\nCenter MirrorLists ====================================================='
+
             for i in r9Core.sortNumerically(self.mirrorDict['Centre'].keys()):
-                print '%s > %s' % (i, self.mirrorDict['Centre'][i]['node'])
-            print '\nRight MirrorLists ======================================================'
+
+
             for i in r9Core.sortNumerically(self.mirrorDict['Right'].keys()):
-                print '%s > %s' % (i, self.mirrorDict['Right'][i]['node'])
-            print '\nLeft MirrorLists ======================================================='
+
+
             for i in r9Core.sortNumerically(self.mirrorDict['Left'].keys()):
-                print '%s > %s' % (i, self.mirrorDict['Left'][i]['node'])
+
         else:
-            print '\nCenter MirrorLists ====================================================='
+
             for i in r9Core.sortNumerically(self.mirrorDict['Centre'].keys()):
-                print '%s > %s' % (i, r9Core.nodeNameStrip(self.mirrorDict['Centre'][i]['node']))
-            print '\nRight MirrorLists ======================================================'
+
+
             for i in r9Core.sortNumerically(self.mirrorDict['Right'].keys()):
-                print '%s > %s' % (i, r9Core.nodeNameStrip(self.mirrorDict['Right'][i]['node']))
-            print '\nLeft MirrorLists ======================================================='
+
+
             for i in r9Core.sortNumerically(self.mirrorDict['Left'].keys()):
-                print '%s > %s' % (i, r9Core.nodeNameStrip(self.mirrorDict['Left'][i]['node']))
+
         if self.unresolved:
             for key, val in self.unresolved.items():
                 if val:
-                    print '\CLASHING %s Mirror Indexes =====================================================' % key
+
                     for i in r9Core.sortNumerically(val):
-                        print 'clashing Index : %s : %s : %s' % \
+
                         (key, i, ', '.join([r9Core.nodeNameStrip(n) for n in val[i]]))
                           
     def switchPairData(self, objA, objB, mode='Anim'):
@@ -5061,7 +5061,7 @@ class ReconnectAnimData(object):
         for plug in cSetPlugs[::2]:
             for anim in animCurves:
                 if anim.split(':')[-1].endswith(plug):
-                    print '%s >> %s' % (anim, plug)
+
                     pm.connectAttr('%s.output' % anim, '%s.%s' % (cSet, plug), force=True)
                     
                     
@@ -5089,14 +5089,14 @@ class ReconnectAnimData(object):
                 animCurveExpected=chn.split('|')[-1].replace('.','_')
             if animCurveExpected in animCurves:
                 if not cmds.isConnected('%s.output' % animCurveExpected,chn):
-                    print '%s >> %s' % (animCurveExpected,chn)
+
                     cmds.connectAttr('%s.output' % animCurveExpected,chn,force=True)
             elif stripLayerNaming:
                 for curve in animCurves:
                     curveStripped=curve.replace('_Merged_Layer_inputB','').rstrip('123456789')
                     if curveStripped == animCurveExpected:
                         if not cmds.isConnected(curve, chn):
-                            print '%s >> %s' % (curve, chn)
+
                             cmds.connectAttr('%s.output' % curve,chn,force=True)
         
         

@@ -2413,7 +2413,7 @@ def flatten_errors(cfg, res, levels=None, results=None):
     ...     errors.append((section_string, ' = ', error))
     >>> errors.sort()
     >>> for entry in errors:
-    ...     print entry[0], entry[1], (entry[2] or 0)
+
     [root], option2  =  0
     [root], option3  =  the value "Bad_value" is of the wrong type.
     [root], section1, option2  =  0

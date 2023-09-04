@@ -125,14 +125,14 @@ def clean_userprefs(path_to_userprefs=prefpath, searchlines=[1000, 3000]):
                     shelf_file = words[2].split('"')[1]
 
                     if shelf_file not in shelf_files:
-                        print 'adding' + shelf_file
+
                         shelf_files.append(shelf_file)
                     else:
                         skip_indices.append(int(filter(str.isdigit, words[1])))  # add skip number
 
         # if no items were added to skip_indices, there i nothing to remove so we exit
         if len(skip_indices) == 0 :
-            print 'No duplicate entries found. Try deleting and restoring the affected shelf manually.'
+
             os.remove(filepathnew)
             return False
 
@@ -157,7 +157,7 @@ def clean_userprefs(path_to_userprefs=prefpath, searchlines=[1000, 3000]):
             if skipline is False:
                 fnew.writelines(line)
             else:
-                print 'Duplicate found. Removing line %s' % words
+
 
             i += 1
 
@@ -171,7 +171,7 @@ def clean_userprefs(path_to_userprefs=prefpath, searchlines=[1000, 3000]):
         os.rename(filepath, filepathold)
         os.rename(filepathnew, filepath)
 
-    print 'Done. Removed %s duplicates. \n' \
+
           'New file: %s \nOld file backup: %s'%(len(skip_indices), filepath, filepathold)
 
     return True
@@ -183,12 +183,12 @@ def reset_floating_window():
         if window != "MayaWindow" and window != "scriptEditorPanel1Window":
             pm.deleteUI(window)
             pm.windowPref(window, remove=True)
-            print window, " reset"
+
 
 # Decorators #
 
 def error_alert(func):
-    """print Error if function fail"""
+
     @wraps(func)
     def wrapper(*args, **kwargs):
         quiet_mode = False
@@ -302,7 +302,7 @@ def do_function_on(mode='single', type_filter=['locator','transform', 'mesh', 'n
                     '''Feed function with each selected object yield result'''
                     for ob in self.oblist:
                         # self.args.insert(0,ob)
-                        # print self.args
+
                         result = self.func(ob,*self.args, **self.kwargs)
                         self.results.append(result)
                     return self.results
@@ -310,9 +310,9 @@ def do_function_on(mode='single', type_filter=['locator','transform', 'mesh', 'n
                 def hierachy(self):
                     '''Feed function with each object and all its childrens and yield result'''
                     for ob in self.oblist:
-                        # print ob
+
                         for child in iter_hierachy(ob):
-                            # print child
+
                             self.results.append(self.func(child, *self.args, **self.kwargs))
                     return self.results
 
@@ -440,7 +440,7 @@ def send_current_file(
     scene_dest = pm.util.path(scene_src.replace('Works','to/{}/Works'.format(todayFolder))).truepath()
     files = scene_src.files('*.mb')
     files.extend(scene_src.files('*.ma'))
-    #print files
+
     files.sort(key=lambda f:f.getmtime())
     lastestfile = files[-1]
     try:
@@ -456,11 +456,11 @@ def send_current_file(
         if render:
             render_str = ['rend','Render','render','Rend']
             rend_src = []
-            print src.dirname().dirs()
+
             for test_str in render_str:
                 for dir in src.dirname().dirs():
                     if test_str in dir.basename():
-                        print dir.basename()
+
                         rend_src = dir
                         break
                 break
@@ -475,7 +475,7 @@ def send_current_file(
                 src.dirname().dirname().basename()!='CP':
             scene_src = scene_src.dirname()
             scene_dest = scene_dest.dirname()
-            print scene_src
+
         tex_src = pm.util.path(scene_src.replace('scenes','sourceimages')).truepath()
         tex_files = tex_src.files('*.jpg')
         tex_extra = {}
@@ -704,7 +704,7 @@ def get_closest_info(ob_pos, mesh_node):
     results['Closest Mid Edge'] = distance[0][1]
     results['Closest Point'] = mesh_node.getClosestPoint(pm.dt.Point(ob_pos), space='world')[0]
     #closest_uv = mesh_node.getUVAtPoint(results['Closest Point'], space='world', uvSet=mesh_node.getCurrentUVSetName())
-    #print closest_uv
+
     #results['Closest UV'] = closest_uv
     results['Closest UV'] = (temp_node.parameterU.get(), temp_node.parameterV.get())
     pm.delete([temp_node,temp_loc])
@@ -757,7 +757,7 @@ def get_node(node_name, unique_only=True, type_filter=None, verpose=False):
     except AssertionError as why:
         msg.append(why)
     if verpose:
-        print '/n'.join(msg)
+
 
 @error_alert
 def get_skin_cluster(ob):
@@ -830,7 +830,7 @@ def get_points(sellist):
         for i in range(2)]), cpn.node())['Closest Mid Edge']
         for cpn in filter_type(sellist,['edge'])]
     flist = [mfn.node().f[mfid] for mfn in filter_type(sellist,['face']) for mfid in mfn.indices()]
-    print flist
+
     facetype = [
         get_closest_info(pm.dt.center(*[mf.getPoint(i,'world')
         for i in range(4)]), mf.node())['Closest Point']
@@ -960,11 +960,11 @@ def convert_to_curve(sellist, name='converted_curve', smoothness=1):
     '''
     Connect object in list with a Nurbs Curve
     '''
-    # print sellist
+
     if any([
             get_type(ob) == typ for ob in sellist
             for typ in ['transform', 'joint', 'mesh','nurbsCurve']]):
-        # print sellist
+
         cvpMatrix = [ob.getTranslation('world') for ob in sellist if hasattr(ob, 'getTranslation')]
     if any([get_type(cpn) == 'vertex' for cpn in sellist]):
         cvpMatrix = [get_closest_info(cpn.getPosition('world'), cpn.node())['Closest Point'] for cpn in sellist]
@@ -1038,7 +1038,7 @@ def mirror_transform(ob, axis="x",xform=[0,4]):
         "x":('tx', 'ry', 'rz', 'sx'),
         "y":('ty', 'rx', 'rz', 'sy'),
         "z":('tz', 'rx', 'ry', 'sz')}
-    #print obs
+
     for at in axisDict[axis][xform[0]:xform[1]]:
         ob.attr(at).set(ob.attr(at).get()*-1)
     pm.makeIdentity(ob,s=True,apply=True)
@@ -1090,7 +1090,7 @@ def reset_transform(ob, translate=True, rotate=True, scale=True):
 def parent_shape(src, target, delete_src=True, delete_oldShape=True):
     '''parent shape from source to target'''
     #pm.parent(src, world=True)
-    print src,target
+
     pm.makeIdentity(src, apply=True)
     pm.delete(src.listRelatives(type='transform'))
     pm.refresh()
@@ -1162,9 +1162,9 @@ def set_material(ob, SG):
         try:
             pm.sets(SG,forceElement=ob)
         except:
-            print "cannot apply %s to %s" % (SG.name(), ob.name())
+
     else:
-        print "There is no %s" % SG.name()
+
 
 @do_function_on()
 def add_vray_opensubdiv(ob):
@@ -1180,7 +1180,7 @@ def clean_attributes(ob):
     for atr in ob.listAttr(ud=True):
         try:
             atr.delete()
-            print "%s is deleted" % atr.name()
+
         except:
             pass
 
@@ -1201,7 +1201,7 @@ def find_instances(
                 #pm.select(ob,add=True)
                 instanceShapes.append(tr)
         #else:
-            #print "%s have no Instance Shape" % ob
+
     pm.select(instanceShapes,add=True)
     return instanceShapes
 
@@ -1213,9 +1213,9 @@ def setTexture():
         for d in f.listAttr():
             try:
                 if d.longName(fullPath=False).lower().endswith('texturename'):
-                    print d,d.get()
+
                     d.set(d.get().replace('KG','IB'))
-                    print d.get()
+
             except:
                 continue
 
@@ -1236,7 +1236,7 @@ def export_cameras_to_fbx():
     scenePath = [str(i) for i in pm.sceneName().split("/")]
     stripScenePath = scenePath[:-1]
     sceneName = scenePath[-1]
-    print sceneName
+
     filename = "_".join([sceneName[:-3], 'ConvertCam.fbx'])
     stripScenePath.append(filename)
     filePath = "/".join(stripScenePath)

@@ -561,12 +561,12 @@ class main(QtWidgets.QMainWindow):
         self.setUIValue('renameUI_paddingValue', value)
 
     def updateRenameChildState(self, value):
-        # print value
+
         self.renameChildBool = value
         self.setUIValue('renameUI_renameChildToggle', value)
 
     def updateRenameAllState(self, value):
-        # print value
+
         self.renameAllBool = value
         self.setUIValue('renameUI_renameAllToggle', value)
 
@@ -723,19 +723,19 @@ class main(QtWidgets.QMainWindow):
                 sideid = 0
                 for dir, (side_id, name_wc) in direction_label.items():
                     for wc in name_wc:
-                        # print wc, ob.name()
+
                         if wc in ob.name():
                             wildcard = wc
                             sideid = side_id
                             break
                     if wildcard:
                         break
-                #print wildcard
+
                 label_name = ob.name().replace(wildcard, '')
                 if '|' in label_name:
                     label_name = label_name.split('|')[-1]
                     for prefix in remove_prefixes:
-                        print label_name, prefix
+
                         label_name = label_name.replace(prefix, '')
                 ob.otherType.set(label_name)
                 ob.side.set(sideid)
@@ -834,7 +834,7 @@ class main(QtWidgets.QMainWindow):
                         obname = ob.name()
                     # if len(ob.getChildren()) > 1:
                     childCount = len(ob.getChildren(type='transform'))
-                    # print childCount, ob.getChildren(type='transform')
+
                     childs = iter_hierachy(ob)
                     i = 1
                     l = -1

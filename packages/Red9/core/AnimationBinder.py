@@ -199,9 +199,9 @@ class BindNodeBase(object):
     def add_bind_markers(Ctr, BndNode=None):
         #message link this to the controller for the BakeCode to find
         if Ctr:
-            print 'Ctrl'
+
             if not Ctr.hasAttr(BAKE_MARKER):
-                print 'addAttr'
+
                 Ctr.addAttr(BAKE_MARKER, attributeType='message', multi=True, im=False)
         if BndNode:
             if not BndNode.hasAttr(BNDNODE_MARKER):
@@ -277,8 +277,8 @@ class BindNodeBase(object):
         '''
         Main Wrapper to make the AnimBind setup between Source and Destination nodes
         '''
-        print ('The current Driving Object (source) is : %s' % self.sourceNode.stripNamespace())
-        print ('The current Slave Object (destination) is : %s' % self.destinationNode.stripNamespace())
+
+
 
         self.make_bind_base(self.destinationNode.nodeName())  # Make the MatchObject and parent to the source
         self.align_bind_node()            # Align the new node to the Desitation Ctr
@@ -709,7 +709,7 @@ def add_bind_markers(ctrls=None, *args):
     if not ctrls:
         ctrls=cmds.ls(sl=True,l=True)
     for ctr in ctrls:
-        print pm.PyNode(ctr)
+
         BindNodeBase.add_bind_markers(pm.PyNode(ctr))
         
 def removeBindMarker(ctrls=None, *args):

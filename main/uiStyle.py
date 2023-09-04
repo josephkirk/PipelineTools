@@ -112,7 +112,7 @@ def addDivider(widget, layout=None):
 def labelGroup(name, widget, parent=None, returnLabel=False, *args, **kws):
     layout = QtWidgets.QHBoxLayout()
     label = QtWidgets.QLabel(name)
-    # print args, kws
+
     createWidget = widget(*args, **kws)
     layout.addWidget(label)
     layout.addWidget(createWidget)
@@ -176,7 +176,7 @@ def multiButtonsLayout(names, parent=None, actions=[]):
     layout = QtWidgets.QHBoxLayout()
     createWidgets = []
     for name in names:
-        # print name
+
         createWidget = QtWidgets.QPushButton(name)
         layout.addWidget(createWidget)
         createWidgets.append(createWidget)
@@ -188,7 +188,7 @@ def multiButtonsLayout(names, parent=None, actions=[]):
                 pass
     if parent:
         parent.addLayout(layout)
-        # print tuple(createWidgets)
+
         return tuple(createWidgets)
     else:
         return (tuple(createWidgets), layout)

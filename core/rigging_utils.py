@@ -162,7 +162,7 @@ def createPinCircle(
         pointMatrix.append([0, 0])
         pointMatrix.append([0, length])
         offset = [offset[0], -radius - length - offset[1], offset[2]]
-    # print offset
+
     while theta <= maxAngle:
         if length > 0:
             x = (-offset[0] + radius * math.sin(theta))
@@ -171,7 +171,7 @@ def createPinCircle(
             x = (offset[0] + radius * math.cos(theta))
             y = (offset[1] + radius * math.sin(theta))
         pointMatrix.append([x, y])
-        # print "theta angle {} produce [{},{}]".format(round(theta,2),round(x,4),round(y,4))
+
         theta += inc
     if not createCurve:
         return pointMatrix
@@ -532,10 +532,10 @@ def rebuild_blendshape_target(
                 target.set(0)
         target_weight = target.get()
         target_list.append((target, target_name, target_weight))
-    # print target_list
+
     if rebuild is True:
         base_ob_node = blendshape.getBaseObjects()[0].getParent().getParent()
-        print base_ob_node
+
         base_ob_name = base_ob_node.name()
         blendshape_name = blendshape.name()
         iter = 1
@@ -727,11 +727,11 @@ def copy_weight_exact(mesh, targetMesh, useLabel=False):
 
 @ul.do_function_on('last', type_filter=['joint','mesh'])
 def copy_joint_weight(meshes, bone):
-    # print meshes,bone
+
     if len(meshes) < 2:
         return
     skinClusters = [ul.get_skin_cluster(mesh) for mesh in meshes]
-    # print skinClusters
+
     inflLists = [skinCluster.getInfluence() for skinCluster in skinClusters]
     source_mesh = meshes[0]
     source_skinCluster = skinClusters[0]
@@ -776,7 +776,7 @@ def skin_weight_filter(ob, joint, min=0.0, max=0.1, select=False):
     filter_weight = []
     for vtx in ob_shape.vtx:
         weight = pm.skinPercent(skin_cluster, vtx, query=True, transform=joint, transformValue=True)
-        # print weight
+
         if min < weight <= max:
             filter_weight.append(vtx)
     if select:
@@ -819,7 +819,7 @@ def skin_weight_setter(component_list, joints_list, skin_value=1.0, normalized=T
     if hierachy:
         child_joint = joints_list[0].listRelatives(allDescendents=True)
         joints_list.extend(child_joint)
-        # print joints_list
+
     if any([type(component) is pm.nt.Transform for component in component_list]):
             for component in component_list:
                 try:
@@ -834,7 +834,7 @@ def skin_weight_setter(component_list, joints_list, skin_value=1.0, normalized=T
                     
                     pm.select(component, r=True)
                     pm.skinPercent(skin_cluster, transformValue=get_skin_weight())
-                    # print component_list
+
                 except RuntimeError as why:
                     log.warning('Set Skin Error:{}'.format(why))
     else:
@@ -844,7 +844,7 @@ def skin_weight_setter(component_list, joints_list, skin_value=1.0, normalized=T
                 skin_cluster = ul.get_skin_cluster(verts_list[0])
             except:
                 skin_cluster = pm.skinCluster(verts_list[0].node(), joints_list)
-            # print skin_cluster
+
             for joint in joints_list:
                 if joint not in skin_cluster.getInfluence():
                     add_joint_influence(joint,component)
@@ -872,7 +872,7 @@ def dual_weight_setter(component_list, weight_value=0.0, query=False):
         for vert in verts_list:
             for vert in vert.indices():
                 skin_cluster.setBlendWeights(shape, shape.vtx[vert], [weight_value, weight_value])
-                #     print skin_cluster.getBlendWeights(shape, vert)
+
                 # pm.select(verts_list)
                 # skin_cluster.setBlendWeights(shape, verts_list, [weight_value,])
 
@@ -961,7 +961,7 @@ def create_joint(ob_list, parent=None):
     type_filter=['locator','transform', 'mesh', 'vertex', 'edge', 'face'])
 def create_middle_joint(ob_list, parent=None):
     pos_list = ul.get_points(ob_list)
-    print type(pos_list)
+
     if len(pos_list) > 1 and len(pos_list) != 0:
         pos_center = sum(pos_list)/len(pos_list)
     elif len(pos_list) == 1:
@@ -1027,12 +1027,12 @@ def copy_skin_multi(source_skin_grp, dest_skin_grp, **kwargs):
     source_skins = source_skin_grp.listRelatives(type='transform', ad=1)
     dest_skins = dest_skin_grp.listRelatives(type='transform', ad=1)
     if len(dest_skins) == len(source_skins):
-        print '---{}---'.format('Copying skin from %s to %s' % (source_skin_grp, dest_skin_grp))
+
         for skinTR, dest_skinTR in zip(source_skins, dest_skins):
             copy_skin_single(skinTR, dest_skinTR, **kwargs)
-        print '---Copy Skin Finish---'
+
     else:
-        print 'source and target are not the same'
+
 
 @ul.do_function_on('oneToOne')
 def copy_skin_single(source_skin, dest_skin, **kwargs):
@@ -1050,8 +1050,8 @@ def copy_skin_single(source_skin, dest_skin, **kwargs):
         if not skin:
             raise AttributeError()
         skin_joints = skin.getInfluence()
-        print source_skin, 'connected to', skin
-        print source_skin, 'influenced by', skin_joints
+
+
         skin_dest = ul.get_skin_cluster(dest_skin)
         if not skin_dest:
             dest_skin_joints = []
@@ -1068,18 +1068,18 @@ def copy_skin_single(source_skin, dest_skin, **kwargs):
             dest_skin_joints = dest_skin_joints[:-1]
         else:
             dest_skin_joints = skin_dest.getInfluence()
-        print dest_skin, 'connected to', skin_dest
-        print dest_skin, 'influenced by', dest_skin_joints
+
+
         kwargs['ds'] = skin_dest.name()
         # pm.copySkinWeights(**kwargs)
         # skin_dest.setSkinMethod(skin.getSkinMethod())
-        print '{} successfully copy to {}'.format(source_skin, skin_dest), '\n', "_" * 30
+
     except AttributeError:
-        print '%s cannot copy skin to %s' % (source_skin.name(), dest_skin.name())
-        print "-" * 30
+
+
         for ob in [source_skin, dest_skin]:
-            print '{:_>20} connect to skinCluster: {}'.format(ob, ul.get_skin_cluster(ob))
-        print "_" * 30
+
+
 
 def reset_bindPose_all():
     newbp = pm.dagPose(bp=True, save=True)
@@ -1087,7 +1087,7 @@ def reset_bindPose_all():
     for bp in bindPoses:
         if bp != newbp:
             pm.delete(bp)
-    print "All bindPose has been reseted to %s" % newbp
+
     return newbp
 
 @ul.do_function_on()
@@ -1095,7 +1095,7 @@ def reset_bindPose_root(joint_root):
     joint_childs = joint_root.listRelatives(type=pm.nt.Joint, ad=True)
     for joint in joint_childs:
         if joint.rotate.get() != pm.dt.Vector(0, 0, 0):
-            # print type(joint.rotate.get())
+
             joint.jointOrient.set(joint.rotate.get())
             joint.rotate.set(pm.dt.Vector(0, 0, 0))
     reset_bindPose_all()
@@ -1154,7 +1154,7 @@ def get_opposite_joint(bone, select=False, opBoneOnly=True, customPrefix=None):
                         pm.select(opBone)
                     else:
                         pm.select(bone, opBone)
-                print opBoneName
+
                 return opBone
 
 def check_default_value(node, atrs, defaultValue):
@@ -1227,14 +1227,14 @@ def label_joint(
         sideid = 0
         for dir, (side_id, name_wc) in direction_label.items():
             for wc in name_wc:
-                # print wc, ob.name()
+
                 if wc in ob.name():
                     wildcard = wc
                     sideid = side_id
                     break
             if wildcard:
                 break
-        #print wildcard
+
         label_name = ob.name().split('|')[-1].replace(wildcard, '')
         while label_name.startswith('_'):
             label_name = label_name[1:]
@@ -1290,7 +1290,7 @@ def create_sub_joint(ob):
 
 @ul.do_function_on(type_filter=['joint'])
 def mirror_joint_tranform(bone, translate=False, rotate=True, **kwargs):
-    # print bone
+
     opbone = get_opposite_joint(bone, customPrefix=(kwargs['customPrefix'] if kwargs.has_key('customPrefix') else None))
     offset = 1
     if not opbone:
@@ -1615,7 +1615,7 @@ def create_long_hair(boneRoot, hairSystem='', circle=True, simplifyCurve=False, 
     # controlRoot.addAttr('subRadius',type='float',defaultValue=2)
     # for sh in nurbShapes:
     #     controlRoot.subRadius >> sh.radius
-    # print nurbShapes
+
     #loc.getParent().setParent(controlGp)
     dupBoneGp.setParent(controlRoot)
     focGp = follicle.getParent().getParent()
@@ -1633,7 +1633,7 @@ def create_long_hair(boneRoot, hairSystem='', circle=True, simplifyCurve=False, 
         loc = connect_with_loc(dynamicBone, offset,all=True)[0]
         loc.getParent().setParent(dynamicBone.getParent())
         locs.append(loc)
-    # print locs
+
     #lock ctlRoot translate and scale
     for atr in [
         'tx','ty','tz',
@@ -1693,7 +1693,7 @@ def create_splineIK(bone, midCtls=2,addFK=False, addSway=False, simplifyCurve=Fa
     endCtl.roll >> ikhandle.roll
     endCtl.addAttr('twist', type='float',k=1)
     endCtl.twist >> ikhandle.twist
-    print boneTops
+
     # pm.select(boneTops,r=True)
     # pm.select(ikcurve,add=True)
     # curveSkin = pm.skinCluster(wd=1,dr=4,tsb=1)

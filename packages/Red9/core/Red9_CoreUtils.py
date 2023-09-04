@@ -76,11 +76,11 @@ def prioritizeNodeList(inputlist, priorityList, regex=True, prioritysOnly=False)
     
     if regex:
         # this will match all partial matches within the inputList
-        #print 'pList : ',priorityList
+
         for pNode in priorityList:
             for node in inputlist:
                 if re.search(pNode, nodeNameStrip(node)):
-                    #print 'matched : ', nodeNameStrip(node), pNode, node
+
                     reordered.append(node)
                     try:
                         nList.remove(node)
@@ -209,7 +209,7 @@ def validateString(strText, fix=False, illegals=['-', '#', '!', ' ']):
             raise ValueError('String contains illegal characters "%s" <in> "%s"' % (','.join(illegal), strText))
         else:
             for i in illegal:
-                print i
+
                 strText=strText.replace(i,'_')
             log.info('%s : reformatted string to valid string : %s' % (base, strText))
     return strText
@@ -251,7 +251,7 @@ def filterListByString(input_list, filter_string, matchcase=False):
         if not matchcase:
             data=item.upper()
         if regexFilter.search(data):
-            #print data,item,filterPattern
+
             if not item in filteredList:
                 filteredList.append(item)
     return filteredList
@@ -314,7 +314,7 @@ class FilterNode_Settings(object):
         
     def __repr__(self):
         '''
-        print back ONLY the active filters when the object is inspected
+
         '''
         activeFilters=[]
         if self.metaRig:
@@ -360,7 +360,7 @@ class FilterNode_Settings(object):
     
     def printSettings(self):
         '''
-        prettyr print the filterSettings data
+
         '''
         log.info('FilterNode Settings : nodeTypes : %s :   %s' %
                  (self.nodeTypes, type(self.nodeTypes)))
@@ -1101,11 +1101,11 @@ class FilterNode(object):
             pattern = pattern.replace(" ", "")  # strip whiteSpaces
             attr = pattern
             if '=' in pattern:
-                # print 'pattern has ='
+
                 val = [True, decodeString(pattern.split('=')[-1])]
                 attr = pattern.split('=')[0]
             if 'NOT:' in pattern:
-                # print 'pattern NOT ='
+
                 excludeAttrs[(attr.split('NOT:')[-1])] = val
             else:
                 includeAttrs[attr] = val
@@ -1533,9 +1533,9 @@ def matchNodeLists(nodeListA, nodeListB, matchMethod='stripPrefix'):
         
     :return: matched pairs of tuples for processing [(a1,b2),[(a2,b2)]
     '''
-    infoPrint = ""
+
     matchedData = []
-    #print 'MatchMethod : ', matchedData
+
     #take a copy of B as we modify the data here
     hierarchyB=list(nodeListB)
     if matchMethod == 'mirrorIndex':
@@ -1563,7 +1563,7 @@ def matchNodeLists(nodeListA, nodeListB, matchMethod='stripPrefix'):
                 # BaseMatch is a direct compare ONLY
                 if matchMethod == 'base':
                     if strippedA.upper() == strippedB.upper():
-                        infoPrint += '\nMatch Method : %s : %s == %s' % \
+
                                 (matchMethod, nodeA.split('|')[-1], nodeB.split('|')[-1])
                         matchedData.append((nodeA, nodeB))
                         hierarchyB.remove(nodeB)
@@ -1573,7 +1573,7 @@ def matchNodeLists(nodeListA, nodeListB, matchMethod='stripPrefix'):
                 elif matchMethod == 'stripPrefix':
                     if strippedA.upper().endswith(strippedB.upper()) \
                         or strippedB.upper().endswith(strippedA.upper()):
-                        infoPrint += '\nMatch Method : %s : %s == %s' % \
+
                                 (matchMethod, nodeA.split('|')[-1], nodeB.split('|')[-1])
                         matchedData.append((nodeA, nodeB))
                         hierarchyB.remove(nodeB)
@@ -1582,7 +1582,7 @@ def matchNodeLists(nodeListA, nodeListB, matchMethod='stripPrefix'):
                 # Compare using the nodes internal mirrorIndex if found
                 elif matchMethod == 'mirrorIndex':
                     if indexA and indexA==getMirrorID(nodeB):
-                        infoPrint += '\nMatch Method : %s : %s == %s' % \
+
                                 (matchMethod, nodeA.split('|')[-1], nodeB.split('|')[-1])
                         matchedData.append((nodeA, nodeB))
                         hierarchyB.remove(nodeB)
@@ -1590,14 +1590,14 @@ def matchNodeLists(nodeListA, nodeListB, matchMethod='stripPrefix'):
                 
                 elif matchMethod == 'metaData':
                     if metaDictA and metaDictA == getMetaDict(nodeB):
-                        infoPrint += '\nMatch Method : %s : %s == %s' % \
+
                                 (matchMethod, nodeA.split('|')[-1], nodeB.split('|')[-1])
                         matchedData.append((nodeA, nodeB))
                         hierarchyB.remove(nodeB)
                         break
                     
     log.debug('\nMatched Log : \n%s' % infoPrint)
-    infoPrint = None
+
     return matchedData
 
 
@@ -1949,7 +1949,7 @@ class LockChannels(object):
                 if newAttrs:
                     for a in newAttrs.split(','):
                         self.attrs.add(a)
-                    #print self.attrs
+
             LockChannels.processState(cmds.ls(sl=True, l=True), self.attrs, mode, self.hierarchy, self.userDefined)
             
             
@@ -2027,7 +2027,7 @@ class LockChannels(object):
             serializeNode=r9Meta.MetaClass(serializeNode)
             if serializeNode.hasAttr('attrMap'):
                 self.statusDict=serializeNode.attrMap
-                #print type(self.statusDict), self.statusDict
+
             else:
                 raise StandardError('attrMap not found on given node')
             
@@ -2048,21 +2048,21 @@ class LockChannels(object):
                 if not decodeString(self.statusDict[key]['keyable'])==None:
                     for attr in self.statusDict[key]['keyable']:
                         try:
-                            #print 'keyable',attr
+
                             cmds.setAttr('%s.%s' %(node, attr), k=True, l=False)
                         except:
                             log.debug('%s : failed to set keyable attr status' % attr)
                 if not decodeString(self.statusDict[key]['locked'])==None:
                     for attr in self.statusDict[key]['locked']:
                         try:
-                            #print 'locked',attr
+
                             cmds.setAttr('%s.%s' %(node, attr), k=True, l=True)
                         except:
                             log.debug('%s : failed to set locked attr status' % attr)
                 if not decodeString(self.statusDict[key]['nonKeyable'])==None:
                     for attr in self.statusDict[key]['nonKeyable']:
                         try:
-                            #print 'nonKeyable',attr
+
                             cmds.setAttr('%s.%s' %(node, attr), cb=True)
                             cmds.setAttr('%s.%s' %(node, attr), l=False, k=False)
                         except:
@@ -2701,12 +2701,12 @@ class MatrixOffset(object):
         for node, dag, initialMatrix, parentInverseMatrix, rotScal in self.__cacheCurrentData(nodes):
             if parentInverseMatrix:
                 if not initialMatrix.isEquivalent(dag.inclusiveMatrix()):
-                    print 'Dag has already been modified by previous parent node', node
+
                     continue
                 else:
                 #multiply the offset by the inverse ParentMatrix to put it into the correct space
                     OpenMaya.MFnTransform(dag).set(OpenMaya.MTransformationMatrix(initialMatrix*parentInverseMatrix*offsetMatrix.inverse()))
-                    print 'node offset : ', node
+
                     cmds.setAttr('%s.rotatePivot' % node, rotScal[0][0][0],rotScal[0][0][1],rotScal[0][0][2])
                     cmds.setAttr('%s.scalePivot' % node, rotScal[1][0][0],rotScal[1][0][1],rotScal[1][0][2])
             else:

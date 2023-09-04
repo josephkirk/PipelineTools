@@ -145,5 +145,5 @@ class Layer(object):
         createLayer(name, layerType, blendMode, opacity)
 
 #jsxFile = r'%s\\%s' % (currentPath,'PsdjsxHelper.jsx')
-#print jsxFile
+
 #runJSX(jsxFile)

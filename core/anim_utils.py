@@ -63,7 +63,7 @@ def clearKeys(sfef):
 
 ######## Classic Spring Magic
 def springPasteBonePose():
-    print type(springUpAxis_comboBox.getSelect())
+
 
 def springBindPose():
     pm.runtime.GoToBindPose()
@@ -77,16 +77,16 @@ def springStraightBonePose(bone):
             bone.setAttr('jointOrient', [0,0,0])
 
 def createEndJoint(bone):
-    print bone
+
     if bone.getParent():
         jointRoot=bone.getParent()
-        print jointRoot
+
         poList=[]
         for j in [bone,jointRoot]:
-            print j
+
             poList.append(dt.Vector(pm.xform(j,q=True,ws=True,t=True)))
         endJointPos=(poList[0]-poList[1])*2+poList[0]
-        print dt.length(poList[1]-poList[0])
+
         pm.select(bone,r=True)
         endJoint=pm.joint(p=endJointPos)
         pm.joint(bone,e=True,zso=True,oj='xyz')
@@ -96,13 +96,13 @@ def createBoneFromSelection():
     bonObs =[]
     selection = pm.selected()
     if not selection:
-        print "No Selection"
+
         return
     obRoot = selection[0].getParent()
     pm.select(obRoot)
     index = 0
     while index<len(selection):
-        print index
+
         ob=selection[index]
         bone = pm.joint(p=getTranslate(ob))
         bonObs.append((bone,ob))
@@ -114,7 +114,7 @@ def createBoneFromSelection():
         pm.orientConstraint(obs[0],obs[1],mo=True)
         pm.pointConstraint(obs[0],obs[1],mo=True)
     bonObs.append((endJoint,None))
-    print bonObs
+
     return bonObs
 
 def createBone(Ob):
@@ -137,7 +137,7 @@ def createBone(Ob):
     bonObs.append((endJoint,None))
     return bonObs
 def getBoneChain(bone):
-    print bone
+
     # only apply on child bone, bacause need a parent bone move to cause the overlapping
     if not bone.getParent():
         return False
@@ -174,7 +174,7 @@ def springApply(pickedBone, pickedBones,springLoop=False,springRotateRate=0.3,sp
         pm.hide(boneChain)
     if not boneChain:
         return
-    print pickedBone
+
     boneRoot = boneChain[0].getParent()
     # get frame range
     pm.currentTime( startFrame, edit=True )
@@ -310,11 +310,11 @@ def springApply(pickedBone, pickedBones,springLoop=False,springRotateRate=0.3,sp
 
                 # save for next frame use
                 previousBoneWorldRotation[bone] = pm.xform(bone,q=1,worldSpace=1,rotation=1)
-                # print previousBoneWorldRotation[bone]
+
                 #runProgressBar( main_progressBar, 1/(loopCount+1)*(1/pickedBoneCount)*(1/boneChainCount)*(1/(frameCount+1))*100 )
             # save for next frame use
             previousBoneWorldTranlation = copy.copy(boneWorldTranlation)
-    print pickedBone,boneChain   
+
     if pm.nodeType(pickedBone)!='joint':
         for o in boneObs:
             if o[1]:
@@ -355,7 +355,7 @@ def makeDynamic(pickedBone):
     else:
         boneObs = createBone(pickedBone)
         boneChain=getBoneChain(boneObs[0][0])
-        print pickedBone,boneObs,boneChain
+
     if not boneChain:
         return
     pm.select([boneChain[0],boneChain[len(boneChain)-1]],r=True)
@@ -442,23 +442,23 @@ def changeSprVal(val):
 def changeTwsVal(val):
     global twistValueValue
     twistValue=val
-    #print twistValue
+
 def changeLoopVal(val):
     global loopValue
     loopValue=val
-    #print loopValue
+
 def changeTRangeVal(val):
     global timeRange
     timeRange=val
-    #print timeRange
+
 def changeSFVal(val):
     global startFrame
     startFrame=val
-    print startFrame
+
 def changeEFVal(val):
     global endFrame
     endFrame=val
-    #print endFrame
+
 def changeSpringMethodVal(val):
     global springMethod
     springMethod=val
@@ -478,7 +478,7 @@ def changeMethodVal(val):
         springMethod=1
         pm.radioButton(dynHairMagicRadioID,e=True,select=True)
         pm.radioButton(dynSpringMagicRadioID,e=True,ed=False,select=False)
-    #print pickMethod
+
 def InteractivePlayback():
     pm.setCurrentTime(pm.playbackOptions(q=True,minTime=True))
     mm.eval('InteractivePlayback;')

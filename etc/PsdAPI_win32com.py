@@ -19,7 +19,7 @@ newLayer.Kind = 16
 #         continue
 # activeLayer = docRef.ActiveLayer
 #layerKind = win32com.client.Dispatch("Photoshop.LayerKind")
-#print layerKind.SOLIDFILL
+
 # docRef.Selection.SelectAll()
 # solidColorRef = win32com.client.Dispatch("Photoshop.SolidColor")
 # solidColorRef.RGB.Red = 255

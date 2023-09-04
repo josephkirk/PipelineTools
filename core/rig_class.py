@@ -19,7 +19,7 @@ logging.basicConfig()
 log = logging.getLogger(__name__)
 log.setLevel(logging.INFO)
 
-# print meta
+
 # log.info('Rig Class Initilize')
 class CHRig(meta.MetaHIKCharacterNode):
     def __init__(self, name='', hikName='CH'):
@@ -328,13 +328,13 @@ class FacialControl(object):
         try:
             if self.node:
                 pm.rename(self.node, self.name)
-                print self.node
+
             if self.offset:
                 pm.rename(self.offset, self.offset_name)
-                print self.offset
+
             if self.root:
                 pm.rename(self.root, self.root_name)
-                print self.root
+
         except:
             pass
 
@@ -491,7 +491,7 @@ class FacialBone(object):
                         connect = True
                     else:
                         connect = False
-                    print '%s connection to %s is %s' % (atr, self.control_name, connect)
+
                     connect_state.append((atr, connect))
         return connect_state
 
@@ -547,7 +547,7 @@ class FacialBone(object):
         # class facialbones(Enum):
         for name in names:
             list_all = pm.ls('*%s*%s*' % (name, suffix), type='transform')
-            # print list_all
+
             allbone = []
             for ob in list_all:
                 if root_suffix not in ob.name() and offset_suffix not in ob.name():
@@ -621,7 +621,7 @@ class FacialBsRig(object):
             else:
                 self.facebs_def['misc'].append(bs)
         else:
-            print "no blendShape with name" % self.facebs_name
+
         return self.facebs_def
 
     def connect_bs_controller(self):
@@ -659,8 +659,8 @@ class FacialBsRig(object):
         )
         for ctl_name, bs_targets in bs_controller.items():
             for bs_target in bs_targets:
-                print '%s.%s >> %s.%s' % (ctl_name, bs_target, self.facebs_name, bs_target)
-                # print bs_controller
+
+
 
 
 class ControlObject(object):
@@ -890,7 +890,7 @@ class ControlObject(object):
             sphere=True,
             radius=self.radius,
             length=0)
-        print self
+
         return crv
 
     @__setProperty__
@@ -1002,14 +1002,14 @@ class ControlObject(object):
         axisData['ZY'] = [-90, 0, 0]
         assert (axis in axisData), "set axis data don't have '%s' axis.\nAvailable axis:%s" % (axis, ','.join(axisData))
         control.setRotation(axisData[axis])
-        # print control.getRotation()
+
         pm.makeIdentity(control, apply=True)
         if not control:
             for control in self.controls:
                 self.setAxis(control)
 
     def setColor(self, control, newColor=None):
-        print control.name
+
         if newColor:
             self.color = newColor
         try:
@@ -1053,7 +1053,7 @@ class ControlObject(object):
     def _getUIValue(self, *args):
         self.name = self._uiElement['ctlName'].getText()
         self.color = self._uiElement['ctlColor'].getRgbValue()
-        print self._uiElement['ctlAxis'].getValue()
+
         self.axis = self._uiElement['ctlAxis'].getValue()
         self.radius = self._uiElement['ctlRadius'].getValue()[0]
         self.length = self._uiElement['ctlLength'].getValue()[0]

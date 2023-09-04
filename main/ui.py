@@ -129,7 +129,7 @@ class RigTools(object):
 
     def setUIValue(self, key, value):
         self._uiElement[key] = value
-        print key, self._uiElement[key]
+
 
     def get_hair_system(self):
         hairSystem = ls(type='hairSystem')
@@ -145,7 +145,7 @@ class RigTools(object):
     def _ui_update(self):
         self.nodetrack.reset()
         #self.nodetrack.startTrack()
-        print self.nodetrack.getNodes()
+
 
     def do_func(self, func, **kws):
         for kw,value in kws.items():
@@ -179,7 +179,7 @@ class RigTools(object):
         if trackNodes:
             try:
                 for node in trackNodes:
-                    print node
+
                     if objExists(node):
                         condition = any([
                             c in self.nodebase
@@ -855,13 +855,19 @@ class SendCurrentFile(object):
         return self._window
 
     def info(self):
-        print 'self:', self
-        print '__str__:', self.__str__()
-        print '__repr__:', self.__repr__()
-        print 'window:', self.window(), type(self.window())
-        print 'name:', self.name()
+        print('self:', self)
+        print('__str__:', self.__str__())
+        print('__repr__:', self.__repr__())
+        print('window:', self.window(), type(self.window()))
+        print('name:', self.name())
+
+
+
+
+
         if window(self.name(), ex=True):
-            print self.name(), 'exists'
+             print(self.name(), 'exists')
+
 
     def _set(self):
         self.window()
@@ -935,7 +941,7 @@ class SendCurrentFile(object):
 
     def send(self, *args, **kwargs):
         kwargs = self.get_value()
-        print kwargs
+
         ul.send_current_file(**kwargs)
 
 class FacialRig(object):
@@ -952,13 +958,24 @@ class FacialRig(object):
         return self._window
 
     def info(self):
-        print 'self:', self
-        print '__str__:', self.__str__()
-        print '__repr__:', self.__repr__()
-        print 'window:', self.window(), type(self.window())
-        print 'name:', self.name()
+        print(
+            """
+                self:{}
+                __str__:{}
+                __repr__:{}
+                window: {}, {}
+                name: {}
+            """.format(
+                self,
+                self.__str__(),
+                self.__repr__(),
+                self.window(), type(self.window()),
+                self.name()
+            )
+        )
         if window(self.name(), ex=True):
-            print self.name(), 'exists'
+            print(self.name(), 'exists')
+
 
     def _set(self):
         self.window()

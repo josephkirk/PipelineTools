@@ -93,7 +93,7 @@ def set_language(language='language_english', *args):
     language_path = os.path.join(os.path.dirname(__file__),'language_packs')
     packs = get_language_maps()
     if language in packs:
-        print 'Red9 : Importing Language Map : %s' % language
+
         LANGUAGE_MAP = imp.load_source('language', os.path.join(language_path, language+'.py'))
 
 set_language()
@@ -106,14 +106,14 @@ set_language()
 MAYA_INTERNAL_DATA = {}  # cached Maya internal vars for speed
 
 def mayaFullSpecs():
-    print 'Maya version : ', mayaVersion()
-    print 'Maya API version: ', mayaVersionRelease()
-    print 'Maya Release: ', cmds.about(v=True)
-    print 'QT build: ', mayaVersionQT()
-    print 'Prefs folder: ',mayaPrefs()
-    print 'OS build: ', osBuild()
+    print( 'Maya version : ', mayaVersion())
+    print( 'Maya API version: ', mayaVersionRelease())
+    print( 'Maya Release: ', cmds.about(v=True))
+    print( 'QT build: ', mayaVersionQT())
+    print( 'Prefs folder: ',mayaPrefs())
+    print( 'OS build: ', osBuild())
     
-    print MAYA_INTERNAL_DATA
+    print( MAYA_INTERNAL_DATA)
      
 def mayaVersion():
     '''
@@ -533,10 +533,10 @@ def addAudioMenu(parent=None, rootMenu='redNineTraxRoot'):
     '''
     Red9 Sound Menu setup
     '''
-    print 'AudioMenu: given parent : ',parent
+
     if not parent:
         cmds.menu(rootMenu, l=LANGUAGE_MAP._MainMenus_.sound_red9_sound, tearOff=True, allowOptionBoxes=True)
-        print 'New r9Sound Menu added - no specific parent given so adding to whatever menu is currently being built!'
+
     else:
         # parent is a window containing a menuBar?
         if cmds.window(parent, exists=True):
@@ -946,7 +946,7 @@ def load_shelf(shelf_path):
     top=cmds.shelfTabLayout(gShelfTopLevel, q=True, st=True)
     
     if os.path.exists(shelf_path):
-        #print shelf_path
+
         delete_shelf(shelf_path)
         mel.eval('source "%s"' % shelf_path)
         mel.eval('loadNewShelf("%s")' % shelf_path)
@@ -1140,15 +1140,15 @@ def start(Menu=True, MayaUIHooks=True, MayaOverloads=True, parentMenu='MayaWindo
 #    try:
 #        currentBuild = mel.eval('$temp=$buildInstalled')
 #    except:
-#        print 'Red9 : version not found'
+
 #
 #    if currentBuild:
-#        print 'Red9 : StudioPack already found : v', currentBuild
+
 #        if currentBuild<=red9_getVersion():
-#            print 'Red9 StudioPack Start Aborted : v%f is already installed' % currentBuild
+
 #            return
 #    else:
-#        print 'Red9 : no version currently loaded'
+
             
 
     #Ensure the Plug-in and Icon paths are up
@@ -1212,20 +1212,20 @@ def reload_Red9(*args):
     Red9.core._reload()
     
     if has_pro_pack():
-        print '\nReloading ProPack Systems (INTERNAL USE)'
-        print '='*40
+
+
         import Red9.pro_pack.core
         Red9.pro_pack.core._reload()
         
     if has_internal_systems():
-        print '\nReloading Internal Codebase'
-        print '='*40
+
+
         import Red9_Internals
         Red9_Internals._reload()
 
     if has_client_modules():
-        print '\nReloading Client Codebase'
-        print '='*40
+
+
         __reload_clients__()
 
 

@@ -5,13 +5,13 @@ import maya.cmds as cm
 #@do_function_on
 def mirrorTransform(obs, axis="x",xform=[0,4]):
     if not obs:
-        print "no object to mirror"
+
         return
     axisDict = {
         "x":('tx', 'ry', 'rz', 'sx'),
         "y":('ty', 'rx', 'rz', 'sy'),
         "z":('tz', 'rx', 'ry', 'sz')}
-    #print obs
+
     if type(obs) != list:
         obs = [obs]
     for ob in obs:
@@ -28,7 +28,7 @@ def randU(offset=0.1):
 
 def lockTransform(obs,lock=True):
     if not obs:
-        print "no object to mirror"
+
         return
     if type(obs) != list:
         obs = [obs]
@@ -104,10 +104,10 @@ def createHairMesh(profilesList,
                    lengthDivs=7,
                    widthDivs=4):
     '''create a Hair Tube with auto crease and material from list of Curve Profiles'''
-    print profilesList
+
     if not profilesList or all(
             [type(o.getShape()) != pm.nodetypes.NurbsCurve for o in profilesList]):
-        print "no Profiles"
+
         return
     pm.select(profilesList)
     pm.nurbsToPolygonsPref(pt=1, un=4, vn=7, f=2, ut=2, vt=2)
@@ -166,7 +166,7 @@ def makeHairMesh(name="HairMesh#",
     '''Create a Hair Tube From Select Curve line or Edge or IsoPram'''
     sel = pm.selected()
     if not sel:
-        print "Select some Curves or Edges or isopram"
+
         return
     if type(sel[0]) == pm.general.MeshEdge:
         pm.runtime.CreateCurveFromPoly()
@@ -182,7 +182,7 @@ def makeHairMesh(name="HairMesh#",
         pathCurve = [(i, pathShape[pathTransform.index(i)]) for i in pathTransform]
         if pm.objExists("HairBaseProfileCurve"):
             profileCurve = pm.ls("HairBaseProfileCurve")[0]
-            #print profileCurve.listRelatives()[0].listConnections()[0]
+
             profileCurve.listRelatives()[0].listConnections()[0].setRadius(width)
             pm.showHidden(profileCurve, a=1)
         else:
@@ -206,7 +206,7 @@ def makeHairMesh(name="HairMesh#",
                 profileCurve[0].getShape().attr(a[0]).set(a[1])
         pm.select(d=1)
         for crv in pathCurve:
-            print crv
+
             pm.rebuildCurve(crv[0], kep=1)
             if reverse:
                 pm.reverseCurve(crv[0])
@@ -282,7 +282,7 @@ def selHair(
     ### check for right Selection
     hairMeshes = []
     for o in sel:
-        #print o.getParent() == pm.ls('HairCtrlGroup')[0]
+
         if (type(o.getShape()) == pm.nodetypes.NurbsCurve or
                 o.getParent() == pm.ls('HairCtrlGroup')[0]):
             try:
@@ -298,25 +298,25 @@ def selHair(
             hair = o
             hairTes = o.listConnections(type=pm.nodetypes.NurbsTessellate)[0]
             hairLoft = hairTes.listConnections(type=pm.nodetypes.Loft)[0]
-            #print hair, hairTes, hairLoft
+
         else:
             continue
         if all([hair, hairTes, hairLoft]):
             hairMeshes.append((hair, hairTes, hairLoft))
         else:
-            print "Something wrong with getting hair Tesselate and Loft"
+
             return
     if hairMeshes:
-        #print hairMeshes
+
         ### getting all Controls
         Cgroups = []
         for hair in hairMeshes:
             try:
-                #print hair
+
                 hairLoft = hair[2]
                 ctrls = [c for c in hairLoft.listConnections() if type(c) == pm.nt.Transform]
                 ControlGroup = ctrls[0].getParent()
-                #print ControlGroup
+
                 if setPivot:
                     pm.xform(
                         ControlGroup,
@@ -326,7 +326,7 @@ def selHair(
                             q=1, ws=1, piv=1)[:3])
                 if rebuild[0]:
                     NewControls = ControlGroup.listRelatives(type=pm.nodetypes.Transform)
-                    #print NewControls
+
                     if cShape[0]:
                         for c in NewControls:
                             rebuildControl(c, obshape=cShape[1], ra=cShape[2])
@@ -341,30 +341,30 @@ def selHair(
                         mat=curMaterial,
                         lengthDivs=rebuild[1], widthDivs=rebuild[2])
                     pm.parent(newHair[0], oldParent)
-                    #print hair[0]
-                    #print hair[0].getShape().listConnections(type=pm.nt.PolyTweakUV)[0].listConnections(type=pm.nt.PolyNormal)
+
+
                     if hair[0].getShape().listConnections(
                         type=pm.nt.PolyTweakUV)[0].listConnections(
                             type=pm.nt.PolyNormal):
                         try:
                             pm.polyNormal(newHair[0], nm=3)
                         except:
-                            print "can't reverse"
+
                     pm.delete(hair[0])
                     del hair
                     hair = newHair[0]
             except:
                 continue
             if ControlGroup:
-                #print ControlGroup
+
                 Cgroups.append((hair, ControlGroup))
         ### select as Requested
         if Cgroups:
-            #print Cgroups
+
             if not returnInfo:
                 pm.select(d=1)
                 for cGroup in Cgroups:
-                    #print cGroup[1]
+
                     for c in cGroup[1].listRelatives(type=pm.nt.Transform):
                         c.show()
                     if selectTip:
@@ -393,8 +393,8 @@ def splitHairCtrl(d='up'):
     hairInfoAll = selHair(returnInfo=True)
     if not hairInfoAll:
         return
-    #print hairInfo[0][0]
-    #print hairInfo
+
+
     for selOb in sel:
         pm.select(selOb, r=1)
         hairInfo = hairInfoAll[sel.index(selOb)]
@@ -462,7 +462,7 @@ def dupHairMesh(mirror=False,axis='x',space='world'):
             #mirrorTransform(hair[1])
             pm.polyNormal(hair[0][0], nm=3)
             oldPos = hair[1].getTranslation(space='world')
-            print oldPos
+
             if not hair[1].isVisible():
                 c.show()
             for c in ctrls:
@@ -810,7 +810,7 @@ def setHotkeys():
             nameCommandList.append((nameCommand,
                                     commandsDict[category][command][2]))
     for nc in nameCommandList:
-        print nc
+
         if nc[1][0]:
-            print "hotKey is %s" % nc[1][0]
+
             pm.hotkey(keyShortcut=nc[1][0], ctl=nc[1][1], alt=nc[1][2], sht=nc[1][3], n=nc[0])

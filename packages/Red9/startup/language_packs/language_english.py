@@ -562,11 +562,11 @@ class _MetaNodeUI_(object):
     vimeo_meta_part4 = "Vimeo Help: MetaData-Part4"
     vimeo_meta_part4_ann = 'Part4 goes through subclassing Meta and using it in your own systems'
     
-    print_registered_nodetypes = "Print :Registered NodeTypes"
+
     print_registered_nodetypes_ann = 'Prints the currently registered nodeTypes from the Meta Registry'
-    print_registered_metaclasses = "Print :Registered MetaClasses"
+
     print_registered_metaclasses_ann = 'Prints the currently registered MetaClasses from the Meta Registry'
-    print_metacached_node = "Print :MetaCached Nodes"
+
     print_metacached_nodes_ann = 'Prints all currently cached nodes in the MetaCache'
     clear_cache = "Clear Cache"
     clear_cache_ann = 'Clear all currently cached nodes from the registry'
@@ -594,7 +594,7 @@ class _MetaNodeUI_(object):
     sort_by_classname = 'SortBy : ClassName'
     sort_by_nodename = 'SortBy : NodeName'
     class_all_registered = 'Class : All Registered'
-    class_print_inheritance = 'Class : Print Inheritance Map'
+
     pro_connect_node = 'Pro: Connect Node to System'
     pro_disconnect_node = 'Pro: Disconnect Nodes from System'
     pro_addchild_metanode = 'Pro: Add Child MetaNode System'

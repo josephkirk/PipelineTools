@@ -6,8 +6,8 @@ class ColorInputError(Exception):
     def __init__(self, expr):
         self.expr = expr
         self.msg = "Color Input must be tuple3"
-        print self.expr
-        print self.msg
+
+
 ################ Decorator
 
 ################ Main Class

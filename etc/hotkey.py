@@ -53,7 +53,7 @@ def setHotkeys():
             nameCommandList.append((nameCommand,
                                     commands_dict[category][command][2]))
     for nc in nameCommandList:
-        print nc
+
         if nc[1][0]:
-            print "hotKey is %s" % nc[1][0]
+
             pm.hotkey(keyShortcut=nc[1][0], ctl=nc[1][1], alt=nc[1][2], sht=nc[1][3], n=nc[0])

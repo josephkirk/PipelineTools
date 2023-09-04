@@ -94,5 +94,5 @@ def install():
         command=ui.show
     )
     
-    print "Reorder Attributes: installation succeeded"
+
 

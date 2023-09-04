@@ -117,7 +117,8 @@ def registerMClassInheritanceMapping():
   
 def printSubClassRegistry():
     for m in RED9_META_REGISTERY:
-        print m
+        print(m)
+
     
 def getMClassMetaRegistry():
     '''
@@ -259,7 +260,7 @@ def registerMClassNodeMapping(nodeTypes=[]):
   
 def printMetaTypeRegistry():
     for t in RED9_META_NODETYPE_REGISTERY:
-        print t
+
     
 def getMClassNodeTypes():
     '''
@@ -338,7 +339,7 @@ def registerMClassNodeCache(mNode):
 #                log.debug('CACHE : Adding to MetaNode UUID Cache : %s > %s' % (mNode.mNode, UUID))
 #                RED9_META_NODECACHE[UUID]=mNode
 #        except StandardError, err:
-#            #print err
+
 #            log.debug('CACHE : Failed to set UUID for mNode : %s' % mNode.mNode)
 #    else:
 #        log.debug('CACHE : UUID attr not bound to this node, must be an older system')
@@ -379,7 +380,7 @@ def getMetaFromCache(mNode):
                     if not RED9_META_NODECACHE[mNode]._MObject == getMObject(mNode):
                         log.debug('CACHE : %s : ID is already registered but MObjects are different, node may have been renamed' % mNode)
                         return
-                    #print 'namebased returned from cache ', mNode
+
                     log.debug('CACHE : %s Returning mNode from nameBased cache!' % mNode)
                     return RED9_META_NODECACHE[mNode]
                 else:
@@ -418,13 +419,13 @@ def upgrade_toLatestBindings(*args):
             
 def printMetaCacheRegistry():
     '''
-    print the current VALID Cache of instantiated MetaNodes 
+
     Note that we call a cleanCache before printing to remove any 
     currently invalid MObjects from the Cache.
     '''
     cleanCache()
     for k,v in RED9_META_NODECACHE.items():
-        print '%s : %s : %s' % (k,r9Core.nodeNameStrip(v.mNode),v)
+
  
 def cleanCache():
     '''
@@ -476,7 +477,7 @@ def __preDuplicateCache(*args):
     '''
     global __RED9_META_NODESTORE__
     __RED9_META_NODESTORE__= getMetaNodes(dataType='dag')
-    #print 'pre-callback : nodelist :', __RED9_META_NODESTORE__
+
     
 def __poseDuplicateCache(*args):
     '''
@@ -494,7 +495,7 @@ def __poseDuplicateCache(*args):
         #if cmds.attributeQuery('UUID', node=node, exists=True):
         if cmds.objExists('%s.%s' % (node,'UUID')):
             cmds.setAttr('%s.UUID' % node, generateUUID(), type='string')
-    #print 'post-callback : nodelist :', newNodes
+
 
 def getMObject(node):
     '''
@@ -556,8 +557,8 @@ def pymelHandler(func):
         try:
             #inputNodes=args[0]
             #if 'pymel' in str(type(inputNodes)):
-            #    print 'pymel Node passed in!!!!!!!!!!'
-            #    print 'type : ', args
+
+
             #    #args[0]=str(inputNodes)
             res=func(*args, **kws)
         except StandardError, error:
@@ -1327,15 +1328,15 @@ class MClassNodeUI(object):
 
             if mTypesFilter:
                 self.mNodes=getMetaNodes(mTypes=mCalssSelected, mInstances=None, dataType=self.dataType)
-                print 'mTypeFilter : ', mCalssSelected
+
             elif mInstanceFilter:
                 self.mNodes=getMetaNodes(mTypes=None, mInstances=mCalssSelected, dataType=self.dataType)
-                print 'mInstanceFilter : ', mCalssSelected
+
             else:
                 self.mNodes=getMetaNodes(mTypes=self.mTypes, mInstances=self.mInstances, dataType=self.dataType)
         else:
             self.mNodes=getMetaNodes(mTypes=self.mTypes, mInstances=self.mInstances, dataType=self.dataType)
-            print 'none', self.mTypes, self.mInstances
+
                         
         if not self.mNodes:
             log.warning('no metaNodes found that match the filters')
@@ -1368,7 +1369,7 @@ class MClassNodeUI(object):
         if len(indexes)==1:
             mNode=MetaClass(self.mNodes[indexes[0]-1])
             for c in mNode.getInheritanceMap():
-                print 'Class Inheritance : ', c
+
         
     def __uiCB_connectNode(self, *args):
         '''
@@ -1423,23 +1424,23 @@ class MClassNodeUI(object):
             raise StandardError('Connect Call only works with a single selected mNode from the UI')
         r9Setup.PRO_PACK_STUBS().MetaDataUI.uiCB_addChildMetaNode(mNode,mClass)
         self.fillScroll()
-        print 'adding childMetaNode of mClass type : %s to %s' % (mClass, mNode.mNode)
+
         
     def printRegisteredNodeTypes(self,*args):
-        print '\nRED9_META_NODETYPE_REGISTERY:\n============================='
-        print getMClassNodeTypes()
+
+
         
     def printRegisteredMetaClasses(self,*args):
         data = getMClassMetaRegistry()
-        print '\nRED9_META_REGISTERY:\n===================='
+
         for key, value in sorted(data.items()):
-            print key, ' : ', value
+
             
     def printMetaNodeCache(self,*args):
         data = getMClassNodeCache()
-        print '\nRED9_META_NODECACHE:\n===================='
+
         for key, value in sorted(data.items()):
-            print key, ' : ', value
+
 
 
 
@@ -1621,7 +1622,7 @@ class MetaClass(object):
             if self.hasAttr('mClass') and not cmds.listConnections(self.mNode):
                 return False
         except MetaInstanceError, err:
-            print 'Bailing caught exception'
+
             return False
         return True
         
@@ -2304,7 +2305,7 @@ class MetaClass(object):
                 split=plug.split('.')
                 attr=split[-1].split('[')[0]
                 child=split[0]
-                #print 'attr : ', attr, ' child : ', child, ' plug : ', plug, ' curName : ', currentName
+
                 if attr==currentName:
                     try:
                         child=MetaClass(child)
@@ -2727,8 +2728,8 @@ class MetaClass(object):
 
         for sPlug,dPlug in zip(cons[0::2],cons[1::2]):
             log.debug('attr Connection inspected : %s << %s' % (sPlug,dPlug))
-            #print 'searchCon : ', searchConnection
-            #print 'dPlug : ', dPlug
+
+
             if (attr and searchConnection == dPlug.split('[')[0]) or (not attr and searchConnection in dPlug):
             #if searchConnection in dPlug:
                 log.debug('Disconnecting %s >> %s as %s found in dPlug' % (dPlug, sPlug, searchConnection))
@@ -3057,7 +3058,7 @@ def deleteEntireMetaRigStructure(searchNode=None):
     mNodes.reverse()
     
     for a in mNodes:
-        print a
+
     
     for metaChild in mNodes:
         for child in metaChild.getChildren(walk=False):
@@ -3159,12 +3160,12 @@ class MetaRig(MetaClass):
         mNodes.reverse()
         
         for a in mNodes:
-            print a
+
         
         for metaChild in mNodes:
             for child in metaChild.getChildren(walk=False):
                 metaChild.disconnectChild(child)
-            print 'deleting mNode: ', metaChild
+
             delete_mNode(metaChild)
         
     @property
@@ -3681,7 +3682,7 @@ class MetaRig(MetaClass):
                 for shape in shapes:
                     cmds.setAttr('%s.lodVisibility' % shape, state)
             else:
-                print plug, skip
+
     
     def hideNodes(self):
         '''
@@ -4040,7 +4041,7 @@ class MetaRigSubSystem(MetaRig):
         '''
         try:            
             subsystems=getConnectedMetaNodes(self.mNode, source=False, destination=True, mInstances=MetaRigSupport, dataType='mClass')
-            #print 'subsystems :', subsystems
+
             if len(subsystems)>1:
                 for s in subsystems:
                     if s.mNodeID==self.mNodeID.replace('System', 'Support'):
@@ -4395,7 +4396,7 @@ def monitorHUDManagement(func):
             HUDS=cmds.headsUpDisplay(lh=True)
             for hud in HUDS:
                 if 'MetaHUDConnector' in hud:
-                    print 'killing HUD : ',hud
+
                     cmds.headsUpDisplay(hud,remove=True)
     if func=='refreshHeadsUp':
         metaHUD.headsUpOnly=True
@@ -4421,7 +4422,7 @@ def monitorHUDremoveCBAttrs():
             metaHUD.killHud()
             for attr in attrs:
                 monitoredAttr='%s_%s' % (r9Core.nodeNameStrip(node), attr)
-                print 'removing attr :',attr,monitoredAttr
+
                 try:
                     metaHUD.removeMonitoredAttr(monitoredAttr)
                 except:
@@ -4588,7 +4589,7 @@ class MetaHUDNode(MetaClass):
                                         command=partial(self.__compute__,attr))
                                         #command=partial(getattr,self,attr))
             else:
-                print 'node : ', self.mNode,' attrs : ', attr
+
                 connectedData=cmds.listConnections('%s.%s' % (self.mNode,attr),
                                                    connections=True,
                                                    skipConversionNodes=True,

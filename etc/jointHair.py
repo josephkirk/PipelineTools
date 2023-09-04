@@ -488,7 +488,7 @@ class main:
 		else:
 			self.currentHsysVal = self.exhsOPM.getValue()
 			
-			print self.currentHsysVal
+
 			
 			self.makeJointHair(sel, pm.PyNode(self.exhsOPM.getValue()))
 

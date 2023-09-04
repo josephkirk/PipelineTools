@@ -12,11 +12,10 @@ basePath = os.path.dirname(__file__)
 #     if os.path.isdir(installpath):
 #         site.addsitedir(installpath)
 #     else:
-#         print installpath, 'does not exists'
-# print 'third Party packages iniliazize'
+
+
 def _reload():
     for mod in [core,etc,main,project_specific]:
         reload(mod)
         if hasattr(mod,'_reload'):
             mod._reload()
-        # print mod.__name__, 'reload'

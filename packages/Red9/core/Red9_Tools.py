@@ -116,7 +116,7 @@ class SceneReviewerUI(object):
         self.SceneReviewer.storedDataDict['date'] = cmds.textFieldGrp('date', q=True, text=True)
         self.SceneReviewer.storedDataDict['sceneName']= cmds.textFieldGrp('sceneName',q=True, text=True)
         self.SceneReviewer.storedDataDict['comment']= cmds.scrollField('comment',q=True, text=True)
-        print self.SceneReviewer.storedDataDict
+
         self.SceneReviewer.storeReportData()
     
     def addNewComment(self,*args):
